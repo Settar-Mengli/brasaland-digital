@@ -6,3 +6,4 @@ export * from './sale-transaction';
 export * from './location';
 export * from './waste-record';
 export * from './country-metrics';
+export * from './validation-result';
