@@ -109,11 +109,83 @@
   </head>
 
   <body class="font-sans bg-brasaland-ivory text-brasaland-charcoal">
-    <header><!-- nav placeholder --></header>
+    <a
+      href="#hero"
+      class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:bg-brasaland-charcoal focus:text-brasaland-ivory focus:px-4 focus:py-2 focus:rounded-md"
+      >Skip to main content</a
+    >
+
+    <header
+      class="sticky top-0 z-40 bg-brasaland-ivory/95 backdrop-blur border-b border-brasaland-charcoal/10"
+    >
+      <nav
+        aria-label="Primary"
+        class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between"
+      >
+        <a href="#hero" class="font-display text-2xl font-bold text-brasaland-ember">Brasaland</a>
+        <ul class="hidden sm:flex items-center gap-8">
+          <li>
+            <a
+              href="#hero"
+              class="text-brasaland-charcoal hover:text-brasaland-ember focus:text-brasaland-ember transition-colors focus:outline-none focus:ring-2 focus:ring-brasaland-ember focus:ring-offset-2 rounded-sm"
+              >Home</a
+            >
+          </li>
+          <li>
+            <a
+              href="#locations"
+              class="text-brasaland-charcoal hover:text-brasaland-ember focus:text-brasaland-ember transition-colors focus:outline-none focus:ring-2 focus:ring-brasaland-ember focus:ring-offset-2 rounded-sm"
+              >Locations</a
+            >
+          </li>
+          <li>
+            <a
+              href="#features"
+              class="text-brasaland-charcoal hover:text-brasaland-ember focus:text-brasaland-ember transition-colors focus:outline-none focus:ring-2 focus:ring-brasaland-ember focus:ring-offset-2 rounded-sm"
+              >Menu</a
+            >
+          </li>
+          <li>
+            <a
+              href="#brasa-points"
+              class="text-brasaland-charcoal hover:text-brasaland-ember focus:text-brasaland-ember transition-colors focus:outline-none focus:ring-2 focus:ring-brasaland-ember focus:ring-offset-2 rounded-sm"
+              >Brasa Points</a
+            >
+          </li>
+          <li>
+            <a
+              href="#contact"
+              class="text-brasaland-charcoal hover:text-brasaland-ember focus:text-brasaland-ember transition-colors focus:outline-none focus:ring-2 focus:ring-brasaland-ember focus:ring-offset-2 rounded-sm"
+              >Contact</a
+            >
+          </li>
+        </ul>
+      </nav>
+    </header>
 
     <main>
-      <section id="hero" aria-labelledby="hero-heading">
-        <h1 id="hero-heading" class="sr-only">Brasaland</h1>
+      <section
+        id="hero"
+        aria-labelledby="hero-heading"
+        class="bg-brasaland-cream py-20 sm:py-28 lg:py-36"
+      >
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
+          <h1
+            id="hero-heading"
+            class="font-display text-4xl sm:text-5xl lg:text-6xl font-bold text-brasaland-charcoal leading-tight"
+          >
+            The taste of the grill, in every bite.
+          </h1>
+          <p class="mt-6 text-lg sm:text-xl text-brasaland-charcoal/80 leading-relaxed">
+            Since 2008, serving the best grilled meats in Colombia and the United States. 14
+            locations, one passion for quality and flavor.
+          </p>
+          <a
+            href="application.html"
+            class="mt-10 inline-block bg-brasaland-ember text-brasaland-ivory font-sans font-semibold text-base sm:text-lg px-8 py-3 rounded-md hover:bg-brasaland-ember/90 focus:outline-none focus:ring-2 focus:ring-brasaland-ember focus:ring-offset-2 focus:ring-offset-brasaland-cream transition-colors"
+            >Join Brasa Points</a
+          >
+        </div>
       </section>
 
       <section id="story" aria-labelledby="story-heading">
