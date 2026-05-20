@@ -1,6 +1,6 @@
 /** Financial transformation utilities for Brasaland operations data. */
 
-import type { MenuItem, SaleTransaction, WasteRecord } from '../types';
+import type { Location, MenuItem, SaleTransaction, WasteRecord } from '../types';
 
 /** Fixed exchange rate used across the operations toolkit: 1 USD = 4000 COP. */
 const USD_TO_COP_RATE = 4000;
@@ -97,4 +97,75 @@ export function convertCurrency(
   if (fromCurrency === toCurrency) return amount;
   if (fromCurrency === 'USD') return roundTo2Decimals(amount * USD_TO_COP_RATE);
   return roundTo2Decimals(amount / USD_TO_COP_RATE);
+}
+
+/**
+ * Computes a composite performance score (0–100) for a single location.
+ * Score is the sum of four sub-scores: revenue performance (40 pts), operational
+ * efficiency (30 pts), waste control (20 pts), and profit margin (10 pts).
+ * All currency calculations use USD. The `now` parameter defaults to the current
+ * date and is exposed for testability.
+ * @param location - The location to score.
+ * @param sales - All sale transactions across all locations.
+ * @param wasteRecords - All waste records across all locations.
+ * @param menuItems - The menu item catalogue for margin calculation.
+ * @param now - Reference date for operating-days calculation (defaults to new Date()).
+ * @returns A composite score rounded to 2 decimal places.
+ */
+export function scoreLocationPerformance(
+  location: Location,
+  sales: SaleTransaction[],
+  wasteRecords: WasteRecord[],
+  menuItems: MenuItem[],
+  now?: Date,
+): number {
+  const effectiveNow = now ?? new Date();
+
+  // Revenue performance (40 pts max)
+  const locationSales = sales.filter((sale) => sale.locationId === location.id);
+  const totalRevenueUSD = locationSales.reduce((sum, sale) => sum + sale.totalPrice.USD, 0);
+  const openingMs = new Date(location.openingYear, 0, 1).getTime();
+  const operatingDays = Math.max(1, Math.floor((effectiveNow.getTime() - openingMs) / 86_400_000));
+  const avgDailyRevenue = totalRevenueUSD / operatingDays;
+  const revenueScore = Math.min(40, (avgDailyRevenue / 1000) * 40);
+
+  // Efficiency (30 pts max)
+  const efficiencyScore = Math.min(30, (locationSales.length / location.seatingCapacity) * 30);
+
+  // Waste control (20 pts max)
+  const totalWasteCostUSD = calculateWasteCost(wasteRecords, location.id, 'USD');
+  const wastePercentage = totalRevenueUSD === 0 ? 0 : (totalWasteCostUSD / totalRevenueUSD) * 100;
+  const wasteScore = Math.max(0, 20 - wastePercentage * 2);
+
+  // Profit margin (10 pts max)
+  const margin = calculateLocationMargin(sales, menuItems, location.id, 'USD');
+  const marginScore = Math.min(10, margin / 10);
+
+  return roundTo2Decimals(revenueScore + efficiencyScore + wasteScore + marginScore);
+}
+
+/**
+ * Ranks all locations by their composite performance score, highest first.
+ * Each entry pairs a location with its computed score. The input array is never mutated.
+ * The `now` parameter is forwarded to scoreLocationPerformance for testability.
+ * @param locations - The locations to rank.
+ * @param sales - All sale transactions across all locations.
+ * @param wasteRecords - All waste records across all locations.
+ * @param menuItems - The menu item catalogue for margin calculation.
+ * @param now - Reference date for operating-days calculation (defaults to new Date()).
+ * @returns A new array of location–score pairs sorted by score descending.
+ */
+export function rankLocationsByPerformance(
+  locations: Location[],
+  sales: SaleTransaction[],
+  wasteRecords: WasteRecord[],
+  menuItems: MenuItem[],
+  now?: Date,
+): Array<{ location: Location; score: number }> {
+  return [...locations]
+    .map((location) => ({
+      location,
+      score: scoreLocationPerformance(location, sales, wasteRecords, menuItems, now),
+    }))
+    .sort((a, b) => b.score - a.score);
 }
