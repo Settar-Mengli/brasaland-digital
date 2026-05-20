@@ -6,7 +6,7 @@ Brasaland Digital is a TypeScript monorepo containing three independent workspac
 
 ## Live demos
 
-- Marketing site (M1) — pending Vercel deploy
+- Marketing site (M1) — [brasaland-public-website.vercel.app](https://brasaland-public-website.vercel.app)
 - Talent pipeline tracker (M3) — not yet started
 
 ## Workspaces
@@ -79,7 +79,7 @@ npm run test --workspace @brasaland/operations-toolkit
 | M1 public-website | Client-side form validation | Complete |
 | M1 public-website | Mobile navigation (hamburger toggle, Escape-to-close) | Complete |
 | M1 public-website | SVG favicon and social meta cleanup | Complete |
-| M1 public-website | Vercel deployment | Pending |
+| M1 public-website | Vercel deployment | Live |
 | M2 operations-toolkit | Domain types | Complete |
 | M2 operations-toolkit | Collection utilities | Complete |
 | M2 operations-toolkit | Search utilities | Complete |

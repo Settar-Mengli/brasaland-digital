@@ -8,7 +8,7 @@ This workspace is the public marketing site for Brasaland, a grilled-food restau
 
 ## Status
 
-Complete — pending Vercel deployment
+Live at [brasaland-public-website.vercel.app](https://brasaland-public-website.vercel.app)
 
 ## Tech Stack
 
