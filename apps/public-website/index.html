@@ -123,6 +123,29 @@
         class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between"
       >
         <a href="#hero" class="font-display text-2xl font-bold text-brasaland-ember">Brasaland</a>
+        <button
+          type="button"
+          id="mobile-nav-toggle"
+          aria-controls="mobile-nav-panel"
+          aria-expanded="false"
+          class="sm:hidden inline-flex items-center justify-center h-10 w-10 rounded-md text-brasaland-charcoal hover:bg-brasaland-charcoal/5 focus:outline-none focus:ring-2 focus:ring-brasaland-ember focus:ring-offset-2"
+        >
+          <span class="sr-only">Toggle navigation menu</span>
+          <svg
+            class="h-6 w-6"
+            aria-hidden="true"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
+            />
+          </svg>
+        </button>
         <ul class="hidden sm:flex items-center gap-8">
           <li>
             <a
@@ -161,6 +184,49 @@
           </li>
         </ul>
       </nav>
+      <div
+        id="mobile-nav-panel"
+        hidden
+        class="sm:hidden border-t border-brasaland-charcoal/10 bg-brasaland-ivory"
+      >
+        <ul class="px-4 py-4 flex flex-col gap-2">
+          <li>
+            <a
+              href="#hero"
+              class="block px-3 py-2 rounded-md text-brasaland-charcoal hover:bg-brasaland-charcoal/5 hover:text-brasaland-ember focus:bg-brasaland-charcoal/5 focus:text-brasaland-ember focus:outline-none focus:ring-2 focus:ring-brasaland-ember"
+              >Home</a
+            >
+          </li>
+          <li>
+            <a
+              href="#locations"
+              class="block px-3 py-2 rounded-md text-brasaland-charcoal hover:bg-brasaland-charcoal/5 hover:text-brasaland-ember focus:bg-brasaland-charcoal/5 focus:text-brasaland-ember focus:outline-none focus:ring-2 focus:ring-brasaland-ember"
+              >Locations</a
+            >
+          </li>
+          <li>
+            <a
+              href="#features"
+              class="block px-3 py-2 rounded-md text-brasaland-charcoal hover:bg-brasaland-charcoal/5 hover:text-brasaland-ember focus:bg-brasaland-charcoal/5 focus:text-brasaland-ember focus:outline-none focus:ring-2 focus:ring-brasaland-ember"
+              >Menu</a
+            >
+          </li>
+          <li>
+            <a
+              href="#brasa-points"
+              class="block px-3 py-2 rounded-md text-brasaland-charcoal hover:bg-brasaland-charcoal/5 hover:text-brasaland-ember focus:bg-brasaland-charcoal/5 focus:text-brasaland-ember focus:outline-none focus:ring-2 focus:ring-brasaland-ember"
+              >Brasa Points</a
+            >
+          </li>
+          <li>
+            <a
+              href="#contact"
+              class="block px-3 py-2 rounded-md text-brasaland-charcoal hover:bg-brasaland-charcoal/5 hover:text-brasaland-ember focus:bg-brasaland-charcoal/5 focus:text-brasaland-ember focus:outline-none focus:ring-2 focus:ring-brasaland-ember"
+              >Contact</a
+            >
+          </li>
+        </ul>
+      </div>
     </header>
 
     <main>
@@ -582,5 +648,7 @@
         </div>
       </div>
     </footer>
+
+    <script src="nav.js" defer></script>
   </body>
 </html>
