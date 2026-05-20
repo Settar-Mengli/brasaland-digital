@@ -1,6 +1,13 @@
 /** Financial transformation utilities for Brasaland operations data. */
 
-import type { Location, MenuItem, SaleTransaction, WasteRecord } from '../types';
+import type {
+  Location,
+  MenuItem,
+  PaymentMethod,
+  SaleTransaction,
+  WasteReason,
+  WasteRecord,
+} from '../types';
 
 /** Fixed exchange rate used across the operations toolkit: 1 USD = 4000 COP. */
 const USD_TO_COP_RATE = 4000;
@@ -168,4 +175,92 @@ export function rankLocationsByPerformance(
       score: scoreLocationPerformance(location, sales, wasteRecords, menuItems, now),
     }))
     .sort((a, b) => b.score - a.score);
+}
+
+/**
+ * Counts the number of sales per payment method.
+ * All four payment method keys are always present, initialized to 0.
+ * Returns all-zero counts for an empty sales array.
+ * @param sales - The sale transactions to count.
+ * @returns An object with a count for each PaymentMethod.
+ */
+export function countSalesByPaymentMethod(sales: SaleTransaction[]): Record<PaymentMethod, number> {
+  const result: Record<PaymentMethod, number> = {
+    Cash: 0,
+    'Credit card': 0,
+    'Debit card': 0,
+    'Digital wallet': 0,
+  };
+  for (const sale of sales) {
+    result[sale.paymentMethod] += 1;
+  }
+  return result;
+}
+
+/**
+ * Calculates the mean transaction total across all sales in the given currency.
+ * Returns 0 when the sales array is empty to avoid division by zero.
+ * @param sales - The sale transactions to average.
+ * @param currency - The currency to use for totals.
+ * @returns The average ticket rounded to 2 decimal places.
+ */
+export function calculateAverageTicket(sales: SaleTransaction[], currency: 'USD' | 'COP'): number {
+  if (sales.length === 0) return 0;
+  const total = sales.reduce((sum, sale) => sum + sale.totalPrice[currency], 0);
+  return roundTo2Decimals(total / sales.length);
+}
+
+/**
+ * Returns the top N menu items ranked by total quantity sold across all sales.
+ * Items whose id does not appear in menuItems are silently skipped.
+ * Returns an empty array when topN is 0 or negative, or when no sales exist.
+ * If topN exceeds the number of unique matched items, all matched items are returned.
+ * @param sales - The sale transactions to aggregate.
+ * @param menuItems - The menu item catalogue used to join item details.
+ * @param topN - The maximum number of items to return.
+ * @returns An array of item–totalSold pairs sorted by totalSold descending.
+ */
+export function findTopSellingItems(
+  sales: SaleTransaction[],
+  menuItems: MenuItem[],
+  topN: number,
+): Array<{ item: MenuItem; totalSold: number }> {
+  if (topN <= 0) return [];
+
+  const quantityMap = new Map<string, number>();
+  for (const sale of sales) {
+    quantityMap.set(sale.itemId, (quantityMap.get(sale.itemId) ?? 0) + sale.quantity);
+  }
+
+  const results: Array<{ item: MenuItem; totalSold: number }> = [];
+  for (const [itemId, totalSold] of quantityMap) {
+    const item = menuItems.find((mi) => mi.id === itemId);
+    if (item === undefined) continue;
+    results.push({ item, totalSold });
+  }
+
+  return results.sort((a, b) => b.totalSold - a.totalSold).slice(0, topN);
+}
+
+/**
+ * Groups waste records by their reason, returning one array per WasteReason.
+ * All five reason keys are always present, initialized to empty arrays.
+ * Returns all-empty arrays for an empty input.
+ * @param wasteRecords - The waste records to group.
+ * @returns An object mapping each WasteReason to its matching records.
+ */
+export function groupWasteByReason(
+  wasteRecords: WasteRecord[],
+): Record<WasteReason, WasteRecord[]> {
+  const result: Record<WasteReason, WasteRecord[]> = {
+    Expired: [],
+    'Cooking error': [],
+    'Customer return': [],
+    Damage: [],
+    Other: [],
+  };
+  for (const record of wasteRecords) {
+    result[record.reason].push(record);
+  }
+  return result;
 }
