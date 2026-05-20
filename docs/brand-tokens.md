@@ -109,32 +109,4 @@ This makes utilities such as `bg-brasaland-ember`, `text-brasaland-charcoal`, `f
 
 ## Usage in M3 — `@brasaland/talent-pipeline-tracker`
 
-Once the `talent-pipeline-tracker` workspace is scaffolded, copy the `colors` and `fontFamily` blocks verbatim into its `tailwind.config.ts`:
-
-```ts
-import type { Config } from 'tailwindcss';
-
-const config: Config = {
-  content: ['./src/**/*.{ts,tsx}'],
-  theme: {
-    extend: {
-      colors: {
-        'brasaland-ember': '#C24A2B',
-        'brasaland-charcoal': '#1C1C1C',
-        'brasaland-cream': '#F5EFE6',
-        'brasaland-ivory': '#FAFAF8',
-        'brasaland-success': '#27AE60',
-        'brasaland-error': '#E74C3C',
-      },
-      fontFamily: {
-        display: ['"Playfair Display"', 'Georgia', 'serif'],
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-      },
-    },
-  },
-};
-
-export default config;
-```
-
-Google Fonts must also be added to the Next.js `layout.tsx` via `next/font/google` or a `<link>` tag in the root layout.
+Imported via Tailwind v4's CSS-first config in `apps/talent-pipeline-tracker/app/globals.css`. Brand colors are declared as `--color-brasaland-*` custom properties inside a `@theme` block, which Tailwind v4 turns into utility classes (`bg-brasaland-ember`, `text-brasaland-charcoal`, etc.). Fonts are loaded via `next/font/google` in `app/layout.tsx`, exposed as CSS variables (`--font-inter`, `--font-playfair`), and bound to `--font-display` / `--font-sans` inside the same `@theme` block.
