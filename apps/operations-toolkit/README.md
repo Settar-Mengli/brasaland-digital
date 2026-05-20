@@ -14,8 +14,10 @@ This package contains the domain types and utility functions that model Brasalan
 
 | Script      | Command               | Description                              |
 | ----------- | --------------------- | ---------------------------------------- |
-| `typecheck` | `tsc --noEmit`        | Run the TypeScript compiler without emit |
-| `format`    | `prettier --write .`  | Format all source files with Prettier    |
+| `typecheck`  | `tsc --noEmit`        | Run the TypeScript compiler without emit |
+| `format`     | `prettier --write .`  | Format all source files with Prettier    |
+| `test`       | `vitest run`          | Run all tests once (CI mode)             |
+| `test:watch` | `vitest`              | Run tests in interactive watch mode      |
 
 ## Project Structure
 
