@@ -32,10 +32,14 @@ export interface Candidate {
   experience_years: number;
   status: CandidateStatus;
   stage: CandidateStage;
-  /** ISO 8601 timestamp. */
-  created_at: string;
+  /** ISO 8601 timestamp — when the candidate applied. */
+  applied_at: string;
   /** ISO 8601 timestamp. */
   updated_at: string;
+  /** Notes attached to this candidate (returned inline by GET /records). */
+  notes?: Note[];
+  /** Count of notes attached to this candidate (returned inline by GET /records). */
+  notes_count?: number;
 }
 
 /**
@@ -44,7 +48,8 @@ export interface Candidate {
  */
 export interface Note {
   id: string;
-  candidate_id: string;
+  /** ID of the candidate (called a "record" in the API's domain language). */
+  record_id: string;
   content: string;
   /** ISO 8601 timestamp. */
   created_at: string;
@@ -76,4 +81,15 @@ export interface SchemaErrorEntry {
  */
 export interface SchemaErrorBody {
   detail: SchemaErrorEntry[];
+}
+
+/**
+ * Paginated response envelope returned by list endpoints.
+ * Verified shape from `GET /records?limit=2`.
+ */
+export interface PaginatedResponse<T> {
+  total: number;
+  page: number;
+  limit: number;
+  data: T[];
 }

@@ -3,7 +3,7 @@
  * All return parsed JSON or throw ApiError via apiFetch.
  */
 
-import type { Candidate, CandidateStatus, CandidateStage } from './types';
+import type { Candidate, CandidateStatus, CandidateStage, PaginatedResponse } from './types';
 import { apiFetch } from './client';
 
 /** Filter parameters accepted by `GET /records`. */
@@ -18,7 +18,7 @@ export interface ListCandidatesFilters {
 
 /**
  * Body shape for creating a candidate.
- * Server generates id, status, stage, created_at, and updated_at.
+ * Server generates id, status, stage, applied_at, and updated_at.
  */
 export interface CreateCandidateInput {
   full_name: string;
@@ -39,8 +39,10 @@ export interface UpdateCandidateStatusStageInput {
   stage?: CandidateStage;
 }
 
-/** List candidates, optionally filtered. */
-export async function listCandidates(filters: ListCandidatesFilters = {}): Promise<Candidate[]> {
+/** List candidates, optionally filtered. Returns a paginated envelope. */
+export async function listCandidates(
+  filters: ListCandidatesFilters = {},
+): Promise<PaginatedResponse<Candidate>> {
   const params = new URLSearchParams();
   if (filters.status) params.set('status', filters.status);
   if (filters.stage) params.set('stage', filters.stage);
@@ -49,7 +51,7 @@ export async function listCandidates(filters: ListCandidatesFilters = {}): Promi
   if (filters.limit !== undefined) params.set('limit', String(filters.limit));
   const query = params.toString();
   const path = query ? `/records?${query}` : '/records';
-  return apiFetch<Candidate[]>(path);
+  return apiFetch<PaginatedResponse<Candidate>>(path);
 }
 
 /** Fetch a single candidate by id. */

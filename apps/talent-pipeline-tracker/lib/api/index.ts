@@ -8,6 +8,7 @@ export type {
   BusinessRuleErrorBody,
   SchemaErrorBody,
   SchemaErrorEntry,
+  PaginatedResponse,
 } from './types';
 export { STATUS_LABELS, STAGE_LABELS } from './labels';
 export { ApiError, apiFetch } from './client';
