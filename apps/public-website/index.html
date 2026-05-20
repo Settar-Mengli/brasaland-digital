@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Brasaland — The Taste of the Grill, in Every Bite</title>
+    <meta
+      name="description"
+      content="Brasaland is a grilled-food restaurant chain with 14 locations across Colombia and the United States. Experience the warmth of Latin American cuisine, crafted on the grill since 2008."
+    />
+
+    <!-- Theme color -->
+    <meta name="theme-color" content="#C24A2B" />
+
+    <!-- Apple PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Brasaland" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Brasaland" />
+    <meta property="og:title" content="Brasaland — The Taste of the Grill, in Every Bite" />
+    <meta
+      property="og:description"
+      content="Brasaland is a grilled-food restaurant chain with 14 locations across Colombia and the United States. Experience the warmth of Latin American cuisine, crafted on the grill since 2008."
+    />
+    <meta property="og:url" content="https://brasaland.com" />
+    <meta property="og:image" content="/assets/og-image.jpg" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Brasaland — The Taste of the Grill, in Every Bite" />
+    <meta
+      name="twitter:description"
+      content="Brasaland is a grilled-food restaurant chain with 14 locations across Colombia and the United States. Experience the warmth of Latin American cuisine, crafted on the grill since 2008."
+    />
+    <meta name="twitter:image" content="/assets/og-image.jpg" />
+
+    <!-- Favicon -->
+    <link rel="icon" href="/assets/favicon.ico" />
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@400;500;600&display=swap"
+    />
+
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'brasaland-ember': '#C24A2B',
+              'brasaland-charcoal': '#1C1C1C',
+              'brasaland-cream': '#F5EFE6',
+              'brasaland-ivory': '#FAFAF8',
+              'brasaland-success': '#27AE60',
+              'brasaland-error': '#E74C3C',
+            },
+            fontFamily: {
+              display: ['"Playfair Display"', 'Georgia', 'serif'],
+              sans: ['Inter', 'system-ui', 'sans-serif'],
+            },
+          },
+        },
+      };
+    </script>
+
+    <!-- Schema.org structured data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Restaurant",
+        "name": "Brasaland",
+        "description": "A 14-location grilled-food restaurant chain across Colombia and the United States.",
+        "url": "https://brasaland.com",
+        "foundingDate": "2008",
+        "servesCuisine": ["Brazilian", "Colombian", "Grilled"],
+        "priceRange": "$$",
+        "address": [
+          {
+            "@type": "PostalAddress",
+            "streetAddress": "El Poblado",
+            "addressLocality": "Medellín",
+            "addressCountry": "CO"
+          },
+          {
+            "@type": "PostalAddress",
+            "streetAddress": "Brickell",
+            "addressLocality": "Miami",
+            "addressRegion": "FL",
+            "addressCountry": "US"
+          }
+        ],
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "contactType": "customer service",
+          "availableLanguage": ["English", "Spanish"]
+        },
+        "sameAs": ["https://www.instagram.com/brasaland", "https://www.facebook.com/brasaland"]
+      }
+    </script>
+  </head>
+
+  <body class="font-sans bg-brasaland-ivory text-brasaland-charcoal">
+    <header><!-- nav placeholder --></header>
+
+    <main>
+      <section id="hero" aria-labelledby="hero-heading">
+        <h1 id="hero-heading" class="sr-only">Brasaland</h1>
+      </section>
+
+      <section id="story" aria-labelledby="story-heading">
+        <h2 id="story-heading" class="sr-only">Our Story</h2>
+      </section>
+
+      <section id="features" aria-labelledby="features-heading">
+        <h2 id="features-heading" class="sr-only">What Makes Us Unique</h2>
+      </section>
+
+      <section id="locations" aria-labelledby="locations-heading">
+        <h2 id="locations-heading" class="sr-only">Our Locations</h2>
+      </section>
+
+      <section id="brasa-points" aria-labelledby="brasa-points-heading">
+        <h2 id="brasa-points-heading" class="sr-only">Brasa Points</h2>
+      </section>
+
+      <section id="contact" aria-labelledby="contact-heading">
+        <h2 id="contact-heading" class="sr-only">Contact</h2>
+      </section>
+    </main>
+
+    <footer><!-- footer placeholder --></footer>
+  </body>
+</html>
