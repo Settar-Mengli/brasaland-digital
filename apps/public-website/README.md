@@ -8,7 +8,7 @@ This workspace is the public marketing site for Brasaland, a grilled-food restau
 
 ## Status
 
-🚧 In development
+Complete — pending Vercel deployment
 
 ## Tech Stack
 
@@ -16,6 +16,26 @@ This workspace is the public marketing site for Brasaland, a grilled-food restau
 - Tailwind CSS via CDN
 - Vanilla JavaScript
 - Schema.org structured data
+
+## Features
+
+- Landing page with 8 semantic sections (header, hero, story, features, locations, Brasa Points, contact, footer)
+- Brasa Points registration form with 11 fields across 4 fieldsets
+- Dependent dropdowns: Country → City → Favorite Location
+- Client-side validation with exact M1-spec error messages
+- Mobile navigation with hamburger toggle and Escape-to-close
+- Schema.org Restaurant JSON-LD on the landing page
+
+## Accessibility
+
+- Skip-link as first body child on every page
+- ARIA-labelledby on every section heading
+- aria-controls + aria-expanded on the mobile nav button
+- aria-describedby linking inputs to their error messages
+- role="alert" + aria-live on every error slot and the success message
+- Visible focus rings on every interactive element
+- Semantic landmarks: header, nav, main, footer, fieldset, dl
+- `hidden` attribute (not display:none) for stateful UI to keep the accessibility tree honest
 
 ## Scripts
 
@@ -28,11 +48,12 @@ This workspace is the public marketing site for Brasaland, a grilled-food restau
 
 ```
 apps/public-website/
-├── index.html        # Main marketing page
-├── application.html  # Brasa Points loyalty program registration
-├── validation.js     # Client-side form validation
-├── assets/           # Favicon and static images
-├── styles/           # Any supplemental CSS (non-Tailwind)
+├── index.html         # Landing page
+├── application.html   # Brasa Points sign-up form
+├── validation.js      # Form validation behavior
+├── nav.js             # Mobile navigation toggle
+├── assets/
+│   └── favicon.svg
 ├── package.json
 └── README.md
 ```
@@ -54,4 +75,4 @@ The site is served at `http://localhost:3000`. The `-c-1` flag disables `http-se
 - Accessible — all interactive elements include ARIA attributes and are keyboard-navigable
 - Responsive — mobile-first layout; Tailwind breakpoints drive all responsive behaviour
 - Tailwind utility classes only — no custom CSS classes unless strictly necessary
-- No inline event handlers — all JavaScript is attached via `addEventListener` in `validation.js`
+- No inline event handlers — all JavaScript is attached via `addEventListener` in `validation.js` and `nav.js`

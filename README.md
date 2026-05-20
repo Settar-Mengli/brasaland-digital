@@ -1,65 +1,95 @@
 # brasaland-digital
 
-The digital platform for Brasaland — a 14-location grilled-food restaurant chain across Colombia and the U.S.
+The digital platform for Brasaland, a 14-location grilled-food restaurant chain across Colombia and the United States.
 
-## Overview
+Brasaland Digital is a TypeScript monorepo containing three independent workspaces: a public marketing site, an operations utility library, and an internal talent pipeline tracker. Each workspace is a separately deployable unit, structured to reflect a real product-team architecture — shared tooling and conventions without shared runtime dependencies.
 
-Brasaland Digital is a TypeScript monorepo containing all customer-facing and internal software for the Brasaland brand. It brings together the company's public marketing site, an internal operations utility library, and a talent acquisition tracker under a single repository, sharing tooling and deployment infrastructure via Vercel.
+## Live demos
 
-## Repository Structure
+- Marketing site (M1) — pending Vercel deploy
+- Talent pipeline tracker (M3) — not yet started
+
+## Workspaces
+
+| Workspace | Role | Stack | Status |
+| --- | --- | --- | --- |
+| `@brasaland/public-website` | Customer-facing marketing site and Brasa Points sign-up | HTML5, Tailwind CSS (CDN), vanilla JavaScript | Complete (pending deployment) |
+| `@brasaland/operations-toolkit` | Pure TypeScript utility library for restaurant operations data | TypeScript, Vitest | Complete |
+| `@brasaland/talent-pipeline-tracker` | Internal HR app for managing candidate pipelines | Next.js (App Router), React, Tailwind CSS | Not started |
+
+## Repository structure
 
 ```
 brasaland-digital/
 ├── apps/
-│   ├── public-website/          # Static marketing site (HTML + Tailwind + vanilla JS)
-│   ├── operations-toolkit/      # Pure TypeScript utility library for internal operations
-│   └── talent-pipeline-tracker/ # Next.js 14 frontend for tracking talent acquisition
-└── docs/                        # Shared documentation and architecture notes
+│   ├── public-website/          # M1 — landing page + Brasa Points form
+│   ├── operations-toolkit/      # M2 — pure TypeScript library (no UI)
+│   └── talent-pipeline-tracker/ # M3 — Next.js HR app (not yet started)
+├── docs/
+│   └── brand-tokens.md          # Shared visual identity for M1 and M3
+├── package.json                 # npm workspaces root
+└── README.md
 ```
 
-## Tech Stack
+## Tech stack
 
-- **Language:** TypeScript, HTML, vanilla JavaScript
-- **Frameworks:** Next.js 14 (App Router)
-- **Styling:** Tailwind CSS
+- **Language:** TypeScript (strict mode with `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`)
+- **Public website:** HTML5, Tailwind CSS via CDN, vanilla JavaScript
+- **Operations toolkit:** Pure TypeScript, Vitest for testing
+- **Talent tracker (planned):** Next.js (App Router), React, Tailwind CSS
 - **Tooling:** npm workspaces, Prettier, EditorConfig
-- **Deployment:** Vercel (separate projects per app)
+- **Deployment (planned):** Vercel (separate projects per app)
 
-## Apps
+## Getting started
 
-### Public Website
-
-🚧 Planned
-
-A static marketing site built with HTML, Tailwind CSS, and vanilla JavaScript. Serves as the primary customer-facing touchpoint for the Brasaland brand — communicating the restaurant's identity, locations, and menu across the Colombia and U.S. markets. Designed for fast load times with no JavaScript framework dependency.
-
-_See `apps/public-website/README.md` for details._
-
-### Operations Toolkit
-
-🚧 Planned
-
-A pure TypeScript utility library containing shared logic and helpers used across Brasaland's internal tooling. Designed to be consumed as a workspace package by other apps in this monorepo. Contains no runtime framework dependencies.
-
-_See `apps/operations-toolkit/README.md` for details._
-
-### Talent Pipeline Tracker
-
-🚧 Planned
-
-An internal Next.js 14 (App Router) frontend for managing Brasaland's talent acquisition pipeline. Built with TypeScript and Tailwind CSS, and deployed as a standalone Vercel project. Provides structured visibility into candidate status across all locations.
-
-_See `apps/talent-pipeline-tracker/README.md` for details._
-
-## Getting Started
+**Prerequisites:** Node.js 20+, npm 10+
 
 ```bash
-# Clone the repository
-git clone https://github.com/Settar-Mengli/brasaland-digital.git
-cd brasaland-digital
-
-# Install dependencies for all workspaces
 npm install
 ```
 
-Each app has its own `README.md` with setup instructions, environment variable requirements, and local development steps.
+**Run the public website locally:**
+
+```bash
+npm run dev --workspace @brasaland/public-website
+```
+
+Serves at `http://localhost:3000`.
+
+**Run operations-toolkit tests:**
+
+```bash
+npm run test --workspace @brasaland/operations-toolkit
+```
+
+## Conventions
+
+- Commits follow the Conventional Commits specification with workspace scopes (e.g., `feat(public-website): ...`)
+- Linear `main` history; no long-lived branches
+- Code style enforced by Prettier (`printWidth: 100`, single quotes, semi)
+- TypeScript strict flags on; no `any`, no `!` assertions, no `as` casts in production code
+
+## Project status
+
+| Milestone | Component | Status |
+| --- | --- | --- |
+| M1 public-website | Landing page (header, hero, story, features, locations, Brasa Points, contact, footer) | Complete |
+| M1 public-website | Brasa Points registration form (4 fieldsets, 11 fields) | Complete |
+| M1 public-website | Dependent dropdowns (Country → City → Favorite Location) | Complete |
+| M1 public-website | Client-side form validation | Complete |
+| M1 public-website | Mobile navigation (hamburger toggle, Escape-to-close) | Complete |
+| M1 public-website | SVG favicon and social meta cleanup | Complete |
+| M1 public-website | Vercel deployment | Pending |
+| M2 operations-toolkit | Domain types | Complete |
+| M2 operations-toolkit | Collection utilities | Complete |
+| M2 operations-toolkit | Search utilities | Complete |
+| M2 operations-toolkit | Financial transformations | Complete |
+| M2 operations-toolkit | Performance scoring | Complete |
+| M2 operations-toolkit | Aggregation reports and country comparison | Complete |
+| M2 operations-toolkit | Entity validation layer | Complete |
+| M2 operations-toolkit | Test suite (115 tests, 4 test files) | Complete |
+| M3 talent-pipeline-tracker | All components | Not started |
+
+## License
+
+All rights reserved.
