@@ -1,0 +1,15 @@
+{
+  "name": "@brasaland/operations-toolkit",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Pure TypeScript utility library for Brasaland restaurant operations data.",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}
