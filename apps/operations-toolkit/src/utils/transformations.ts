@@ -1,6 +1,8 @@
 /** Financial transformation utilities for Brasaland operations data. */
 
 import type {
+  Country,
+  CountryMetrics,
   Location,
   MenuItem,
   PaymentMethod,
@@ -263,4 +265,53 @@ export function groupWasteByReason(
     result[record.reason].push(record);
   }
   return result;
+}
+
+/**
+ * Computes aggregated revenue and sales metrics for Colombia and the USA.
+ * menuItems is reserved for future cost-based metrics and is not used in the current calculation.
+ * @param sales - All sale transactions across all locations.
+ * @param locations - All locations used to group sales by country.
+ * @param menuItems - Reserved for future cost-based metrics (not used currently).
+ * @returns An object with a CountryMetrics entry for each country.
+ */
+export function calculateCountryComparison(
+  sales: SaleTransaction[],
+  locations: Location[],
+  menuItems: MenuItem[],
+): { Colombia: CountryMetrics; USA: CountryMetrics } {
+  function metricsForCountry(country: Country): CountryMetrics {
+    const countryLocations = locations.filter((loc) => loc.country === country);
+    const totalLocations = countryLocations.length;
+    const locationIds = new Set(countryLocations.map((loc) => loc.id));
+    const countrySales = sales.filter((sale) => locationIds.has(sale.locationId));
+    const totalSales = countrySales.length;
+
+    let totalUSD = 0;
+    let totalCOP = 0;
+    for (const sale of countrySales) {
+      totalUSD += sale.totalPrice.USD;
+      totalCOP += sale.totalPrice.COP;
+    }
+    const totalRevenue = {
+      USD: roundTo2Decimals(totalUSD),
+      COP: roundTo2Decimals(totalCOP),
+    };
+    const averageRevenuePerLocation =
+      totalLocations === 0
+        ? { USD: 0, COP: 0 }
+        : {
+            USD: roundTo2Decimals(totalUSD / totalLocations),
+            COP: roundTo2Decimals(totalCOP / totalLocations),
+          };
+
+    return { totalLocations, totalRevenue, averageRevenuePerLocation, totalSales };
+  }
+
+  void menuItems; // reserved for future cost-based metrics
+
+  return {
+    Colombia: metricsForCountry('Colombia'),
+    USA: metricsForCountry('USA'),
+  };
 }
