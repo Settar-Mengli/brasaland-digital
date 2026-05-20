@@ -1,0 +1,13 @@
+{
+  "name": "@brasaland/public-website",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Customer-facing marketing site for the Brasaland restaurant chain.",
+  "scripts": {
+    "dev": "http-server . -p 3000 -a 0.0.0.0 -c-1",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}
