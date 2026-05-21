@@ -1,5 +1,7 @@
 import { listCandidates, STATUS_LABELS, STAGE_LABELS } from '@/lib/api';
-import type { CandidateStatus } from '@/lib/api';
+import type { CandidateStatus, CandidateStage } from '@/lib/api';
+import FilterBar from './_components/FilterBar';
+import Pagination from './_components/Pagination';
 
 /**
  * Force dynamic rendering — the candidate list must reflect live state on
@@ -21,8 +23,65 @@ const STAGE_BADGE_CLASS =
 
 const dateFormatter = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' });
 
-export default async function HomePage() {
-  const result = await listCandidates({ limit: 20 });
+/**
+ * Type guard: is the raw URL param value a valid CandidateStatus?
+ * Uses STATUS_LABELS as the source of truth — TypeScript enforces that
+ * the labels map has exactly the union's keys.
+ */
+function isValidStatus(value: string): value is CandidateStatus {
+  return value in STATUS_LABELS;
+}
+
+/** Type guard: is the raw URL param value a valid CandidateStage? */
+function isValidStage(value: string): value is CandidateStage {
+  return value in STAGE_LABELS;
+}
+
+/**
+ * Parse a 1-indexed page number from a raw URL param.
+ * Falls back to 1 for missing, non-numeric, or non-positive values.
+ */
+function parsePage(raw: string | undefined): number {
+  if (!raw) return 1;
+  const n = Number.parseInt(raw, 10);
+  return Number.isFinite(n) && n >= 1 ? n : 1;
+}
+
+const PAGE_SIZE = 20;
+
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    status?: string;
+    stage?: string;
+    search?: string;
+    page?: string;
+  }>;
+}) {
+  const params = await searchParams;
+
+  const status = params.status && isValidStatus(params.status) ? params.status : undefined;
+  const stage = params.stage && isValidStage(params.stage) ? params.stage : undefined;
+  const search = params.search?.trim() || undefined;
+  const page = parsePage(params.page);
+
+  const result = await listCandidates({
+    status,
+    stage,
+    search,
+    page,
+    limit: PAGE_SIZE,
+  });
+
+  // Build base params (without `page`) for the Pagination component.
+  const baseParams = new URLSearchParams();
+  if (status) baseParams.set('status', status);
+  if (stage) baseParams.set('stage', stage);
+  if (search) baseParams.set('search', search);
+
+  // Force FilterBar to remount when URL changes so defaultValue picks up new values.
+  const filterKey = baseParams.toString();
 
   return (
     <main className="min-h-screen px-6 py-10 md:px-10">
@@ -33,59 +92,7 @@ export default async function HomePage() {
           <p className="mt-2 text-brasaland-charcoal/70">Brasaland talent pipeline overview.</p>
         </header>
 
-        {/* Filter bar — disabled, static */}
-        <section
-          aria-labelledby="filters-heading"
-          className="rounded-lg border border-brasaland-charcoal/10 bg-brasaland-cream/40 p-4 mb-6"
-        >
-          <h2 id="filters-heading" className="sr-only">
-            Filter candidates
-          </h2>
-          <div className="flex flex-col gap-3 md:flex-row md:items-end">
-            <label className="flex flex-col gap-1 text-sm font-medium text-brasaland-charcoal">
-              Status
-              <select
-                disabled
-                className="border border-brasaland-charcoal/20 bg-brasaland-ivory px-3 py-2 rounded-md disabled:opacity-60"
-              >
-                <option value="">All statuses</option>
-                {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="flex flex-col gap-1 text-sm font-medium text-brasaland-charcoal">
-              Stage
-              <select
-                disabled
-                className="border border-brasaland-charcoal/20 bg-brasaland-ivory px-3 py-2 rounded-md disabled:opacity-60"
-              >
-                <option value="">All stages</option>
-                {Object.entries(STAGE_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="flex flex-col gap-1 text-sm font-medium text-brasaland-charcoal md:flex-1">
-              Search
-              <input
-                type="search"
-                disabled
-                placeholder="Name, email, or position"
-                className="border border-brasaland-charcoal/20 bg-brasaland-ivory px-3 py-2 rounded-md disabled:opacity-60"
-              />
-            </label>
-          </div>
-          <p className="mt-3 text-xs text-brasaland-charcoal/60">
-            Filters become interactive in a later commit.
-          </p>
-        </section>
+        <FilterBar key={filterKey} defaults={{ status, stage, search }} />
 
         <p className="mb-3 text-sm text-brasaland-charcoal/70">
           Showing{' '}
@@ -167,6 +174,8 @@ export default async function HomePage() {
             </tbody>
           </table>
         </section>
+
+        <Pagination current={page} total={result.total} limit={PAGE_SIZE} baseParams={baseParams} />
       </div>
     </main>
   );
