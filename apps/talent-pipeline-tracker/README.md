@@ -8,7 +8,9 @@ This workspace is Brasaland's internal talent pipeline tracker. HR staff use it 
 
 ## Status
 
-In development
+**Live demo:** https://brasaland-talent-pipeline.vercel.app
+
+<img src="../../docs/screenshots/m3-list.png" alt="Talent Pipeline Tracker candidate list" width="800">
 
 ## Tech Stack
 
@@ -42,6 +44,12 @@ apps/talent-pipeline-tracker/
 | `build` | `next build`       | Build for production                  |
 | `start` | `next start`       | Start production server               |
 | `lint`  | `eslint`           | Run ESLint                            |
+
+## Detail page
+
+The candidate detail page surfaces the editable pipeline state, full candidate info, and the notes thread:
+
+<img src="../../docs/screenshots/m3-detail.png" alt="Candidate detail page with editable status, stage, and notes thread" width="800">
 
 ## Local Development
 

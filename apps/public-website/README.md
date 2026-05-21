@@ -10,6 +10,8 @@ This workspace is the public marketing site for Brasaland, a grilled-food restau
 
 Live at [brasaland-public-website.vercel.app](https://brasaland-public-website.vercel.app)
 
+<img src="../../docs/screenshots/m1-landing.png" alt="Brasaland public website landing page" width="800">
+
 ## Tech Stack
 
 - HTML5 semantic markup

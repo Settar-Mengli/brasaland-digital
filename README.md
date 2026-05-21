@@ -6,16 +6,25 @@ Brasaland Digital is a TypeScript monorepo containing three independent workspac
 
 ## Live demos
 
-- Marketing site (M1) — [brasaland-public-website.vercel.app](https://brasaland-public-website.vercel.app)
-- Talent pipeline tracker (M3) — not yet started
+### M1 — Brasaland public website
+**Live:** https://brasaland-public-website.vercel.app
+
+<img src="docs/screenshots/m1-landing.png" alt="Brasaland public website landing page" width="800">
+
+---
+
+### M3 — Talent Pipeline Tracker
+**Live:** https://brasaland-talent-pipeline.vercel.app
+
+<img src="docs/screenshots/m3-list.png" alt="Talent Pipeline Tracker candidate list" width="800">
 
 ## Workspaces
 
 | Workspace | Role | Stack | Status |
 | --- | --- | --- | --- |
-| `@brasaland/public-website` | Customer-facing marketing site and Brasa Points sign-up | HTML5, Tailwind CSS (CDN), vanilla JavaScript | Complete (pending deployment) |
+| `@brasaland/public-website` | Customer-facing marketing site and Brasa Points sign-up | HTML5, Tailwind CSS (CDN), vanilla JavaScript | Complete |
 | `@brasaland/operations-toolkit` | Pure TypeScript utility library for restaurant operations data | TypeScript, Vitest | Complete |
-| `@brasaland/talent-pipeline-tracker` | Internal HR app for managing candidate pipelines | Next.js (App Router), React, Tailwind CSS | Not started |
+| `@brasaland/talent-pipeline-tracker` | Internal HR app for managing candidate pipelines | Next.js (App Router), React, Tailwind CSS | Complete |
 
 ## Repository structure
 
@@ -88,7 +97,7 @@ npm run test --workspace @brasaland/operations-toolkit
 | M2 operations-toolkit | Aggregation reports and country comparison | Complete |
 | M2 operations-toolkit | Entity validation layer | Complete |
 | M2 operations-toolkit | Test suite (115 tests, 4 test files) | Complete |
-| M3 talent-pipeline-tracker | All components | Not started |
+| M3 talent-pipeline-tracker | All components | Live |
 
 ## License
 
