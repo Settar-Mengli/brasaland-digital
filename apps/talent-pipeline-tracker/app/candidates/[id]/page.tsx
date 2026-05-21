@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getCandidate, STATUS_LABELS, STAGE_LABELS } from '@/lib/api';
 import type { CandidateStatus } from '@/lib/api';
+import StatusStageEditor from './_components/StatusStageEditor';
 
 /**
  * Force dynamic rendering — candidate data must reflect the live state
@@ -57,6 +58,12 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
             </span>
           </div>
         </header>
+
+        <StatusStageEditor
+          candidateId={candidate.id}
+          currentStatus={candidate.status}
+          currentStage={candidate.stage}
+        />
 
         <section
           aria-labelledby="info-heading"
