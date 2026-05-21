@@ -1,7 +1,14 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { updateCandidateStatusStage, ApiError, STATUS_LABELS, STAGE_LABELS } from '@/lib/api';
+import {
+  updateCandidateStatusStage,
+  createNote,
+  deleteNote,
+  ApiError,
+  STATUS_LABELS,
+  STAGE_LABELS,
+} from '@/lib/api';
 import type {
   CandidateStatus,
   CandidateStage,
@@ -56,6 +63,83 @@ export async function updateCandidateAction(
 
   try {
     await updateCandidateStatusStage(candidateId, cleanPatch);
+    revalidatePath(`/candidates/${candidateId}`);
+    revalidatePath('/');
+    return { success: true };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      if (err.kind === 'business') {
+        return { success: false, error: err.message };
+      }
+      if (err.kind === 'schema') {
+        const entries = err.details as SchemaErrorEntry[] | undefined;
+        const firstMsg = entries?.[0]?.msg ?? 'Validation failed.';
+        return { success: false, error: firstMsg };
+      }
+      return { success: false, error: 'Network error. Please try again.' };
+    }
+    return { success: false, error: 'An unexpected error occurred.' };
+  }
+}
+
+/** Result returned to the Client Component after a note mutation. */
+export interface NoteActionResult {
+  success: boolean;
+  /** User-facing error message on failure; undefined on success. */
+  error?: string;
+}
+
+/**
+ * Server Action: create a note on a candidate.
+ *
+ * Trims and length-caps content server-side (5000 chars). On success,
+ * revalidates the detail page and the list page (notes_count in sync).
+ */
+export async function createNoteAction(
+  candidateId: string,
+  content: string,
+): Promise<NoteActionResult> {
+  const trimmed = content.trim();
+  if (!trimmed) {
+    return { success: false, error: 'Note content cannot be empty.' };
+  }
+  if (trimmed.length > 5000) {
+    return { success: false, error: 'Note is too long (max 5000 characters).' };
+  }
+
+  try {
+    await createNote(candidateId, trimmed);
+    revalidatePath(`/candidates/${candidateId}`);
+    revalidatePath('/');
+    return { success: true };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      if (err.kind === 'business') {
+        return { success: false, error: err.message };
+      }
+      if (err.kind === 'schema') {
+        const entries = err.details as SchemaErrorEntry[] | undefined;
+        const firstMsg = entries?.[0]?.msg ?? 'Validation failed.';
+        return { success: false, error: firstMsg };
+      }
+      return { success: false, error: 'Network error. Please try again.' };
+    }
+    return { success: false, error: 'An unexpected error occurred.' };
+  }
+}
+
+/**
+ * Server Action: delete a note from a candidate.
+ *
+ * On success, revalidates the detail page and the list page so
+ * notes_count refreshes.
+ */
+export async function deleteNoteAction(
+  candidateId: string,
+  noteId: string,
+): Promise<NoteActionResult> {
+  try {
+    await deleteNote(candidateId, noteId);
     revalidatePath(`/candidates/${candidateId}`);
     revalidatePath('/');
     return { success: true };

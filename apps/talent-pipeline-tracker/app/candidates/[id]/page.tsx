@@ -1,7 +1,8 @@
 import Link from 'next/link';
-import { getCandidate, STATUS_LABELS, STAGE_LABELS } from '@/lib/api';
+import { getCandidate, listNotes, STATUS_LABELS, STAGE_LABELS } from '@/lib/api';
 import type { CandidateStatus } from '@/lib/api';
 import StatusStageEditor from './_components/StatusStageEditor';
+import NotesThread from './_components/NotesThread';
 
 /**
  * Force dynamic rendering — candidate data must reflect the live state
@@ -29,7 +30,7 @@ const dateTimeFormatter = new Intl.DateTimeFormat('en-US', {
 /** Read-only detail view for a single candidate. */
 export default async function CandidateDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const candidate = await getCandidate(id);
+  const [candidate, notesResult] = await Promise.all([getCandidate(id), listNotes(id)]);
 
   return (
     <main className="min-h-screen px-6 py-10 md:px-10">
@@ -136,6 +137,8 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
             )}
           </dl>
         </section>
+
+        <NotesThread candidateId={candidate.id} initialNotes={notesResult.data} />
       </div>
     </main>
   );
