@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { listCandidates, STATUS_LABELS, STAGE_LABELS } from '@/lib/api';
 import type { CandidateStatus, CandidateStage } from '@/lib/api';
 import FilterBar from './_components/FilterBar';
@@ -145,8 +146,13 @@ export default async function HomePage({
               ) : (
                 result.data.map((candidate) => (
                   <tr key={candidate.id}>
-                    <td className="px-4 py-3 font-medium text-brasaland-charcoal">
-                      {candidate.full_name}
+                    <td className="px-4 py-3 font-medium">
+                      <Link
+                        href={`/candidates/${candidate.id}`}
+                        className="text-brasaland-charcoal hover:text-brasaland-ember focus:outline-none focus:ring-2 focus:ring-brasaland-ember rounded transition-colors"
+                      >
+                        {candidate.full_name}
+                      </Link>
                     </td>
                     <td className="px-4 py-3 text-brasaland-charcoal/80">{candidate.position}</td>
                     <td className="px-4 py-3 text-brasaland-charcoal/80">
