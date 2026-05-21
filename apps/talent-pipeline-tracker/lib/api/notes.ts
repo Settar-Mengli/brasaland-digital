@@ -2,12 +2,12 @@
  * Endpoint wrappers for the nested `/records/{id}/notes` resource.
  */
 
-import type { Note } from './types';
+import type { CollectionResponse, Note } from './types';
 import { apiFetch } from './client';
 
-/** List all notes attached to a candidate. */
-export async function listNotes(candidateId: string): Promise<Note[]> {
-  return apiFetch<Note[]>(`/records/${encodeURIComponent(candidateId)}/notes`);
+/** List all notes attached to a candidate. Returns a wrapped envelope. */
+export async function listNotes(candidateId: string): Promise<CollectionResponse<Note>> {
+  return apiFetch<CollectionResponse<Note>>(`/records/${encodeURIComponent(candidateId)}/notes`);
 }
 
 /** Create a new note on a candidate. */

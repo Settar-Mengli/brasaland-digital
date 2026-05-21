@@ -9,6 +9,7 @@ export type {
   SchemaErrorBody,
   SchemaErrorEntry,
   PaginatedResponse,
+  CollectionResponse,
 } from './types';
 export { STATUS_LABELS, STAGE_LABELS } from './labels';
 export { ApiError, apiFetch } from './client';

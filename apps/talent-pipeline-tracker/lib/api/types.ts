@@ -93,3 +93,18 @@ export interface PaginatedResponse<T> {
   limit: number;
   data: T[];
 }
+
+/**
+ * Collection response envelope for endpoints that return a full list
+ * with a count summary but no pagination metadata.
+ * Verified shape from `GET /records/{id}/notes`.
+ *
+ * Distinct from `PaginatedResponse<T>`, which carries `total`, `page`,
+ * and `limit` at the top level for paginated endpoints like `/records`.
+ */
+export interface CollectionResponse<T> {
+  data: T[];
+  meta: {
+    total: number;
+  };
+}
