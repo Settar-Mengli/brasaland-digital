@@ -9,32 +9,68 @@ milestone-4
 ## M4 Phase Status
 | Phase | Description | Status |
 |---|---|---|
-| A | Branch + agent infrastructure | In progress |
-| B | uis/website scaffolding + M1 migration | Not started |
+| A | Branch + agent infrastructure | Complete |
+| B | uis/website scaffolding + M1 migration | In progress |
 | C | uis/backoffice scaffolding + M2 integration | Not started |
 | D | Final verification + PR prep | Not started |
 
 ## Phase A Checklist
-- [ ] milestone-4 branch created
-- [ ] package.json workspaces updated to include uis/*
-- [ ] memory-bank/projectbrief.md created
-- [ ] memory-bank/techContext.md created
-- [ ] memory-bank/progress.md created (this file)
-- [ ] AGENTS.md created at root
-- [ ] .agents/rules/ created with at least one rule
-- [ ] .agents/skills/ created with at least one skill
+- [x] milestone-4 branch created
+- [x] package.json workspaces updated to include uis/*
+- [x] memory-bank/projectbrief.md created
+- [x] memory-bank/techContext.md created
+- [x] memory-bank/progress.md created (this file)
+- [x] AGENTS.md created at root
+- [x] .agents/rules/ created with at least one rule
+- [x] .agents/skills/ created with at least one skill
+
+## Phase B Checklist
+- [ ] uis/website/package.json created
+- [ ] uis/website config files created (tsconfig, next.config, postcss, eslint, .gitignore)
+- [ ] uis/website/vercel.json created with security headers
+- [ ] uis/website/CLAUDE.md and AGENTS.md created
+- [ ] uis/website/app/globals.css created (brand tokens)
+- [ ] uis/website/app/layout.tsx created (M1 metadata + Schema.org)
+- [ ] uis/website/app/page.tsx and all _components/ created
+- [ ] uis/website/app/brasa-points/ page and form created
+- [ ] uis/website/public/favicon.svg created
+- [ ] npm install run at repo root
+- [ ] npx prettier --check uis/website/ passes
+- [ ] npm run build --workspace @brasaland/website passes
+- [ ] Live URL confirmed: [URL]
+
+## Phase C Checklist
+- [ ] uis/backoffice/package.json created
+- [ ] uis/backoffice config files created (tsconfig, next.config, postcss, eslint, .gitignore)
+- [ ] uis/backoffice/vercel.json created
+- [ ] uis/backoffice/CLAUDE.md and AGENTS.md created
+- [ ] uis/backoffice/app/globals.css created
+- [ ] uis/backoffice/app/layout.tsx and page.tsx created (M2 dashboard)
+- [ ] npm run build --workspace @brasaland/backoffice passes
+- [ ] npm run test --workspace @brasaland/operations-toolkit shows 115 passing
+- [ ] Live URL confirmed: [URL]
 
 ## Last Completed Step
-(update this after every commit)
+Phase A complete — agent infrastructure committed (d2df392)
 
 ## Files Changed This Session
-(update this after every commit — use table format)
+| File | Action | Commit |
+|---|---|---|
+| package.json | Modified — added uis/* to workspaces | d2df392 |
+| AGENTS.md | Created | d2df392 |
+| memory-bank/projectbrief.md | Created | d2df392 |
+| memory-bank/techContext.md | Created | d2df392 |
+| memory-bank/progress.md | Created | d2df392 |
+| .agents/rules/typescript-conventions.md | Created | d2df392 |
+| .agents/skills/prettier-check/SKILL.md | Created | d2df392 |
 
 ## Commands Run This Session
-(update this after every commit)
+- git checkout -b milestone-4
+- git add (Phase A files)
+- git commit (d2df392)
 
 ## Blockers
 None currently.
 
 ## Next Step
-Complete Phase A: create AGENTS.md, .agents/rules/, .agents/skills/
+Phase B — scaffold uis/website (run npm install at repo root after committing website files)
