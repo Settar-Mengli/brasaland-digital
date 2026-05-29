@@ -56,7 +56,6 @@ brasaland-digital/
 ├── memory-bank/                 # Agent context files (projectbrief, techContext, progress)
 ├── .agents/                     # Agent rules and skills
 ├── docs/
-│   ├── brand-tokens.md          # Shared visual identity
 │   └── screenshots/             # Live demo screenshots
 ├── AGENTS.md                    # Root agent rules
 ├── package.json                 # npm workspaces root

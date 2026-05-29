@@ -57,6 +57,14 @@ milestone-4
 - [x] npm run build --workspace @brasaland/website passes
 - [x] npm run build --workspace @brasaland/backoffice passes
 - [x] npm run test --workspace @brasaland/operations-toolkit — 115 passed (0 failing)
+- [x] Header sticky background bug fixed (f48fcc6)
+- [x] Backoffice locations page created (26cfed6)
+- [x] Backoffice nav links added (26cfed6)
+- [x] /brasa-points page: Header and Footer added (af1c35f)
+- [x] Dashboard: "View all locations" CTA added (af1c35f)
+- [x] projectbrief.md: company description corrected (af1c35f)
+- [x] Skip link target fixed to #main-content (this commit)
+- [x] README: removed non-existent brand-tokens.md from diagram (this commit)
 - [ ] npm run dev --workspace @brasaland/website — verify all 7 sections, form, mobile nav
 - [ ] npm run dev --workspace @brasaland/backoffice — verify all 4 dashboard sections with M2 data
 - [ ] Screenshots taken: docs/screenshots/m4-website.png, m4-website-form.png, m4-website-mobile.png, m4-backoffice.png
@@ -68,7 +76,7 @@ milestone-4
 - [ ] PR opened: feat: Milestone 4 — AI-driven Engineering
 
 ## Last Completed Step
-Phase D in progress — builds pass, README updated (6779512). Developer must run local dev, take screenshots, deploy to Vercel, then open PR.
+Skip link fixed, README diagram corrected, progress.md updated — ready for screenshots and Vercel deployment.
 
 ## Files Changed This Session
 | File | Action | Commit |
@@ -89,6 +97,13 @@ Phase D in progress — builds pass, README updated (6779512). Developer must ru
 | memory-bank/progress.md | Updated — Phase C marked complete | 76596fa |
 | package-lock.json | Updated — npm install for uis/* workspaces | 2264f97 |
 | README.md | Updated — M4 workspaces, structure, status table | 6779512 |
+| .prettierignore | Modified — added next-env.d.ts | fbfaf7d |
+| uis/website/app/_components/Header.tsx | Modified — removed opacity/blur | f48fcc6 |
+| uis/backoffice/app/layout.tsx | Modified — added nav links | 26cfed6 |
+| uis/backoffice/app/locations/page.tsx | Created — locations page | 26cfed6 |
+| uis/website/app/brasa-points/page.tsx | Modified — added Header/Footer | af1c35f |
+| uis/backoffice/app/page.tsx | Modified — added locations CTA | af1c35f |
+| memory-bank/projectbrief.md | Modified — fixed company description | af1c35f |
 
 ## Commands Run This Session
 - git checkout -b milestone-4
@@ -111,14 +126,4 @@ Phase D in progress — builds pass, README updated (6779512). Developer must ru
 None. Developer action required for remaining items.
 
 ## Next Step
-Developer actions (in order):
-1. npm run dev --workspace @brasaland/website — verify in browser at http://localhost:3002
-2. npm run dev --workspace @brasaland/backoffice — verify in browser at http://localhost:3003
-3. Take 4 screenshots → save to docs/screenshots/m4-website.png, m4-website-form.png, m4-website-mobile.png, m4-backoffice.png
-4. Create Vercel project for uis/website (root directory = uis/website)
-5. Create Vercel project for uis/backoffice (root directory = uis/backoffice; override install command to run from repo root if needed — see plan Q1)
-6. Fill in live URLs in README.md (replace the two "[URL TBD]" placeholders)
-7. git add README.md docs/screenshots/m4-*.png && git commit -m "docs(repo): update README and add M4 screenshots for PR"
-8. Update this file (mark remaining items [x], fill URLs, set Phase D = Complete)
-9. git add memory-bank/progress.md && git commit -m "docs(memory-bank): Phase D complete"
-10. gh pr create --title "feat: Milestone 4 — AI-driven Engineering" --base main --head milestone-4
+Developer: run local dev, take 4 screenshots, deploy to Vercel, fill README URLs. Then Claude: final commits + PR.
