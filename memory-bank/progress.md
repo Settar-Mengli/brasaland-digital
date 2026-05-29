@@ -12,7 +12,7 @@ milestone-4
 | A | Branch + agent infrastructure | Complete |
 | B | uis/website scaffolding + M1 migration | Complete |
 | C | uis/backoffice scaffolding + M2 integration | Complete |
-| D | Final verification + PR prep | Not started |
+| D | Final verification + PR prep | In progress |
 
 ## Phase A Checklist
 - [x] milestone-4 branch created
@@ -35,9 +35,9 @@ milestone-4
 - [x] uis/website/app/brasa-points/ page and form created
 - [x] uis/website/public/favicon.svg created
 - [x] npx prettier --check uis/website/ passes
-- [ ] npm install run at repo root
-- [ ] npm run build --workspace @brasaland/website passes
-- [ ] Live URL confirmed: [URL]
+- [x] npm install run at repo root (2264f97)
+- [x] npm run build --workspace @brasaland/website passes (Compiled successfully, / and /brasa-points static)
+- [ ] Live URL confirmed: [URL — add after Vercel deployment]
 
 ## Phase C Checklist
 - [x] uis/backoffice/package.json created
@@ -47,13 +47,28 @@ milestone-4
 - [x] uis/backoffice/app/globals.css created
 - [x] uis/backoffice/app/layout.tsx and page.tsx created (M2 dashboard)
 - [x] npx prettier --check uis/backoffice/ passes
-- [ ] npm install run at repo root
-- [ ] npm run build --workspace @brasaland/backoffice passes
-- [ ] npm run test --workspace @brasaland/operations-toolkit shows 115 passing
-- [ ] Live URL confirmed: [URL]
+- [x] npm install run at repo root (2264f97)
+- [x] npm run build --workspace @brasaland/backoffice passes (Compiled successfully, / static)
+- [x] npm run test --workspace @brasaland/operations-toolkit shows 115 passing
+- [ ] Live URL confirmed: [URL — add after Vercel deployment]
+
+## Phase D Checklist
+- [x] npm install run at repo root — 2 packages added, all 5 workspace symlinks created (2264f97)
+- [x] npm run build --workspace @brasaland/website passes
+- [x] npm run build --workspace @brasaland/backoffice passes
+- [x] npm run test --workspace @brasaland/operations-toolkit — 115 passed (0 failing)
+- [ ] npm run dev --workspace @brasaland/website — verify all 7 sections, form, mobile nav
+- [ ] npm run dev --workspace @brasaland/backoffice — verify all 4 dashboard sections with M2 data
+- [ ] Screenshots taken: docs/screenshots/m4-website.png, m4-website-form.png, m4-website-mobile.png, m4-backoffice.png
+- [x] README.md updated — structure diagram, workspace table, tech stack, status rows, M4 live demo section (6779512)
+- [ ] Vercel project created for uis/website (root dir = uis/website)
+- [ ] Vercel project created for uis/backoffice (root dir = uis/backoffice, see Q1 in plan re: install command)
+- [ ] README.md live URLs filled in + screenshots committed: docs(repo): update README and add M4 screenshots for PR
+- [ ] memory-bank/progress.md final update + commit: docs(memory-bank): Phase D complete
+- [ ] PR opened: feat: Milestone 4 — AI-driven Engineering
 
 ## Last Completed Step
-Phase C complete — uis/backoffice committed (9ce684f)
+Phase D in progress — builds pass, README updated (6779512). Developer must run local dev, take screenshots, deploy to Vercel, then open PR.
 
 ## Files Changed This Session
 | File | Action | Commit |
@@ -71,6 +86,9 @@ Phase C complete — uis/backoffice committed (9ce684f)
 | uis/website/ (24 files) | Created — Next.js rebuild of M1 | 2ac0644 |
 | memory-bank/progress.md | Updated — Phase B marked complete | a073f6c |
 | uis/backoffice/ (13 files) | Created — M2 operations dashboard | 9ce684f |
+| memory-bank/progress.md | Updated — Phase C marked complete | 76596fa |
+| package-lock.json | Updated — npm install for uis/* workspaces | 2264f97 |
+| README.md | Updated — M4 workspaces, structure, status table | 6779512 |
 
 ## Commands Run This Session
 - git checkout -b milestone-4
@@ -82,9 +100,25 @@ Phase C complete — uis/backoffice committed (9ce684f)
 - npx prettier --write uis/backoffice/
 - git add uis/backoffice/
 - git commit (9ce684f)
+- npm install
+- git add package-lock.json && git commit (2264f97)
+- npm run build --workspace @brasaland/website — PASS
+- npm run build --workspace @brasaland/backoffice — PASS
+- npm run test --workspace @brasaland/operations-toolkit — 115 passed
+- git add README.md && git commit (6779512)
 
 ## Blockers
-None currently.
+None. Developer action required for remaining items.
 
 ## Next Step
-Phase D — run npm install at repo root, verify builds, add screenshots, open PR
+Developer actions (in order):
+1. npm run dev --workspace @brasaland/website — verify in browser at http://localhost:3002
+2. npm run dev --workspace @brasaland/backoffice — verify in browser at http://localhost:3003
+3. Take 4 screenshots → save to docs/screenshots/m4-website.png, m4-website-form.png, m4-website-mobile.png, m4-backoffice.png
+4. Create Vercel project for uis/website (root directory = uis/website)
+5. Create Vercel project for uis/backoffice (root directory = uis/backoffice; override install command to run from repo root if needed — see plan Q1)
+6. Fill in live URLs in README.md (replace the two "[URL TBD]" placeholders)
+7. git add README.md docs/screenshots/m4-*.png && git commit -m "docs(repo): update README and add M4 screenshots for PR"
+8. Update this file (mark remaining items [x], fill URLs, set Phase D = Complete)
+9. git add memory-bank/progress.md && git commit -m "docs(memory-bank): Phase D complete"
+10. gh pr create --title "feat: Milestone 4 — AI-driven Engineering" --base main --head milestone-4
