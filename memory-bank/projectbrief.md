@@ -1,7 +1,7 @@
 # Brasaland Digital — Project Brief
 
 ## Company
-Brasaland is a Brazilian community and cultural platform operating across multiple cities. It connects the Brazilian diaspora through events, services, and a professional network.
+Brasaland is a grilled-food restaurant chain with 14 locations across Colombia and the United States, founded in Medellín in 2008. It serves Latin American cuisine crafted on the grill, operating across multiple cities in two countries.
 
 ## What We Are Building
 A monorepo-based digital platform with three production workspaces and two new UI applications:

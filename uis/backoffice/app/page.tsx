@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { CountryMetrics } from '@brasaland/operations-toolkit';
 import {
   calculateAverageTicket,
@@ -95,6 +96,14 @@ export default function DashboardPage() {
         <p className="text-xs text-brasaland-charcoal/40 mt-2">
           Powered by rankLocationsByPerformance() · @brasaland/operations-toolkit
         </p>
+        <div className="mt-4">
+          <Link
+            href="/locations"
+            className="text-sm font-medium text-brasaland-ember hover:underline focus:outline-none focus:ring-2 focus:ring-brasaland-ember rounded-sm"
+          >
+            View all locations →
+          </Link>
+        </div>
       </section>
 
       {/* Section 3: Top Sellers + Payment Methods */}
