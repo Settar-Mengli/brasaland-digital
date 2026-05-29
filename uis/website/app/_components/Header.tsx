@@ -32,7 +32,7 @@ export default function Header() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-40 bg-brasaland-ivory/95 backdrop-blur-sm border-b border-brasaland-charcoal/10">
+    <header className="sticky top-0 z-40 bg-brasaland-ivory border-b border-brasaland-charcoal/10">
       <nav
         aria-label="Primary"
         className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between"
