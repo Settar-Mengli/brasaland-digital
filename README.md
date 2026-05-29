@@ -21,14 +21,14 @@ Brasaland Digital is a TypeScript monorepo containing five independent workspace
 ---
 
 ### M4 — Website (Next.js rebuild)
-**Live:** [URL TBD — add after Vercel deployment]
+**Live:** https://brasaland-website.vercel.app
 
 <img src="docs/screenshots/m4-website.png" alt="Brasaland website rebuild landing page" width="800">
 
 ---
 
 ### M4 — Backoffice (Operations Dashboard)
-**Live:** [URL TBD — add after Vercel deployment]
+**Live:** https://brasaland-backoffice.vercel.app
 
 <img src="docs/screenshots/m4-backoffice.png" alt="Brasaland backoffice operations dashboard" width="800">
 
@@ -39,8 +39,8 @@ Brasaland Digital is a TypeScript monorepo containing five independent workspace
 | `@brasaland/public-website` | Customer-facing marketing site and Brasa Points sign-up | HTML5, Tailwind CSS (CDN), vanilla JavaScript | Complete |
 | `@brasaland/operations-toolkit` | Pure TypeScript utility library for restaurant operations data | TypeScript, Vitest | Complete |
 | `@brasaland/talent-pipeline-tracker` | Internal HR app for managing candidate pipelines | Next.js (App Router), React, Tailwind CSS | Complete |
-| `@brasaland/website` | Next.js rebuild of the public website | Next.js 16, React 19, Tailwind v4, TypeScript | In progress |
-| `@brasaland/backoffice` | Internal operations dashboard with M2 integration | Next.js 16, React 19, Tailwind v4, TypeScript | In progress |
+| `@brasaland/website` | Next.js rebuild of the public website | Next.js 16, React 19, Tailwind v4, TypeScript | Live |
+| `@brasaland/backoffice` | Internal operations dashboard with M2 integration | Next.js 16, React 19, Tailwind v4, TypeScript | Live |
 
 ## Repository structure
 
@@ -157,11 +157,11 @@ works because all consuming workspaces use bundler-aware TypeScript resolution.
 | M4 uis/website | All 7 sections as React Server Components | Complete |
 | M4 uis/website | Brasa Points form with TypeScript validators | Complete |
 | M4 uis/website | Mobile navigation (hamburger, Escape-to-close) | Complete |
-| M4 uis/website | Vercel deployment | Pending |
+| M4 uis/website | Vercel deployment | Live |
 | M4 uis/backoffice | Next.js scaffold | Complete |
 | M4 uis/backoffice | M2 operations-toolkit integration | Complete |
 | M4 uis/backoffice | Operations dashboard (4 sections, M2 fixture data) | Complete |
-| M4 uis/backoffice | Vercel deployment | Pending |
+| M4 uis/backoffice | Vercel deployment | Live |
 | M4 repo | Agent infrastructure (AGENTS.md, memory-bank/, .agents/) | Complete |
 
 ## License

@@ -4,7 +4,7 @@
 If a session ends unexpectedly, read this file first. It contains the last known state, files changed, commands run, blockers, and the exact next step.
 
 ## Current Branch
-milestone-4
+main
 
 ## M4 Phase Status
 | Phase | Description | Status |
@@ -12,7 +12,7 @@ milestone-4
 | A | Branch + agent infrastructure | Complete |
 | B | uis/website scaffolding + M1 migration | Complete |
 | C | uis/backoffice scaffolding + M2 integration | Complete |
-| D | Final verification + PR prep | In progress |
+| D | Final verification + PR prep | Complete |
 
 ## Phase A Checklist
 - [x] milestone-4 branch created
@@ -37,7 +37,7 @@ milestone-4
 - [x] npx prettier --check uis/website/ passes
 - [x] npm install run at repo root (2264f97)
 - [x] npm run build --workspace @brasaland/website passes (Compiled successfully, / and /brasa-points static)
-- [ ] Live URL confirmed: [URL — add after Vercel deployment]
+- [x] Live URL confirmed: https://brasaland-website.vercel.app
 
 ## Phase C Checklist
 - [x] uis/backoffice/package.json created
@@ -50,7 +50,7 @@ milestone-4
 - [x] npm install run at repo root (2264f97)
 - [x] npm run build --workspace @brasaland/backoffice passes (Compiled successfully, / static)
 - [x] npm run test --workspace @brasaland/operations-toolkit shows 115 passing
-- [ ] Live URL confirmed: [URL — add after Vercel deployment]
+- [x] Live URL confirmed: https://brasaland-backoffice.vercel.app
 
 ## Phase D Checklist
 - [x] npm install run at repo root — 2 packages added, all 5 workspace symlinks created (2264f97)
@@ -65,18 +65,19 @@ milestone-4
 - [x] projectbrief.md: company description corrected (af1c35f)
 - [x] Skip link target fixed to #main-content (this commit)
 - [x] README: removed non-existent brand-tokens.md from diagram (this commit)
-- [ ] npm run dev --workspace @brasaland/website — verify all 7 sections, form, mobile nav
-- [ ] npm run dev --workspace @brasaland/backoffice — verify all 4 dashboard sections with M2 data
-- [ ] Screenshots taken: docs/screenshots/m4-website.png, m4-website-form.png, m4-website-mobile.png, m4-backoffice.png
+- [x] npm run dev --workspace @brasaland/website — verify all 7 sections, form, mobile nav
+- [x] npm run dev --workspace @brasaland/backoffice — verify all 4 dashboard sections with M2 data
+- [x] Screenshots taken and committed to docs/screenshots/
 - [x] README.md updated — structure diagram, workspace table, tech stack, status rows, M4 live demo section (6779512)
-- [ ] Vercel project created for uis/website (root dir = uis/website)
-- [ ] Vercel project created for uis/backoffice (root dir = uis/backoffice, see Q1 in plan re: install command)
-- [ ] README.md live URLs filled in + screenshots committed: docs(repo): update README and add M4 screenshots for PR
-- [ ] memory-bank/progress.md final update + commit: docs(memory-bank): Phase D complete
-- [ ] PR opened: feat: Milestone 4 — AI-driven Engineering
+- [x] Deploy uis/website to Vercel → https://brasaland-website.vercel.app
+- [x] Deploy uis/backoffice to Vercel → https://brasaland-backoffice.vercel.app
+- [x] Fill live URLs in README.md
+- [x] memory-bank/progress.md final update + commit: docs(memory-bank): Phase D complete
+- [x] Open PR → https://github.com/Settar-Mengli/brasaland-digital/pull/1
+- [x] Merge PR into main
 
 ## Last Completed Step
-Skip link fixed, README diagram corrected, progress.md updated — ready for screenshots and Vercel deployment.
+Milestone 4 complete — both Vercel deployments live, PR merged, README updated.
 
 ## Files Changed This Session
 | File | Action | Commit |
@@ -104,6 +105,8 @@ Skip link fixed, README diagram corrected, progress.md updated — ready for scr
 | uis/website/app/brasa-points/page.tsx | Modified — added Header/Footer | af1c35f |
 | uis/backoffice/app/page.tsx | Modified — added locations CTA | af1c35f |
 | memory-bank/projectbrief.md | Modified — fixed company description | af1c35f |
+| README.md | Modified — live URLs filled | (this commit) |
+| memory-bank/progress.md | Modified — Phase D complete | (this commit) |
 
 ## Commands Run This Session
 - git checkout -b milestone-4
@@ -123,7 +126,7 @@ Skip link fixed, README diagram corrected, progress.md updated — ready for scr
 - git add README.md && git commit (6779512)
 
 ## Blockers
-None. Developer action required for remaining items.
+None.
 
 ## Next Step
-Developer: run local dev, take 4 screenshots, deploy to Vercel, fill README URLs. Then Claude: final commits + PR.
+Milestone 4 is complete. Submit PR link to 4Geeks campus.
