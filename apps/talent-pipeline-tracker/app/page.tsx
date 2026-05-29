@@ -89,7 +89,9 @@ export default async function HomePage({
       <div className="mx-auto max-w-6xl">
         {/* Page header */}
         <header className="mb-8">
-          <h1 className="font-display text-4xl font-bold text-brasaland-charcoal">Candidates</h1>
+          <h1 className="font-display text-4xl font-bold text-brasaland-charcoal">
+            Brasaland Talent Pipeline
+          </h1>
           <p className="mt-2 text-brasaland-charcoal/70">Brasaland talent pipeline overview.</p>
         </header>
 

@@ -278,7 +278,7 @@ export function groupWasteByReason(
 export function calculateCountryComparison(
   sales: SaleTransaction[],
   locations: Location[],
-  menuItems: MenuItem[],
+  _menuItems: MenuItem[],
 ): { Colombia: CountryMetrics; USA: CountryMetrics } {
   function metricsForCountry(country: Country): CountryMetrics {
     const countryLocations = locations.filter((loc) => loc.country === country);
@@ -308,7 +308,7 @@ export function calculateCountryComparison(
     return { totalLocations, totalRevenue, averageRevenuePerLocation, totalSales };
   }
 
-  void menuItems; // reserved for future cost-based metrics
+  void _menuItems; // reserved for future cost-based metrics
 
   return {
     Colombia: metricsForCountry('Colombia'),
