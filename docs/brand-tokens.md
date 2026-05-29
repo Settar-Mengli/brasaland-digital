@@ -110,3 +110,20 @@ This makes utilities such as `bg-brasaland-ember`, `text-brasaland-charcoal`, `f
 ## Usage in M3 — `@brasaland/talent-pipeline-tracker`
 
 Imported via Tailwind v4's CSS-first config in `apps/talent-pipeline-tracker/app/globals.css`. Brand colors are declared as `--color-brasaland-*` custom properties inside a `@theme` block, which Tailwind v4 turns into utility classes (`bg-brasaland-ember`, `text-brasaland-charcoal`, etc.). Fonts are loaded via `next/font/google` in `app/layout.tsx`, exposed as CSS variables (`--font-inter`, `--font-playfair`), and bound to `--font-display` / `--font-sans` inside the same `@theme` block.
+
+---
+
+## Usage in M4 — `@brasaland/website` and `@brasaland/backoffice`
+
+Both M4 workspaces use the same token system as M3, implemented identically via Tailwind v4's
+CSS-first config in `uis/website/app/globals.css` and `uis/backoffice/app/globals.css`.
+
+Brand colors are declared as `--color-brasaland-*` custom properties inside a `@theme` block.
+Fonts are loaded via `next/font/google` in each workspace's `app/layout.tsx`, exposed as CSS
+variables (`--font-inter`, `--font-playfair`), and bound to `--font-display` / `--font-sans`
+inside the same `@theme` block.
+
+`uis/backoffice` additionally imports business logic directly from
+`@brasaland/operations-toolkit` — the M2 workspace — using npm workspace references. No token
+values are redefined or overridden in the backoffice; the same 6-color palette and 2-typeface
+system governs all four milestones.

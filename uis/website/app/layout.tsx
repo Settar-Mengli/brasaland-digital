@@ -35,6 +35,11 @@ export const metadata: Metadata = {
     title: 'Brasaland — The Taste of the Grill, in Every Bite',
     description: DESCRIPTION,
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Brasaland',
+  },
 };
 
 export const viewport: Viewport = {

@@ -56,6 +56,7 @@ brasaland-digital/
 ├── memory-bank/                 # Agent context files (projectbrief, techContext, progress)
 ├── .agents/                     # Agent rules and skills
 ├── docs/
+│   ├── brand-tokens.md          # Shared visual identity — colors, typography, tokens
 │   └── screenshots/             # Live demo screenshots
 ├── AGENTS.md                    # Root agent rules
 ├── package.json                 # npm workspaces root
@@ -105,6 +106,25 @@ npm run dev --workspace @brasaland/website
 ```bash
 npm run dev --workspace @brasaland/backoffice
 ```
+
+## Engineering decisions
+
+**M2 is a standalone library, not inline code.** Business logic (filtering, ranking, financial
+calculations) is isolated in `@brasaland/operations-toolkit` so it can be tested independently
+of any UI framework. The backoffice imports it at runtime via npm workspace references — no code
+is copied or duplicated.
+
+**M4 uses React Server Components by default.** Every page and section component is a Server
+Component unless interactivity explicitly requires `'use client'`. This keeps the client bundle
+minimal and reflects how production Next.js applications are structured.
+
+**TypeScript strictness is layered by workspace.** The backoffice adds `noUncheckedIndexedAccess`
+and `exactOptionalPropertyTypes` on top of base strict mode — the same flags M2 enforces — because
+it imports M2 types and must satisfy the same contracts.
+
+**The operations toolkit ships TypeScript source, not compiled output.** It has no `dist/`
+directory. Consumers resolve it through npm workspace symlinks directly to `src/index.ts`, which
+works because all consuming workspaces use bundler-aware TypeScript resolution.
 
 ## Conventions
 

@@ -276,11 +276,14 @@ export default function BrasaPointsForm() {
               className={INPUT_CLASS}
             />
             <p className={HINT_CLASS}>First and last name</p>
-            {errors.fullName !== undefined && (
-              <span id="fullName-error" className="mt-1 text-sm text-brasaland-error" role="alert">
-                {errors.fullName}
-              </span>
-            )}
+            <span
+              id="fullName-error"
+              role="alert"
+              aria-live="polite"
+              className="block mt-1 text-sm text-brasaland-error min-h-[1.25rem]"
+            >
+              {errors.fullName ?? ''}
+            </span>
           </div>
 
           <div className="mt-4">
@@ -300,11 +303,14 @@ export default function BrasaPointsForm() {
               className={INPUT_CLASS}
             />
             <p className={HINT_CLASS}>{"We'll send your confirmation here"}</p>
-            {errors.email !== undefined && (
-              <span id="email-error" className="mt-1 text-sm text-brasaland-error" role="alert">
-                {errors.email}
-              </span>
-            )}
+            <span
+              id="email-error"
+              role="alert"
+              aria-live="polite"
+              className="block mt-1 text-sm text-brasaland-error min-h-[1.25rem]"
+            >
+              {errors.email ?? ''}
+            </span>
           </div>
 
           <div className="mt-4">
@@ -326,11 +332,14 @@ export default function BrasaPointsForm() {
             <p className={HINT_CLASS}>
               Include country code, e.g., +57 300 123 4567 or +1 305 123 4567
             </p>
-            {errors.phone !== undefined && (
-              <span id="phone-error" className="mt-1 text-sm text-brasaland-error" role="alert">
-                {errors.phone}
-              </span>
-            )}
+            <span
+              id="phone-error"
+              role="alert"
+              aria-live="polite"
+              className="block mt-1 text-sm text-brasaland-error min-h-[1.25rem]"
+            >
+              {errors.phone ?? ''}
+            </span>
           </div>
 
           <div className="mt-4">
@@ -349,15 +358,14 @@ export default function BrasaPointsForm() {
               className={INPUT_CLASS}
             />
             <p className={HINT_CLASS}>You must be 18 or older to join Brasa Points</p>
-            {errors.dateOfBirth !== undefined && (
-              <span
-                id="dateOfBirth-error"
-                className="mt-1 text-sm text-brasaland-error"
-                role="alert"
-              >
-                {errors.dateOfBirth}
-              </span>
-            )}
+            <span
+              id="dateOfBirth-error"
+              role="alert"
+              aria-live="polite"
+              className="block mt-1 text-sm text-brasaland-error min-h-[1.25rem]"
+            >
+              {errors.dateOfBirth ?? ''}
+            </span>
           </div>
         </fieldset>
 
@@ -387,11 +395,14 @@ export default function BrasaPointsForm() {
               <option value="CO">Colombia</option>
               <option value="US">United States</option>
             </select>
-            {errors.country !== undefined && (
-              <span id="country-error" className="mt-1 text-sm text-brasaland-error" role="alert">
-                {errors.country}
-              </span>
-            )}
+            <span
+              id="country-error"
+              role="alert"
+              aria-live="polite"
+              className="block mt-1 text-sm text-brasaland-error min-h-[1.25rem]"
+            >
+              {errors.country ?? ''}
+            </span>
           </div>
 
           <div className="mt-4">
@@ -418,11 +429,14 @@ export default function BrasaPointsForm() {
                 </option>
               ))}
             </select>
-            {errors.city !== undefined && (
-              <span id="city-error" className="mt-1 text-sm text-brasaland-error" role="alert">
-                {errors.city}
-              </span>
-            )}
+            <span
+              id="city-error"
+              role="alert"
+              aria-live="polite"
+              className="block mt-1 text-sm text-brasaland-error min-h-[1.25rem]"
+            >
+              {errors.city ?? ''}
+            </span>
           </div>
 
           <div className="mt-4">
@@ -510,11 +524,14 @@ export default function BrasaPointsForm() {
               <option value="internet-search">Internet search</option>
               <option value="other">Other</option>
             </select>
-            {errors.referral !== undefined && (
-              <span id="referral-error" className="mt-1 text-sm text-brasaland-error" role="alert">
-                {errors.referral}
-              </span>
-            )}
+            <span
+              id="referral-error"
+              role="alert"
+              aria-live="polite"
+              className="block mt-1 text-sm text-brasaland-error min-h-[1.25rem]"
+            >
+              {errors.referral ?? ''}
+            </span>
           </div>
         </fieldset>
 
@@ -541,11 +558,14 @@ export default function BrasaPointsForm() {
                 I accept the Brasa Points program terms{REQUIRED_MARK}
               </label>
             </div>
-            {errors.terms !== undefined && (
-              <span id="terms-error" className="mt-1 text-sm text-brasaland-error" role="alert">
-                {errors.terms}
-              </span>
-            )}
+            <span
+              id="terms-error"
+              role="alert"
+              aria-live="polite"
+              className="block mt-1 text-sm text-brasaland-error min-h-[1.25rem]"
+            >
+              {errors.terms ?? ''}
+            </span>
           </div>
 
           <div className="mt-4">

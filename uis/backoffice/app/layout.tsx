@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter, Playfair_Display } from 'next/font/google';
 import Link from 'next/link';
+import NavLinks from './_components/NavLinks';
 import './globals.css';
 
 const inter = Inter({
@@ -34,20 +35,7 @@ export default function BackofficeLayout({ children }: Readonly<{ children: Reac
             >
               Brasaland Backoffice
             </Link>
-            <nav aria-label="Backoffice navigation" className="flex items-center gap-6">
-              <Link
-                href="/"
-                className="text-sm text-brasaland-ivory/70 hover:text-brasaland-ivory transition-colors"
-              >
-                Dashboard
-              </Link>
-              <Link
-                href="/locations"
-                className="text-sm text-brasaland-ivory/70 hover:text-brasaland-ivory transition-colors"
-              >
-                Locations
-              </Link>
-            </nav>
+            <NavLinks />
           </div>
         </header>
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">{children}</main>
