@@ -11,7 +11,7 @@ milestone-4
 |---|---|---|
 | A | Branch + agent infrastructure | Complete |
 | B | uis/website scaffolding + M1 migration | Complete |
-| C | uis/backoffice scaffolding + M2 integration | In progress |
+| C | uis/backoffice scaffolding + M2 integration | Complete |
 | D | Final verification + PR prep | Not started |
 
 ## Phase A Checklist
@@ -40,18 +40,20 @@ milestone-4
 - [ ] Live URL confirmed: [URL]
 
 ## Phase C Checklist
-- [ ] uis/backoffice/package.json created
-- [ ] uis/backoffice config files created (tsconfig, next.config, postcss, eslint, .gitignore)
-- [ ] uis/backoffice/vercel.json created
-- [ ] uis/backoffice/CLAUDE.md and AGENTS.md created
-- [ ] uis/backoffice/app/globals.css created
-- [ ] uis/backoffice/app/layout.tsx and page.tsx created (M2 dashboard)
+- [x] uis/backoffice/package.json created
+- [x] uis/backoffice config files created (tsconfig, next.config, postcss, eslint, .gitignore)
+- [x] uis/backoffice/vercel.json created
+- [x] uis/backoffice/CLAUDE.md and AGENTS.md created
+- [x] uis/backoffice/app/globals.css created
+- [x] uis/backoffice/app/layout.tsx and page.tsx created (M2 dashboard)
+- [x] npx prettier --check uis/backoffice/ passes
+- [ ] npm install run at repo root
 - [ ] npm run build --workspace @brasaland/backoffice passes
 - [ ] npm run test --workspace @brasaland/operations-toolkit shows 115 passing
 - [ ] Live URL confirmed: [URL]
 
 ## Last Completed Step
-Phase B complete — uis/website committed (2ac0644)
+Phase C complete — uis/backoffice committed (9ce684f)
 
 ## Files Changed This Session
 | File | Action | Commit |
@@ -67,6 +69,8 @@ Phase B complete — uis/website committed (2ac0644)
 | memory-bank/techContext.md | Updated — ports set, no duplicate | 096640c |
 | apps/operations-toolkit/src/index.ts | Added fixture re-export | 096640c |
 | uis/website/ (24 files) | Created — Next.js rebuild of M1 | 2ac0644 |
+| memory-bank/progress.md | Updated — Phase B marked complete | a073f6c |
+| uis/backoffice/ (13 files) | Created — M2 operations dashboard | 9ce684f |
 
 ## Commands Run This Session
 - git checkout -b milestone-4
@@ -75,9 +79,12 @@ Phase B complete — uis/website committed (2ac0644)
 - npx prettier --write uis/website/
 - git add uis/website/
 - git commit (2ac0644)
+- npx prettier --write uis/backoffice/
+- git add uis/backoffice/
+- git commit (9ce684f)
 
 ## Blockers
 None currently.
 
 ## Next Step
-Phase C — scaffold uis/backoffice; then run npm install at repo root for both workspaces
+Phase D — run npm install at repo root, verify builds, add screenshots, open PR
