@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter, Playfair_Display } from 'next/font/google';
+import Link from 'next/link';
 import './globals.css';
 
 const inter = Inter({
@@ -26,10 +27,27 @@ export default function BackofficeLayout({ children }: Readonly<{ children: Reac
     <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
       <body className="font-sans bg-brasaland-ivory text-brasaland-charcoal antialiased">
         <header className="bg-brasaland-charcoal text-brasaland-ivory border-b-4 border-brasaland-ember">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center">
-            <span className="font-display font-bold text-lg tracking-tight">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center gap-6">
+            <Link
+              href="/"
+              className="font-display font-bold text-lg tracking-tight text-brasaland-ivory"
+            >
               Brasaland Backoffice
-            </span>
+            </Link>
+            <nav aria-label="Backoffice navigation" className="flex items-center gap-6">
+              <Link
+                href="/"
+                className="text-sm text-brasaland-ivory/70 hover:text-brasaland-ivory transition-colors"
+              >
+                Dashboard
+              </Link>
+              <Link
+                href="/locations"
+                className="text-sm text-brasaland-ivory/70 hover:text-brasaland-ivory transition-colors"
+              >
+                Locations
+              </Link>
+            </nav>
           </div>
         </header>
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">{children}</main>
