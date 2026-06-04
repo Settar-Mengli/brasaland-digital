@@ -130,3 +130,22 @@ None.
 
 ## Next Step
 Milestone 4 is complete. Submit PR link to 4Geeks campus.
+
+## Backend Architecture Proposal — Progress
+
+### Status (Complete / In Progress / Not Started)
+Complete
+
+### Files Changed This Session
+
+| File | Action |
+|---|---|
+| docs/ARCHITECTURE_PROPOSAL.md | Created |
+| memory-bank/PLANNING.md | Created |
+| memory-bank/progress.md | Modified |
+
+### Last Completed Step
+Created the backend architecture proposal document and recorded the planning and progress updates for this assignment.
+
+### Next Step
+Review the proposal deliverable and provide push approval after commit review.
