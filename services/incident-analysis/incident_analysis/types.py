@@ -48,3 +48,4 @@ class AnalysisResult:
     average_satisfaction_closed: float | None
     invalid_records: tuple[InvalidRecord, ...]
     invalid_count_by_rule: dict[str, int] = field(default_factory=dict)
+    satisfaction_distribution: dict[int, int] = field(default_factory=dict)

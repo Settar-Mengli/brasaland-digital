@@ -36,4 +36,5 @@ def run_analysis(source: str | Path | TextIO | BinaryIO) -> AnalysisResult:
         average_satisfaction_closed=summary.average_satisfaction_closed,
         invalid_records=invalid_records,
         invalid_count_by_rule=summary.invalid_count_by_rule,
+        satisfaction_distribution=summary.satisfaction_distribution,
     )

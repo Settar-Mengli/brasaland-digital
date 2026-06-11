@@ -34,6 +34,9 @@ def test_golden_fixture_matches_expected_summary() -> None:
 
     assert result.average_satisfaction_closed == 3.46
 
+    assert result.satisfaction_distribution == {1: 4, 2: 6, 3: 12, 4: 19, 5: 9}
+    assert sum(result.satisfaction_distribution.values()) == 50
+
     assert result.invalid_count_by_rule[RULE_INVALID_LOCATION] == 1
     assert result.invalid_count_by_rule[RULE_INVALID_CATEGORY] == 1
     assert result.invalid_count_by_rule[RULE_INVALID_DESCRIPTION] == 1

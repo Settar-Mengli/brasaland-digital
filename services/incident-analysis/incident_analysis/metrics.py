@@ -56,6 +56,19 @@ def average_satisfaction_closed(
     return round(average, 2)
 
 
+def satisfaction_score_distribution(
+    valid_records: list[RecordResult],
+) -> dict[int, int]:
+    counts = {score: 0 for score in range(1, 6)}
+    for record in valid_records:
+        if record.row["status"] != "CERRADO":
+            continue
+        score = _parse_score_value(record.row["satisfaction_score"])
+        if score is not None:
+            counts[score] = counts.get(score, 0) + 1
+    return counts
+
+
 def build_summary(record_results: list[RecordResult]) -> AnalysisResult:
     valid_records = [
         record for record in record_results if record.outcome.is_valid
@@ -69,4 +82,5 @@ def build_summary(record_results: list[RecordResult]) -> AnalysisResult:
         average_satisfaction_closed=average_satisfaction_closed(valid_records),
         invalid_records=tuple(),
         invalid_count_by_rule=count_invalid_by_rule(record_results),
+        satisfaction_distribution=satisfaction_score_distribution(valid_records),
     )
