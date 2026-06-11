@@ -2,7 +2,7 @@
 
 The digital platform for Brasaland, a 14-location grilled-food restaurant chain across Colombia and the United States.
 
-Brasaland Digital is a TypeScript monorepo containing five independent workspaces: a public marketing site, an operations utility library, an internal talent pipeline tracker, a Next.js rebuild of the public website, and an internal operations dashboard. Each workspace is a separately deployable unit, structured to reflect a real product-team architecture — shared tooling and conventions without shared runtime dependencies.
+Brasaland Digital is primarily a TypeScript monorepo, now extended with Python backend services under `services/`, containing five independent workspaces: a public marketing site, an operations utility library, an internal talent pipeline tracker, a Next.js rebuild of the public website, and an internal operations dashboard. Each workspace is a separately deployable unit, structured to reflect a real product-team architecture — shared tooling and conventions without shared runtime dependencies.
 
 ## Live demos
 
@@ -53,6 +53,8 @@ brasaland-digital/
 ├── uis/
 │   ├── website/                 # M4 — Next.js rebuild of public website (port 3002)
 │   └── backoffice/              # M4 — Operations dashboard with M2 integration (port 3003)
+├── services/
+│   └── incident-analysis/       # Python incident-analysis utility (CLI, FastAPI, web UI)
 ├── memory-bank/                 # Agent context files (projectbrief, techContext, progress)
 ├── .agents/                     # Agent rules and skills
 ├── docs/
