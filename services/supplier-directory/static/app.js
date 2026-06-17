@@ -5,9 +5,11 @@ const COUNTRY_CURRENCY = {
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", { dateStyle: "medium" });
 
+let expandedSupplierId = null;
+
 const filterCountry = document.getElementById("filter-country");
 const filterCategory = document.getElementById("filter-category");
-const suppliersBody = document.getElementById("suppliers-body");
+const suppliersList = document.getElementById("suppliers-list");
 const supplierCount = document.getElementById("supplier-count");
 const emptyState = document.getElementById("empty-state");
 const errorAlert = document.getElementById("error-alert");
@@ -98,86 +100,270 @@ function getSelectedCategories(form) {
   );
 }
 
-function updateSupplierRow(supplier) {
-  const row = suppliersBody.querySelector(`tr[data-supplier-id="${supplier.id}"]`);
-  if (!row) {
+function setStatusBadge(container, status) {
+  container.replaceChildren();
+  const badge = document.createElement("span");
+  badge.className = `status-badge ${status}`;
+  badge.textContent = status;
+  container.appendChild(badge);
+}
+
+function renderCategoryChips(container, categories) {
+  container.replaceChildren();
+  const wrapper = document.createElement("div");
+  wrapper.className = "category-chips";
+
+  for (const category of categories) {
+    const chip = document.createElement("span");
+    chip.className = "category-chip";
+    chip.textContent = formatCategoryLabel(category);
+    wrapper.appendChild(chip);
+  }
+
+  container.appendChild(wrapper);
+}
+
+function collapseSupplierItem(item) {
+  const toggle = item.querySelector(".supplier-toggle");
+  const detail = item.querySelector(".supplier-detail");
+  const name = item.querySelector(".supplier-name")?.textContent || "supplier";
+
+  item.classList.remove("is-expanded");
+  if (toggle) {
+    toggle.setAttribute("aria-expanded", "false");
+    toggle.setAttribute("aria-label", `Show details for ${name}`);
+  }
+  if (detail) {
+    detail.hidden = true;
+  }
+}
+
+function expandSupplierItem(item) {
+  for (const other of suppliersList.querySelectorAll(".supplier-item.is-expanded")) {
+    if (other !== item) {
+      collapseSupplierItem(other);
+    }
+  }
+
+  const toggle = item.querySelector(".supplier-toggle");
+  const detail = item.querySelector(".supplier-detail");
+  const name = item.querySelector(".supplier-name")?.textContent || "supplier";
+
+  item.classList.add("is-expanded");
+  if (toggle) {
+    toggle.setAttribute("aria-expanded", "true");
+    toggle.setAttribute("aria-label", `Hide details for ${name}`);
+  }
+  if (detail) {
+    detail.hidden = false;
+  }
+
+  expandedSupplierId = Number(item.dataset.supplierId);
+}
+
+function toggleSupplierItem(item) {
+  if (item.classList.contains("is-expanded")) {
+    collapseSupplierItem(item);
+    expandedSupplierId = null;
     return;
   }
 
-  row.classList.toggle("row-suspended", supplier.status === "suspended");
-  row.querySelector('[data-field="categories"]').textContent = formatCategories(
-    supplier.categories,
+  expandSupplierItem(item);
+}
+
+function updateSupplierRow(supplier) {
+  const item = suppliersList.querySelector(
+    `.supplier-item[data-supplier-id="${supplier.id}"]`,
   );
-  row.querySelector('[data-field="rate"]').textContent = formatRate(
+  if (!item) {
+    return;
+  }
+
+  item.classList.toggle("row-suspended", supplier.status === "suspended");
+
+  const nameEl = item.querySelector(".supplier-name");
+  if (nameEl) {
+    nameEl.textContent = supplier.name;
+  }
+
+  const countryEl = item.querySelector('[data-field="country"]');
+  if (countryEl) {
+    countryEl.textContent = supplier.country;
+  }
+
+  const rateEl = item.querySelector('[data-field="rate"]');
+  if (rateEl) {
+    rateEl.textContent = formatRate(supplier.rate_per_unit, supplier.currency);
+  }
+
+  const statusEl = item.querySelector('[data-field="status"]');
+  if (statusEl) {
+    setStatusBadge(statusEl, supplier.status);
+  }
+
+  const categoriesEl = item.querySelector('[data-field="categories"]');
+  if (categoriesEl) {
+    renderCategoryChips(categoriesEl, supplier.categories);
+  }
+
+  const contactEl = item.querySelector('[data-field="contact"]');
+  if (contactEl) {
+    contactEl.textContent = supplier.contact_email || "—";
+  }
+
+  const rateUpdatedEl = item.querySelector('[data-field="rate-updated"]');
+  if (rateUpdatedEl) {
+    rateUpdatedEl.textContent = formatTimestamp(supplier.rate_updated_at);
+  }
+
+  const notesEl = item.querySelector('[data-field="notes"]');
+  if (notesEl) {
+    notesEl.textContent = supplier.notes || "—";
+  }
+
+  const rateInput = item.querySelector(".inline-rate input");
+  if (rateInput) {
+    rateInput.value = String(supplier.rate_per_unit);
+    rateInput.setAttribute("aria-label", `New rate for ${supplier.name}`);
+  }
+
+  const currencyEl = item.querySelector(".inline-rate [data-field='currency']");
+  if (currencyEl) {
+    currencyEl.textContent = supplier.currency;
+  }
+
+  const toggleButton = item.querySelector(".btn-toggle");
+  if (toggleButton) {
+    const isActive = supplier.status === "active";
+    toggleButton.textContent = isActive ? "Suspend" : "Activate";
+    toggleButton.classList.toggle("suspend", isActive);
+    toggleButton.dataset.nextStatus = isActive ? "suspended" : "active";
+    toggleButton.setAttribute(
+      "aria-label",
+      isActive ? `Suspend ${supplier.name}` : `Activate ${supplier.name}`,
+    );
+  }
+
+  const expandToggle = item.querySelector(".supplier-toggle");
+  if (expandToggle && !item.classList.contains("is-expanded")) {
+    expandToggle.setAttribute("aria-label", `Show details for ${supplier.name}`);
+  } else if (expandToggle) {
+    expandToggle.setAttribute("aria-label", `Hide details for ${supplier.name}`);
+  }
+}
+
+function renderSupplierItem(supplier) {
+  const item = document.createElement("li");
+  item.className = "supplier-item";
+  item.dataset.supplierId = String(supplier.id);
+  item.classList.toggle("row-suspended", supplier.status === "suspended");
+
+  const detailId = `supplier-detail-${supplier.id}`;
+  const nameId = `supplier-name-${supplier.id}`;
+  const isActive = supplier.status === "active";
+
+  item.innerHTML = `
+    <div class="supplier-summary">
+      <button
+        type="button"
+        class="supplier-toggle"
+        aria-expanded="false"
+        aria-controls="${detailId}"
+      >
+        <span class="supplier-chevron" aria-hidden="true"></span>
+      </button>
+      <span id="${nameId}" class="supplier-name col-name"></span>
+      <span class="col-country" data-field="country"></span>
+      <span class="col-rate" data-field="rate"></span>
+      <span class="col-status" data-field="status"></span>
+    </div>
+    <div
+      id="${detailId}"
+      class="supplier-detail"
+      hidden
+      role="region"
+      aria-labelledby="${nameId}"
+    >
+      <dl class="supplier-detail-grid">
+        <div class="detail-row">
+          <dt>Categories</dt>
+          <dd data-field="categories"></dd>
+        </div>
+        <div class="detail-row">
+          <dt>Contact</dt>
+          <dd data-field="contact"></dd>
+        </div>
+        <div class="detail-row">
+          <dt>Rate updated</dt>
+          <dd data-field="rate-updated"></dd>
+        </div>
+        <div class="detail-row">
+          <dt>Notes</dt>
+          <dd data-field="notes"></dd>
+        </div>
+      </dl>
+      <div class="supplier-actions">
+        <div class="inline-rate">
+          <input
+            type="number"
+            min="0.01"
+            step="0.01"
+          />
+          <span class="rate-currency-suffix" data-field="currency"></span>
+          <button type="button" class="btn-secondary update-rate-btn">Update rate</button>
+        </div>
+        <button
+          type="button"
+          class="btn-toggle ${isActive ? "suspend" : ""}"
+          data-next-status="${isActive ? "suspended" : "active"}"
+        >
+          ${isActive ? "Suspend" : "Activate"}
+        </button>
+      </div>
+    </div>
+  `;
+
+  item.querySelector(".supplier-name").textContent = supplier.name;
+  item.querySelector('[data-field="country"]').textContent = supplier.country;
+  item.querySelector('[data-field="rate"]').textContent = formatRate(
     supplier.rate_per_unit,
     supplier.currency,
   );
-  row.querySelector('[data-field="status"]').innerHTML = renderStatusBadge(
-    supplier.status,
+  setStatusBadge(item.querySelector('[data-field="status"]'), supplier.status);
+  renderCategoryChips(
+    item.querySelector('[data-field="categories"]'),
+    supplier.categories,
   );
-  row.querySelector('[data-field="contact"]').textContent =
+  item.querySelector('[data-field="contact"]').textContent =
     supplier.contact_email || "—";
-  row.querySelector('[data-field="rate-updated"]').textContent = formatTimestamp(
+  item.querySelector('[data-field="rate-updated"]').textContent = formatTimestamp(
     supplier.rate_updated_at,
   );
+  item.querySelector('[data-field="notes"]').textContent = supplier.notes || "—";
 
-  const rateInput = row.querySelector(".inline-rate input");
-  if (rateInput) {
-    rateInput.value = String(supplier.rate_per_unit);
-  }
+  const rateInput = item.querySelector(".inline-rate input");
+  rateInput.value = String(supplier.rate_per_unit);
+  rateInput.setAttribute("aria-label", `New rate for ${supplier.name}`);
 
-  const toggleButton = row.querySelector(".btn-toggle");
-  if (toggleButton) {
-    toggleButton.textContent =
-      supplier.status === "active" ? "Suspend" : "Activate";
-    toggleButton.classList.toggle("suspend", supplier.status === "active");
-    toggleButton.dataset.nextStatus =
-      supplier.status === "active" ? "suspended" : "active";
-  }
-}
+  item.querySelector(".inline-rate [data-field='currency']").textContent =
+    supplier.currency;
 
-function renderStatusBadge(status) {
-  return `<span class="status-badge ${status}">${status}</span>`;
-}
+  const expandToggle = item.querySelector(".supplier-toggle");
+  const toggleButton = item.querySelector(".btn-toggle");
+  expandToggle.setAttribute("aria-label", `Show details for ${supplier.name}`);
+  toggleButton.setAttribute(
+    "aria-label",
+    isActive ? `Suspend ${supplier.name}` : `Activate ${supplier.name}`,
+  );
 
-function renderSupplierRow(supplier) {
-  const row = document.createElement("tr");
-  row.dataset.supplierId = String(supplier.id);
-  row.classList.toggle("row-suspended", supplier.status === "suspended");
+  expandToggle.addEventListener("click", () => {
+    toggleSupplierItem(item);
+  });
 
-  row.innerHTML = `
-    <td>${supplier.name}</td>
-    <td>${supplier.country}</td>
-    <td data-field="categories">${formatCategories(supplier.categories)}</td>
-    <td data-field="rate">${formatRate(supplier.rate_per_unit, supplier.currency)}</td>
-    <td data-field="status">${renderStatusBadge(supplier.status)}</td>
-    <td data-field="contact">${supplier.contact_email || "—"}</td>
-    <td data-field="rate-updated">${formatTimestamp(supplier.rate_updated_at)}</td>
-    <td class="actions-cell">
-      <div class="inline-rate">
-        <input
-          type="number"
-          min="0.01"
-          step="0.01"
-          value="${supplier.rate_per_unit}"
-          aria-label="New rate for ${supplier.name}"
-        />
-        <button type="button" class="btn-secondary update-rate-btn">Update rate</button>
-      </div>
-      <button
-        type="button"
-        class="btn-toggle ${supplier.status === "active" ? "suspend" : ""}"
-        data-next-status="${supplier.status === "active" ? "suspended" : "active"}"
-      >
-        ${supplier.status === "active" ? "Suspend" : "Activate"}
-      </button>
-    </td>
-  `;
-
-  const updateRateButton = row.querySelector(".update-rate-btn");
+  const updateRateButton = item.querySelector(".update-rate-btn");
   updateRateButton.addEventListener("click", async () => {
-    const rateInput = row.querySelector(".inline-rate input");
-    const newRate = Number(rateInput.value);
+    const input = item.querySelector(".inline-rate input");
+    const newRate = Number(input.value);
 
     clearError();
     const response = await fetch(`/suppliers/${supplier.id}/rate`, {
@@ -196,7 +382,6 @@ function renderSupplierRow(supplier) {
     showStatus(`Rate updated for ${updated.name}.`);
   });
 
-  const toggleButton = row.querySelector(".btn-toggle");
   toggleButton.addEventListener("click", async () => {
     clearError();
     const nextStatus = toggleButton.dataset.nextStatus;
@@ -217,15 +402,16 @@ function renderSupplierRow(supplier) {
     showStatus(`${updated.name} is now ${updated.status}.`);
   });
 
-  return row;
+  return item;
 }
 
 function renderSuppliers(suppliers) {
-  suppliersBody.innerHTML = "";
+  suppliersList.replaceChildren();
 
   if (suppliers.length === 0) {
     emptyState.hidden = false;
     supplierCount.textContent = "0 suppliers";
+    expandedSupplierId = null;
     return;
   }
 
@@ -235,7 +421,18 @@ function renderSuppliers(suppliers) {
   }`;
 
   for (const supplier of suppliers) {
-    suppliersBody.appendChild(renderSupplierRow(supplier));
+    suppliersList.appendChild(renderSupplierItem(supplier));
+  }
+
+  if (expandedSupplierId !== null) {
+    const item = suppliersList.querySelector(
+      `.supplier-item[data-supplier-id="${expandedSupplierId}"]`,
+    );
+    if (item) {
+      expandSupplierItem(item);
+    } else {
+      expandedSupplierId = null;
+    }
   }
 }
 
@@ -256,7 +453,7 @@ async function loadSuppliers(country = "", category = "") {
 
   if (!response.ok) {
     showError(await readErrorMessage(response));
-    suppliersBody.innerHTML = "";
+    suppliersList.replaceChildren();
     emptyState.hidden = true;
     supplierCount.textContent = "Unable to load suppliers";
     return;

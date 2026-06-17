@@ -59,23 +59,14 @@
           <h2 id="suppliers-heading">Suppliers</h2>
           <p id="supplier-count" class="meta-text">Loading suppliers…</p>
         </div>
-        <div class="table-wrap">
-          <table id="suppliers-table">
-            <thead>
-              <tr>
-                <th scope="col">Name</th>
-                <th scope="col">Country</th>
-                <th scope="col">Categories</th>
-                <th scope="col">Rate</th>
-                <th scope="col">Status</th>
-                <th scope="col">Contact</th>
-                <th scope="col">Rate updated</th>
-                <th scope="col">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="suppliers-body"></tbody>
-          </table>
+        <div class="supplier-list-header" aria-hidden="true">
+          <span class="col-toggle"></span>
+          <span class="col-name">Name</span>
+          <span class="col-country">Country</span>
+          <span class="col-rate">Rate</span>
+          <span class="col-status">Status</span>
         </div>
+        <ul id="suppliers-list" class="supplier-list" aria-labelledby="suppliers-heading"></ul>
         <p id="empty-state" class="empty-state" hidden>No suppliers match the current filters.</p>
       </section>
 
