@@ -1,3 +1,17 @@
+"""TinyDB access for the supplier directory.
+
+The database is a lazy module-level singleton: the first call to ``get_db()``
+opens ``data/suppliers.json`` (or an explicit path) and later calls reuse the
+same ``TinyDB`` instance until ``reset_db()`` or a path change.
+
+Each uvicorn worker process holds its own singleton. Run a single worker in
+production, or point every worker at the same file via a shared path.
+
+``SUPPLIER_DB_PATH`` overrides the JSON file location and is intended for tests
+and local tooling only. Leave it unset in production shells so the default
+``data/suppliers.json`` under this service is used.
+"""
+
 from __future__ import annotations
 
 import os

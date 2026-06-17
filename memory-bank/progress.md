@@ -127,3 +127,26 @@ None. Developer action required for remaining items.
 
 ## Next Step
 Developer: run local dev, take 4 screenshots, deploy to Vercel, fill README URLs. Then Claude: final commits + PR.
+
+## Supplier Directory — Progress
+
+**Status:** Complete (feature branch `supplier-directory`).
+
+**Scope:** Brasaland supplier directory — FastAPI + TinyDB + Pydantic core, served static frontend, seed CLI, pytest suite (40 tests).
+
+**Files touched (high level):**
+
+| Area | Files |
+| --- | --- |
+| Core | `supplier_directory/` (constants, types, validator, db, repository, service, seed_data) |
+| Entry points | `app.py`, `seed.py` |
+| Frontend | `static/index.html`, `static/app.js`, `static/styles.css` |
+| Tests | `tests/test_validator.py`, `tests/test_golden_seed.py`, `tests/test_api.py`, `tests/conftest.py` |
+| Docs | `README.md`, `CONTEXT-brasaland.md` (spec — authoritative, pre-existing) |
+| Ops notes | Module docstrings in `db.py`, `repository.py` (singleton, id assignment, `SUPPLIER_DB_PATH`) |
+
+**Last completed step:** Final docs phase — Group F docstrings, Group H README + root README structure line + this progress section.
+
+**Next step:** Open PR for `supplier-directory` vs `incident-analysis` (or agreed base). Hold unmerged per TA; do not merge into `milestone-4` until instructed.
+
+**Verification:** `pytest` in `services/supplier-directory/` → 40 passed.

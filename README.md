@@ -54,7 +54,8 @@ brasaland-digital/
 │   ├── website/                 # M4 — Next.js rebuild of public website (port 3002)
 │   └── backoffice/              # M4 — Operations dashboard with M2 integration (port 3003)
 ├── services/
-│   └── incident-analysis/       # Python incident-analysis utility (CLI, FastAPI, web UI)
+│   ├── incident-analysis/       # Python incident-analysis utility (CLI, FastAPI, web UI)
+│   └── supplier-directory/      # Python supplier directory (FastAPI, TinyDB, web UI)
 ├── memory-bank/                 # Agent context files (projectbrief, techContext, progress)
 ├── .agents/                     # Agent rules and skills
 ├── docs/

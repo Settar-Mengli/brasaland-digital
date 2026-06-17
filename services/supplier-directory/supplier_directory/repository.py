@@ -13,6 +13,11 @@ def _table() -> Any:
 
 
 def _next_id(records: list[SupplierRecord]) -> int:
+    """Return the next supplier id as max(existing ids) + 1.
+
+    Assumes a single-process writer. Concurrent inserts could produce duplicate
+    ids; that is acceptable for this single-process CLI/API scope.
+    """
     if not records:
         return 1
     return max(record["id"] for record in records) + 1
