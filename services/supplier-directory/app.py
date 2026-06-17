@@ -19,6 +19,7 @@ from supplier_directory import (
     update_status,
 )
 from supplier_directory.types import SupplierInput, SupplierRecord
+from supplier_directory.constants import VALID_CATEGORIES
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -57,6 +58,7 @@ class SupplierResponse(BaseModel):
     notes: str | None
 
 
+# Stored records enter the DB only via validated write paths; Literal casts are runtime-safe.
 def _to_response(record: SupplierRecord) -> SupplierResponse:
     return SupplierResponse(
         id=record["id"],
@@ -99,6 +101,11 @@ def list_all_suppliers(
     country: Literal["Colombia", "USA"] | None = Query(default=None),
     category: str | None = Query(default=None),
 ) -> list[SupplierResponse]:
+    if category is not None and category not in VALID_CATEGORIES:
+        raise HTTPException(
+            status_code=422,
+            detail=["category must be a valid category value"],
+        )
     records = list_suppliers(country=country, category=category)
     return [_to_response(record) for record in records]
 

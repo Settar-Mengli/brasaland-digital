@@ -90,6 +90,13 @@ def test_get_suppliers_empty_returns_200(client: TestClient) -> None:
     assert response.json() == []
 
 
+def test_get_suppliers_invalid_category_returns_422(client: TestClient) -> None:
+    response = client.get("/suppliers", params={"category": "bogus"})
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == ["category must be a valid category value"]
+
+
 def test_get_suppliers_filters(client: TestClient) -> None:
     client.post(
         "/suppliers",
