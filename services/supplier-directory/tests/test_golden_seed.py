@@ -1,4 +1,4 @@
-from tests.fixtures.seed_suppliers import SEED_SUPPLIERS
+from supplier_directory.seed_data import SEED_SUPPLIERS
 from supplier_directory import get_supplier, list_suppliers, seed_batch
 
 
