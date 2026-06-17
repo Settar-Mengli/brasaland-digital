@@ -19,10 +19,29 @@ def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _dedupe_categories(categories: list[str]) -> list[str]:
+    seen: set[str] = set()
+    result: list[str] = []
+    for category in categories:
+        if category not in seen:
+            seen.add(category)
+            result.append(category)
+    return result
+
+
+def _normalize_supplier_input(data: SupplierInput) -> SupplierInput:
+    normalized: SupplierInput = dict(data)
+    categories = data.get("categories")
+    if isinstance(categories, list):
+        normalized["categories"] = _dedupe_categories(categories)
+    return normalized
+
+
 def create(data: SupplierInput) -> SupplierRecord:
-    validate_supplier(data)
+    normalized = _normalize_supplier_input(data)
+    validate_supplier(normalized)
     record = {
-        **data,
+        **normalized,
         "rate_updated_at": _utc_now_iso(),
     }
     return insert(record)
@@ -75,10 +94,11 @@ def seed_batch(records: list[SupplierInput]) -> tuple[int, int]:
             skipped_count += 1
             continue
 
-        validate_supplier(record)
+        normalized = _normalize_supplier_input(record)
+        validate_supplier(normalized)
         insert(
             {
-                **record,
+                **normalized,
                 "rate_updated_at": _utc_now_iso(),
             }
         )

@@ -92,6 +92,37 @@ def test_invalid_status_rejected() -> None:
     assert "status must be active or suspended" in exc_info.value.failures
 
 
+def test_empty_name_rejected() -> None:
+    with pytest.raises(SupplierValidationError) as exc_info:
+        validate_supplier(_base(name=""))
+
+    assert "name is required" in exc_info.value.failures
+
+
+def test_whitespace_name_rejected() -> None:
+    with pytest.raises(SupplierValidationError) as exc_info:
+        validate_supplier(_base(name="   "))
+
+    assert "name is required" in exc_info.value.failures
+
+
+def test_duplicate_categories_deduped_on_create() -> None:
+    from supplier_directory import create
+
+    payload: SupplierInput = {
+        "name": "Dedupe Supplier",
+        "country": "Colombia",
+        "categories": ["meat", "meat"],
+        "rate_per_unit": 1000.0,
+        "currency": "COP",
+        "status": "active",
+    }
+    stored = create(payload)
+
+    assert payload["categories"] == ["meat", "meat"]
+    assert stored["categories"] == ["meat"]
+
+
 def test_multiple_rules_accumulate() -> None:
     with pytest.raises(SupplierValidationError) as exc_info:
         validate_supplier(

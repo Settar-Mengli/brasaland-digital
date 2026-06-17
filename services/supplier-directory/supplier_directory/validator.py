@@ -28,6 +28,9 @@ def validate_rate(value: Any) -> None:
 def validate_supplier(data: SupplierInput) -> None:
     failures: list[str] = []
 
+    if not str(data.get("name", "")).strip():
+        failures.append("name is required")
+
     country = data.get("country")
     if country not in VALID_COUNTRIES:
         failures.append("country must be Colombia or USA")

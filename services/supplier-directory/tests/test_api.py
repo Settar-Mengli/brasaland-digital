@@ -72,6 +72,17 @@ def test_post_bad_category_returns_422(client: TestClient) -> None:
     assert "categories must contain only valid category values" in response.json()["detail"]
 
 
+def test_post_empty_name_returns_422_without_write(client: TestClient) -> None:
+    response = client.post(
+        "/suppliers",
+        json=_valid_payload(name="   "),
+    )
+
+    assert response.status_code == 422
+    assert "name is required" in response.json()["detail"]
+    assert client.get("/suppliers").json() == []
+
+
 def test_get_suppliers_empty_returns_200(client: TestClient) -> None:
     response = client.get("/suppliers")
 
