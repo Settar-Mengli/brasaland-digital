@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Brasaland — Supplier Directory</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <p class="eyebrow">Brasaland Operations</p>
+      <h1>Supplier Directory</h1>
+      <p class="intro">
+        Manage approved suppliers across Colombia and Florida locations. Filter,
+        register, update rates, and change status without leaving this page.
+      </p>
+    </header>
+
+    <main class="layout">
+      <section class="panel" aria-labelledby="filters-heading">
+        <h2 id="filters-heading">Filters</h2>
+        <div class="filter-bar">
+          <div class="field">
+            <label for="filter-country">Country</label>
+            <select id="filter-country" name="filter-country">
+              <option value="">All</option>
+              <option value="Colombia">Colombia</option>
+              <option value="USA">USA</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="filter-category">Category</label>
+            <select id="filter-category" name="filter-category">
+              <option value="">All</option>
+              <option value="meat">Meat</option>
+              <option value="vegetables_and_greens">Vegetables and greens</option>
+              <option value="sauces_and_seasonings">Sauces and seasonings</option>
+              <option value="beverages">Beverages</option>
+              <option value="packaging">Packaging</option>
+              <option value="cleaning_products">Cleaning products</option>
+              <option value="dairy">Dairy</option>
+              <option value="charcoal_and_fuel">Charcoal and fuel</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <div id="error-alert" class="error-banner" role="alert" aria-live="assertive" hidden></div>
+      <div id="status-message" class="status-banner" role="status" aria-live="polite" hidden></div>
+
+      <section class="panel" aria-labelledby="suppliers-heading">
+        <div class="section-header">
+          <h2 id="suppliers-heading">Suppliers</h2>
+          <p id="supplier-count" class="meta-text">Loading suppliers…</p>
+        </div>
+        <div class="table-wrap">
+          <table id="suppliers-table">
+            <thead>
+              <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Country</th>
+                <th scope="col">Categories</th>
+                <th scope="col">Rate</th>
+                <th scope="col">Status</th>
+                <th scope="col">Contact</th>
+                <th scope="col">Rate updated</th>
+                <th scope="col">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="suppliers-body"></tbody>
+          </table>
+        </div>
+        <p id="empty-state" class="empty-state" hidden>No suppliers match the current filters.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="register-heading">
+        <h2 id="register-heading">Register Supplier</h2>
+        <form id="register-form" class="register-form">
+          <div class="form-grid">
+            <div class="field">
+              <label for="register-name">Name</label>
+              <input id="register-name" name="name" type="text" required />
+            </div>
+            <div class="field">
+              <label for="register-country">Country</label>
+              <select id="register-country" name="country" required>
+                <option value="Colombia">Colombia</option>
+                <option value="USA">USA</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="register-rate">Rate per unit</label>
+              <input
+                id="register-rate"
+                name="rate_per_unit"
+                type="number"
+                min="0.01"
+                step="0.01"
+                required
+              />
+            </div>
+            <div class="field">
+              <label for="register-currency">Currency</label>
+              <select id="register-currency" name="currency" required>
+                <option value="COP">COP</option>
+                <option value="USD">USD</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="register-status">Status</label>
+              <select id="register-status" name="status" required>
+                <option value="active">Active</option>
+                <option value="suspended">Suspended</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="register-email">Contact email</label>
+              <input id="register-email" name="contact_email" type="email" />
+            </div>
+          </div>
+
+          <fieldset class="categories-fieldset">
+            <legend>Categories (select at least one)</legend>
+            <div class="checkbox-grid">
+              <label><input type="checkbox" name="categories" value="meat" /> Meat</label>
+              <label
+                ><input
+                  type="checkbox"
+                  name="categories"
+                  value="vegetables_and_greens"
+                />
+                Vegetables and greens</label
+              >
+              <label
+                ><input
+                  type="checkbox"
+                  name="categories"
+                  value="sauces_and_seasonings"
+                />
+                Sauces and seasonings</label
+              >
+              <label><input type="checkbox" name="categories" value="beverages" /> Beverages</label>
+              <label><input type="checkbox" name="categories" value="packaging" /> Packaging</label>
+              <label
+                ><input type="checkbox" name="categories" value="cleaning_products" />
+                Cleaning products</label
+              >
+              <label><input type="checkbox" name="categories" value="dairy" /> Dairy</label>
+              <label
+                ><input type="checkbox" name="categories" value="charcoal_and_fuel" />
+                Charcoal and fuel</label
+              >
+            </div>
+          </fieldset>
+
+          <div class="field">
+            <label for="register-notes">Notes</label>
+            <textarea id="register-notes" name="notes" rows="3"></textarea>
+          </div>
+
+          <button type="submit" class="btn-primary">Register supplier</button>
+        </form>
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any
 
 from supplier_directory.constants import VALID_STATUSES
 from supplier_directory.repository import (

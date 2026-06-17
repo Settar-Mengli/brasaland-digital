@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import Response
+from fastapi.responses import FileResponse, Response
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from supplier_directory import (
@@ -18,9 +20,9 @@ from supplier_directory import (
 )
 from supplier_directory.types import SupplierInput, SupplierRecord
 
-app = FastAPI(title="Brasaland Supplier Directory")
+STATIC_DIR = Path(__file__).parent / "static"
 
-# Phase 4: mount StaticFiles and serve index.html at GET /
+app = FastAPI(title="Brasaland Supplier Directory")
 
 
 class SupplierCreate(BaseModel):
@@ -142,3 +144,11 @@ def remove_supplier(supplier_id: int) -> Response:
     if not delete_supplier(supplier_id):
         raise HTTPException(status_code=404, detail="Supplier not found")
     return Response(status_code=204)
+
+
+@app.get("/")
+async def read_index() -> FileResponse:
+    return FileResponse(STATIC_DIR / "index.html")
+
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
