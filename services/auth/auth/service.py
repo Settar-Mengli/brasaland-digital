@@ -66,7 +66,18 @@ def list_all_users() -> list[UserRecord]:
 
 
 def update_user(user_id: int, fields: dict[str, Any]) -> UserRecord:
-    user = update_user_record(user_id, fields)
+    update_fields = dict(fields)
+
+    if "email" in update_fields:
+        normalized_email = _normalize_email(str(update_fields["email"]))
+        existing = get_user_by_email(normalized_email)
+        if existing is not None and existing["id"] != user_id:
+            raise EmailAlreadyExistsError(
+                f"Email already registered: {normalized_email}"
+            )
+        update_fields["email"] = normalized_email
+
+    user = update_user_record(user_id, update_fields)
     if user is None:
         raise UserNotFoundError(f"User not found: {user_id}")
     return user
