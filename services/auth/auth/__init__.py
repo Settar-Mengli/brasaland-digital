@@ -1,3 +1,4 @@
+from auth.email_sender import send_password_reset_email
 from auth.security import (
     TokenError,
     create_access_token,
@@ -38,6 +39,7 @@ __all__ = [
     "register_user",
     "request_password_reset",
     "reset_password",
+    "send_password_reset_email",
     "update_user",
     "verify_password",
 ]
