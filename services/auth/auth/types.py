@@ -10,6 +10,8 @@ class UserRecord(TypedDict):
     is_active: bool
     is_admin: bool
     created_at: str
+    reset_token_hash: str | None
+    reset_token_expires: str | None
 
 
 class EmailAlreadyExistsError(Exception):
@@ -18,3 +20,7 @@ class EmailAlreadyExistsError(Exception):
 
 class UserNotFoundError(Exception):
     """Raised when a user id does not exist."""
+
+
+class InvalidResetTokenError(Exception):
+    """Raised when a password-reset token is invalid, expired, or already used."""

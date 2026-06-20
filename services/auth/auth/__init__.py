@@ -11,12 +11,20 @@ from auth.service import (
     get_user,
     list_all_users,
     register_user,
+    request_password_reset,
+    reset_password,
     update_user,
 )
-from auth.types import EmailAlreadyExistsError, UserNotFoundError, UserRecord
+from auth.types import (
+    EmailAlreadyExistsError,
+    InvalidResetTokenError,
+    UserNotFoundError,
+    UserRecord,
+)
 
 __all__ = [
     "EmailAlreadyExistsError",
+    "InvalidResetTokenError",
     "TokenError",
     "UserNotFoundError",
     "UserRecord",
@@ -28,6 +36,8 @@ __all__ = [
     "hash_password",
     "list_all_users",
     "register_user",
+    "request_password_reset",
+    "reset_password",
     "update_user",
     "verify_password",
 ]
