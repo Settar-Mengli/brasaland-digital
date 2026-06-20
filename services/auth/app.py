@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Response, status
+from fastapi.responses import FileResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr, Field
 
 from auth.email_sender import send_password_reset_email
@@ -22,6 +25,8 @@ from auth.service import (
 from auth.types import EmailAlreadyExistsError, InvalidResetTokenError, UserNotFoundError, UserRecord
 
 logger = logging.getLogger(__name__)
+
+STATIC_DIR = Path(__file__).parent / "static"
 
 app = FastAPI(title="Brasaland Auth Service")
 
@@ -252,3 +257,21 @@ def delete_user_by_id(
     except UserNotFoundError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@app.get("/")
+async def read_index() -> FileResponse:
+    return FileResponse(STATIC_DIR / "index.html")
+
+
+@app.get("/forgot-password")
+async def read_forgot_password() -> FileResponse:
+    return FileResponse(STATIC_DIR / "forgot-password.html")
+
+
+@app.get("/reset-password")
+async def read_reset_password() -> FileResponse:
+    return FileResponse(STATIC_DIR / "reset-password.html")
+
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
