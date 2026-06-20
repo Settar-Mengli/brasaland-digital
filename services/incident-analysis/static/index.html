@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Brasaland — Incident Report Analysis</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <p class="eyebrow">Brasaland Operations</p>
+      <h1>Incident Report Analysis</h1>
+      <p class="intro">
+        Upload an operational incidents CSV to validate records and review summary
+        metrics before the morning operations meeting.
+      </p>
+    </header>
+
+    <main class="layout">
+      <section class="panel" aria-labelledby="upload-heading">
+        <h2 id="upload-heading">Upload CSV</h2>
+
+        <div
+          id="drop-zone"
+          class="drop-zone"
+          tabindex="0"
+          role="button"
+          aria-label="Upload incidents CSV by drag and drop or click to browse"
+        >
+          <input
+            id="csv-file"
+            type="file"
+            accept=".csv"
+            aria-label="Incidents CSV file"
+          />
+          <p class="drop-title">Drag and drop your CSV here</p>
+          <p class="drop-subtitle">or click to choose a file</p>
+          <p id="selected-file" class="selected-file" aria-live="polite"></p>
+        </div>
+
+        <button id="analyze-btn" type="button" class="btn-primary" disabled>
+          Analyze
+        </button>
+      </section>
+
+      <div id="error-alert" class="error-banner" role="alert" hidden></div>
+      <div id="loading" class="loading" role="status" hidden>Analyzing CSV…</div>
+
+      <section
+        id="summary"
+        class="panel summary-panel"
+        aria-labelledby="summary-heading"
+        hidden
+      >
+        <h2 id="summary-heading">Analysis Summary</h2>
+
+        <div class="totals-grid" id="totals-grid"></div>
+
+        <div class="tables-grid">
+          <div>
+            <h3>Breakdown by Category</h3>
+            <table id="category-table">
+              <thead>
+                <tr>
+                  <th scope="col">Category</th>
+                  <th scope="col">Count</th>
+                  <th scope="col">Share</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <div>
+            <h3>Breakdown by Status</h3>
+            <table id="status-table">
+              <thead>
+                <tr>
+                  <th scope="col">Status</th>
+                  <th scope="col">Count</th>
+                  <th scope="col">Share</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <section aria-labelledby="satisfaction-heading">
+          <h3 id="satisfaction-heading">Satisfaction Index (Closed Cases)</h3>
+          <div id="satisfaction-section"></div>
+        </section>
+
+        <section aria-labelledby="invalid-heading">
+          <h3 id="invalid-heading">Invalid Records</h3>
+          <ul id="invalid-records" class="invalid-list"></ul>
+        </section>
+
+        <button id="download-btn" type="button" class="btn-secondary" disabled>
+          Download CSV Summary
+        </button>
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

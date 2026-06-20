@@ -129,23 +129,45 @@ Milestone 4 complete — both Vercel deployments live, PR merged, README updated
 None.
 
 ## Next Step
-Milestone 4 is complete. Submit PR link to 4Geeks campus.
+All merged into main. PR #1, #2, #3 complete. Next: feature/auth (JWT authentication + route protection) off main.
 
 ## Backend Architecture Proposal — Progress
 
-### Status (Complete / In Progress / Not Started)
+### Status
 Complete
 
-### Files Changed This Session
-
+### Files Changed
 | File | Action |
 |---|---|
 | docs/ARCHITECTURE_PROPOSAL.md | Created |
 | memory-bank/PLANNING.md | Created |
 | memory-bank/progress.md | Modified |
 
-### Last Completed Step
+### Summary
 Created the backend architecture proposal document and recorded the planning and progress updates for this assignment.
 
-### Next Step
-Review the proposal deliverable and provide push approval after commit review.
+## Incident Analysis — Progress
+
+**Status:** Complete (merged into milestone-4 → main).
+
+**Scope:** Brasaland incident file analyzer — one shared Python core (CSV validation + metrics) reused by an `analyze.py` CLI, a FastAPI backend, and a served static frontend. Golden fixture: 96 valid / 4 invalid / 3.46 avg.
+
+**Verification:** `pytest` in `services/incident-analysis/` → 18 passed.
+
+## Supplier Directory — Progress
+
+**Status:** Complete (merged into milestone-4 → main).
+
+**Scope:** Brasaland supplier directory — FastAPI + TinyDB + Pydantic core, served static frontend, seed CLI.
+
+**Files touched (high level):**
+
+| Area | Files |
+| --- | --- |
+| Core | `supplier_directory/` (constants, types, validator, db, repository, service, seed_data) |
+| Entry points | `app.py`, `seed.py` |
+| Frontend | `static/index.html`, `static/app.js`, `static/styles.css` |
+| Tests | `tests/test_validator.py`, `tests/test_golden_seed.py`, `tests/test_api.py`, `tests/conftest.py` |
+| Docs | `README.md`, `CONTEXT-brasaland.md` (spec — authoritative) |
+
+**Verification:** `pytest` in `services/supplier-directory/` → 40 passed.

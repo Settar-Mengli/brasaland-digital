@@ -1,0 +1,251 @@
+:root {
+  --ember: #c24a2b;
+  --charcoal: #1c1c1c;
+  --cream: #f5efe6;
+  --ivory: #fafaf8;
+  --success: #27ae60;
+  --error: #e74c3c;
+  --border: rgba(28, 28, 28, 0.12);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Inter", system-ui, sans-serif;
+  color: var(--charcoal);
+  background: var(--ivory);
+  line-height: 1.5;
+}
+
+.site-header {
+  background: linear-gradient(135deg, var(--charcoal) 0%, #2a211d 100%);
+  color: var(--cream);
+  padding: 2.5rem 1.5rem 2rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(245, 239, 230, 0.75);
+}
+
+.site-header h1 {
+  margin: 0 0 0.75rem;
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 700;
+}
+
+.intro {
+  margin: 0;
+  max-width: 42rem;
+  color: rgba(245, 239, 230, 0.9);
+}
+
+.layout {
+  max-width: 56rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.panel {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  box-shadow: 0 8px 24px rgba(28, 28, 28, 0.06);
+}
+
+.panel h2,
+.panel h3 {
+  margin-top: 0;
+  font-family: "Playfair Display", Georgia, serif;
+  color: var(--charcoal);
+}
+
+.drop-zone {
+  position: relative;
+  border: 2px dashed rgba(194, 74, 43, 0.45);
+  border-radius: 0.75rem;
+  background: var(--cream);
+  padding: 2rem 1rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.drop-zone:focus-visible {
+  outline: 3px solid var(--ember);
+  outline-offset: 2px;
+}
+
+.drop-zone.is-dragover {
+  border-color: var(--ember);
+  background: rgba(194, 74, 43, 0.08);
+}
+
+.drop-zone input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.drop-title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.drop-subtitle {
+  margin: 0.35rem 0 0;
+  color: rgba(28, 28, 28, 0.65);
+}
+
+.selected-file {
+  margin: 1rem 0 0;
+  font-size: 0.95rem;
+  color: var(--ember);
+  font-weight: 500;
+}
+
+.btn-primary,
+.btn-secondary {
+  margin-top: 1rem;
+  border: none;
+  border-radius: 999px;
+  padding: 0.75rem 1.5rem;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.btn-primary {
+  background: var(--ember);
+  color: #fff;
+}
+
+.btn-secondary {
+  background: var(--charcoal);
+  color: #fff;
+}
+
+.btn-primary:disabled,
+.btn-secondary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-primary:not(:disabled):hover,
+.btn-secondary:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.error-banner {
+  background: rgba(231, 76, 60, 0.12);
+  border: 1px solid rgba(231, 76, 60, 0.35);
+  color: #922b21;
+  border-radius: 0.75rem;
+  padding: 0.875rem 1rem;
+}
+
+.loading {
+  color: rgba(28, 28, 28, 0.75);
+  font-weight: 500;
+}
+
+.totals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.total-card {
+  background: var(--cream);
+  border-radius: 0.65rem;
+  padding: 1rem;
+}
+
+.total-card span {
+  display: block;
+  font-size: 0.85rem;
+  color: rgba(28, 28, 28, 0.65);
+}
+
+.total-card strong {
+  font-size: 1.75rem;
+  color: var(--ember);
+}
+
+.tables-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .tables-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+th,
+td {
+  padding: 0.65rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+th {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(28, 28, 28, 0.65);
+}
+
+.invalid-list {
+  list-style: none;
+  margin: 0 0 1.5rem;
+  padding: 0;
+}
+
+.invalid-list li {
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.invalid-list strong {
+  color: var(--ember);
+}
+
+.score-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+}
+
+.score-list li {
+  padding: 0.35rem 0;
+}
+
+.satisfaction-meta {
+  margin: 0.5rem 0 0;
+}
