@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import hashlib
+import hmac
+import os
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from auth.repository import (
@@ -11,8 +14,21 @@ from auth.repository import (
     list_users,
     update_user as update_user_record,
 )
-from auth.security import hash_password, verify_password
-from auth.types import EmailAlreadyExistsError, UserNotFoundError, UserRecord
+from auth.security import (
+    TokenError,
+    create_access_token,
+    decode_access_token,
+    hash_password,
+    verify_password,
+)
+from auth.types import (
+    EmailAlreadyExistsError,
+    InvalidResetTokenError,
+    UserNotFoundError,
+    UserRecord,
+)
+
+PASSWORD_RESET_TOKEN_TYPE = "password_reset"
 
 
 def _utc_now_iso() -> str:
@@ -21,6 +37,82 @@ def _utc_now_iso() -> str:
 
 def _normalize_email(email: str) -> str:
     return email.strip().lower()
+
+
+def _reset_token_expire_minutes() -> int:
+    return int(os.environ.get("RESET_TOKEN_EXPIRE_MINUTES", "30"))
+
+
+def _hash_reset_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def _user_id_from_token_payload(payload: dict[str, Any]) -> int | None:
+    if "user_id" in payload:
+        return int(payload["user_id"])
+    subject = payload.get("sub")
+    if subject is None:
+        return None
+    return int(subject)
+
+
+def request_password_reset(email: str) -> str | None:
+    user = get_user_by_email(_normalize_email(email))
+    if user is None:
+        return None
+
+    minutes = _reset_token_expire_minutes()
+    expire_at = datetime.now(timezone.utc) + timedelta(minutes=minutes)
+    token = create_access_token(
+        {
+            "sub": str(user["id"]),
+            "user_id": user["id"],
+            "type": PASSWORD_RESET_TOKEN_TYPE,
+        },
+        expires_minutes=minutes,
+    )
+
+    update_user_record(
+        user["id"],
+        {
+            "reset_token_hash": _hash_reset_token(token),
+            "reset_token_expires": expire_at.isoformat(),
+        },
+    )
+    return token
+
+
+def reset_password(token: str, new_password: str) -> None:
+    try:
+        payload = decode_access_token(token)
+    except TokenError:
+        raise
+
+    if payload.get("type") != PASSWORD_RESET_TOKEN_TYPE:
+        raise InvalidResetTokenError("Invalid password-reset token")
+
+    user_id = _user_id_from_token_payload(payload)
+    if user_id is None:
+        raise InvalidResetTokenError("Invalid password-reset token")
+
+    user = get_user_by_id(user_id)
+    if user is None:
+        raise InvalidResetTokenError("Invalid password-reset token")
+
+    stored_hash = user.get("reset_token_hash")
+    if stored_hash is None or not hmac.compare_digest(
+        _hash_reset_token(token), stored_hash
+    ):
+        raise InvalidResetTokenError("Invalid password-reset token")
+
+    update_user_record(
+        user_id,
+        {
+            "hashed_password": hash_password(new_password),
+            "reset_token_hash": None,
+            "reset_token_expires": None,
+        },
+    )
 
 
 def register_user(

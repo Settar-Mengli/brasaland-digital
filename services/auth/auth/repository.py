@@ -34,6 +34,8 @@ def create_user(record: dict[str, Any]) -> UserRecord:
         "is_active": bool(record["is_active"]),
         "is_admin": bool(record["is_admin"]),
         "created_at": record["created_at"],
+        "reset_token_hash": record.get("reset_token_hash"),
+        "reset_token_expires": record.get("reset_token_expires"),
     }
     table.insert(stored)
     return stored

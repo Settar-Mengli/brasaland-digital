@@ -27,3 +27,4 @@ def jwt_settings(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("JWT_SECRET_KEY", "test-secret-key-for-pytest-only")
     monkeypatch.setenv("JWT_ALGORITHM", "HS256")
     monkeypatch.setenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")
+    monkeypatch.setenv("RESET_TOKEN_EXPIRE_MINUTES", "30")

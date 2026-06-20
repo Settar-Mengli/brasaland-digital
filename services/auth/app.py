@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import logging
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Response, status
+from fastapi.responses import FileResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr, Field
 
+from auth.email_sender import send_password_reset_email
 from auth.security import TokenError, create_access_token, decode_access_token, hash_password
 from auth.service import (
     authenticate_user,
@@ -13,13 +18,21 @@ from auth.service import (
     get_user,
     list_all_users,
     register_user,
+    request_password_reset,
+    reset_password,
     update_user,
 )
-from auth.types import EmailAlreadyExistsError, UserNotFoundError, UserRecord
+from auth.types import EmailAlreadyExistsError, InvalidResetTokenError, UserNotFoundError, UserRecord
+
+logger = logging.getLogger(__name__)
+
+STATIC_DIR = Path(__file__).parent / "static"
 
 app = FastAPI(title="Brasaland Auth Service")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+
+FORGOT_PASSWORD_MESSAGE = "If that email is registered, a reset link has been sent."
 
 
 class UserRegister(BaseModel):
@@ -43,6 +56,19 @@ class UserResponse(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(min_length=8)
+
+
+class MessageResponse(BaseModel):
+    message: str
 
 
 def _to_response(user: UserRecord, requester: UserRecord) -> UserResponse:
@@ -133,6 +159,29 @@ def auth_login(
     return _issue_token(user)
 
 
+@app.post("/auth/forgot-password", response_model=MessageResponse)
+def auth_forgot_password(body: ForgotPasswordRequest) -> MessageResponse:
+    token = request_password_reset(str(body.email))
+    if token is not None:
+        try:
+            send_password_reset_email(str(body.email), token)
+        except Exception:
+            logger.exception("Failed to send password reset email")
+    return MessageResponse(message=FORGOT_PASSWORD_MESSAGE)
+
+
+@app.post("/auth/reset-password", response_model=MessageResponse)
+def auth_reset_password(body: ResetPasswordRequest) -> MessageResponse:
+    try:
+        reset_password(body.token, body.new_password)
+    except (InvalidResetTokenError, TokenError) as error:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid or expired reset token",
+        ) from error
+    return MessageResponse(message="Password has been reset. You can now log in.")
+
+
 @app.get("/auth/me", response_model=UserResponse)
 def auth_me(current_user: Annotated[UserRecord, Depends(get_current_user)]) -> UserResponse:
     return _to_response(current_user, current_user)
@@ -208,3 +257,21 @@ def delete_user_by_id(
     except UserNotFoundError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@app.get("/")
+async def read_index() -> FileResponse:
+    return FileResponse(STATIC_DIR / "index.html")
+
+
+@app.get("/forgot-password")
+async def read_forgot_password() -> FileResponse:
+    return FileResponse(STATIC_DIR / "forgot-password.html")
+
+
+@app.get("/reset-password")
+async def read_reset_password() -> FileResponse:
+    return FileResponse(STATIC_DIR / "reset-password.html")
+
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

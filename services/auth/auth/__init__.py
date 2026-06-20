@@ -1,3 +1,4 @@
+from auth.email_sender import send_password_reset_email
 from auth.security import (
     TokenError,
     create_access_token,
@@ -11,12 +12,20 @@ from auth.service import (
     get_user,
     list_all_users,
     register_user,
+    request_password_reset,
+    reset_password,
     update_user,
 )
-from auth.types import EmailAlreadyExistsError, UserNotFoundError, UserRecord
+from auth.types import (
+    EmailAlreadyExistsError,
+    InvalidResetTokenError,
+    UserNotFoundError,
+    UserRecord,
+)
 
 __all__ = [
     "EmailAlreadyExistsError",
+    "InvalidResetTokenError",
     "TokenError",
     "UserNotFoundError",
     "UserRecord",
@@ -28,6 +37,9 @@ __all__ = [
     "hash_password",
     "list_all_users",
     "register_user",
+    "request_password_reset",
+    "reset_password",
+    "send_password_reset_email",
     "update_user",
     "verify_password",
 ]
