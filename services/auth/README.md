@@ -17,7 +17,8 @@ services/auth/
 │   ├── types.py                 # UserRecord, domain exceptions
 │   ├── db.py                    # Lazy TinyDB singleton (see Ops notes)
 │   ├── repository.py            # User CRUD + id assignment
-│   └── service.py               # Register, authenticate, list/update/delete users
+│   ├── service.py               # Register, authenticate, password reset orchestration
+│   └── email_sender.py          # Resend wrapper for reset emails
 ├── app.py                       # FastAPI routes + get_current_user
 ├── static/                      # Password-reset web UI (HTML, CSS)
 │   ├── index.html
@@ -46,13 +47,27 @@ Copy the example environment file and set a real secret:
 copy .env.example .env
 ```
 
-Generate a strong `JWT_SECRET_KEY` and paste it into `.env`:
+Requires **Python 3.11+**.
+
+### Environment variables
+
+Copy from [`.env.example`](.env.example) and set real values locally in `.env` (gitignored). Never commit secrets.
+
+| Variable | Purpose | Default / placeholder |
+| --- | --- | --- |
+| `JWT_SECRET_KEY` | Signs access and reset JWTs | `replace-with-a-long-random-secret` in example |
+| `JWT_ALGORITHM` | JWT algorithm | `HS256` |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Login/register token TTL | `30` |
+| `RESET_TOKEN_EXPIRE_MINUTES` | Password-reset token TTL | `30` |
+| `RESEND_API_KEY` | [Resend](https://resend.com) API key for reset emails | `replace-with-your-resend-api-key` in example |
+| `RESET_EMAIL_FROM` | Sender address for reset emails | `onboarding@resend.dev` (Resend sandbox) |
+| `RESET_LINK_BASE_URL` | Base URL for links in email (no trailing slash) | `http://127.0.0.1:8002` |
+
+Generate a strong `JWT_SECRET_KEY`:
 
 ```powershell
 python -c "import secrets; print(secrets.token_hex(32))"
 ```
-
-Requires **Python 3.11+**. Optional variables in `.env.example`: `JWT_ALGORITHM` (default `HS256`), `ACCESS_TOKEN_EXPIRE_MINUTES` (default `30`).
 
 Start the server:
 
@@ -69,16 +84,37 @@ Password-reset pages (public):
 
 Static assets are served at `/static/`.
 
-**Login page note:** This service has no `/login` HTML page yet (authentication is via **POST /auth/login** or Swagger). The spec’s “Forgot your password?” link belongs on a future frontend login screen (M-future); until then, **`/forgot-password`** is the user-facing entry point for password reset. The reset UI includes “Back to sign in” links to `/login` for when that page exists elsewhere in the monorepo.
+**“Forgot password?” link:** This service has no `/login` HTML page yet (authentication is via **POST /auth/login** or Swagger). The product spec’s “Forgot your password?” link belongs on a **future frontend login page** (M-future). Until then, **`/forgot-password`** is the user-facing entry point. The reset UI includes “Back to sign in” links to `/login` for when that page exists elsewhere in the monorepo.
 
 For login in Swagger, use **POST /auth/login** with `username` = email and `password` = password (`OAuth2PasswordRequestForm`).
+
+## Web pages (public)
+
+| Path | Description |
+| --- | --- |
+| `/` | Index with links for manual testing |
+| `/forgot-password` | Form — POSTs to `/auth/forgot-password` |
+| `/reset-password?token=…` | Form — reads token from query string, POSTs to `/auth/reset-password` |
+
+## Password reset flow
+
+1. User submits email on **`/forgot-password`** (or **POST /auth/forgot-password**).
+2. **`request_password_reset`** looks up the normalized email. If missing, returns `None` (no error — enumeration protection).
+3. If found, a short-lived JWT is created with `type: "password_reset"`, expiry from **`RESET_TOKEN_EXPIRE_MINUTES`**, and a **SHA-256 digest** of the raw token is stored on the user (`reset_token_hash`); the plaintext token is never persisted.
+4. **`send_password_reset_email`** (Resend) sends a link: `{RESET_LINK_BASE_URL}/reset-password?token=…` with plain-text and HTML bodies.
+5. **POST /auth/forgot-password** always returns the **same** `200` message whether the email exists, and even if Resend fails (errors are logged server-side only).
+6. User opens the link, sets a new password on **`/reset-password`**, which calls **POST /auth/reset-password**.
+7. **`reset_password`** verifies JWT signature/expiry, checks `type == "password_reset"`, compares SHA-256 digest (single-use), updates `hashed_password`, and **clears** `reset_token_hash` / `reset_token_expires`.
+8. Reusing, tampering, or using a login token → **400** “Invalid or expired reset token”.
+
+Passwords remain **bcrypt**-hashed; only reset **tokens** use SHA-256 for storage comparison (full JWT length, no bcrypt 72-byte truncation).
 
 ## API endpoints
 
 | Method | Path | Auth | Success | Error responses | Description |
 | --- | --- | --- | --- | --- | --- |
-| `POST` | `/auth/forgot-password` | Public | `200` + message | — | Request reset link (same response whether email exists) |
-| `POST` | `/auth/reset-password` | Public | `200` + message | `400` invalid/expired token | Complete reset with token from email |
+| `POST` | `/auth/forgot-password` | Public | `200` + message (always) | `422` validation | Request reset link; **enumeration-safe** — identical response whether email exists; email sent only when registered |
+| `POST` | `/auth/reset-password` | Public | `200` + message | `400` invalid/expired/used token, `422` validation | Set new password with token from email; **single-use** |
 | `POST` | `/auth/register` | Public | `201` + token | `400` duplicate email, `422` validation | Sign up; returns JWT so the new user is logged in immediately |
 | `POST` | `/auth/login` | Public | `200` + token | `401` invalid credentials | Log in with email (`username`) and password |
 | `GET` | `/auth/me` | Protected | `200` + user JSON | `401` missing/invalid/expired token | Current user profile (email always shown for self) |
@@ -88,7 +124,7 @@ For login in Swagger, use **POST /auth/login** with `username` = email and `pass
 | `PUT` | `/users/{id}` | Protected | `200` + user JSON | `400` duplicate email, `401`, `403` not owner/admin, `404` | Update email and/or password (only self or admin) |
 | `DELETE` | `/users/{id}` | Protected | `204` empty body | `401`, `403` not owner/admin, `404` | Delete user (only self or admin) |
 
-**Status code guide:** **401** — no token, invalid token, expired token, inactive user, or failed login. **403** — authenticated but not allowed to modify/delete another user. **400** — email already registered. **404** — user id not found.
+**Status code guide:** **401** — no token, invalid token, expired token, inactive user, or failed login. **403** — authenticated but not allowed to modify/delete another user. **400** — duplicate email, or invalid/expired/used reset token. **404** — user id not found.
 
 ## Privacy and security
 
@@ -105,9 +141,11 @@ From `services/auth/` with the venv active:
 pytest
 ```
 
-**35 tests** cover password hashing, JWT round-trip and tamper/expiry rejection, user service orchestration, email sender, password-reset API routes, and existing FastAPI routes via `TestClient`.
+**35 tests** cover password hashing, JWT round-trip and tamper/expiry rejection, user service orchestration, email sender, password-reset service/API routes, and existing FastAPI routes via `TestClient`.
 
-**Manual smoke check:** register with **POST /auth/register** (`email` + `password` min 8 chars), copy `access_token` from the response, open **/docs**, click **Authorize**, paste the token, then call **GET /auth/me** — expect **200** with your email. Call **GET /auth/me** again without authorizing — expect **401**.
+**Manual smoke check (auth):** register with **POST /auth/register** (`email` + `password` min 8 chars), copy `access_token` from the response, open **/docs**, click **Authorize**, paste the token, then call **GET /auth/me** — expect **200** with your email. Call **GET /auth/me** again without authorizing — expect **401**.
+
+**Manual smoke check (password reset):** open **/forgot-password**, submit a registered email, confirm the generic confirmation message; use the link from email (or capture token in dev) at **/reset-password?token=…**, set a new password, then **POST /auth/login** with the new password.
 
 ## Ops notes
 
