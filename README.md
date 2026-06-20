@@ -55,7 +55,8 @@ brasaland-digital/
 │   └── backoffice/              # M4 — Operations dashboard with M2 integration (port 3003)
 ├── services/
 │   ├── incident-analysis/       # Python incident-analysis utility (CLI, FastAPI, web UI)
-│   └── supplier-directory/      # Python supplier directory (FastAPI, TinyDB, web UI)
+│   ├── supplier-directory/      # Python supplier directory (FastAPI, TinyDB, web UI)
+│   └── auth/                    # Python JWT authentication service (FastAPI, TinyDB)
 ├── memory-bank/                 # Agent context files (projectbrief, techContext, progress)
 ├── .agents/                     # Agent rules and skills
 ├── docs/
