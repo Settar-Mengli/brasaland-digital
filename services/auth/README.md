@@ -147,6 +147,20 @@ pytest
 
 **Manual smoke check (password reset):** open **/forgot-password**, submit a registered email, confirm the generic confirmation message; use the link from email (or capture token in dev) at **/reset-password?token=…**, set a new password, then **POST /auth/login** with the new password.
 
+## Password reset — review evidence
+
+A live end-to-end test was performed: a real reset email was delivered via Resend to a real inbox, and the new password was set successfully through the `/reset-password` page.
+
+![Reset email received via Resend](https://github.com/Settar-Mengli/brasaland-digital/blob/main/docs/screenshots/password-reset-email-received.png?raw=true)
+
+_Reset email received via Resend_
+
+![New password set successfully via /reset-password](https://github.com/Settar-Mengli/brasaland-digital/blob/main/docs/screenshots/password-reset-success.png?raw=true)
+
+_New password set successfully via /reset-password_
+
+The reset token shown in the email URL is single-use and already consumed/expired — not a live credential.
+
 ## Ops notes
 
 - **Port:** **8002** (incident-analysis uses 8000, supplier-directory uses 8001).
