@@ -53,8 +53,11 @@ brasaland-digital/
 ├── uis/
 │   ├── website/                 # M4 — Next.js rebuild of public website (port 3002)
 │   └── backoffice/              # M4 — Operations dashboard with M2 integration (port 3003)
+├── packages/
+│   └── shared/                  # Shared Python core (brasaland_shared — validation, lifecycle)
 ├── services/
 │   ├── incident-analysis/       # Python incident-analysis utility (CLI, FastAPI, web UI)
+│   ├── incident-manager/        # Centralized incident manager (FastAPI, TinyDB, web UI)
 │   ├── supplier-directory/      # Python supplier directory (FastAPI, TinyDB, web UI)
 │   └── auth/                    # Python JWT authentication service (FastAPI, TinyDB)
 ├── memory-bank/                 # Agent context files (projectbrief, techContext, progress)
