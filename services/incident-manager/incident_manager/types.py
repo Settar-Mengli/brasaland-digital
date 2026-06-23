@@ -29,6 +29,23 @@ class IncidentSeedInput(TypedDict):
     updated_at: str
 
 
+class IncidentCreateInput(TypedDict, total=False):
+    title: str
+    description: str
+    category: str
+    status: str
+    origin: str
+    branch: str
+
+
+class IncidentSummary(TypedDict):
+    total: int
+    by_status: dict[str, int]
+    by_category: dict[str, int]
+    by_origin: dict[str, int]
+    by_branch: dict[str, int]
+
+
 @dataclass(frozen=True)
 class RejectedSeedRow:
     source_incident_id: str
