@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Brasaland — Incident Manager</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <p class="eyebrow">Brasaland Operations</p>
+      <h1>Centralized Incident Manager</h1>
+      <p class="intro">
+        Register operational incidents, track status across locations, and review
+        chain-wide metrics from one page.
+      </p>
+    </header>
+
+    <main class="layout">
+      <section class="panel" aria-labelledby="register-heading">
+        <h2 id="register-heading">Register Incident</h2>
+        <form id="register-form" class="register-form" novalidate>
+          <div class="form-grid">
+            <div class="field">
+              <label for="register-title">Title</label>
+              <input id="register-title" name="title" type="text" required />
+              <span class="field-error" id="error-title" hidden></span>
+            </div>
+            <div class="field">
+              <label for="register-category">Category</label>
+              <select id="register-category" name="category" required>
+                <option value="">Select category</option>
+                <option value="QUEJA_CLIENTE">Customer Complaint</option>
+                <option value="EQUIPAMIENTO">Equipment</option>
+                <option value="ABASTECIMIENTO">Supply</option>
+                <option value="CALIDAD_ALIMENTO">Food Quality</option>
+                <option value="PERSONAL">Staff</option>
+              </select>
+              <span class="field-error" id="error-category" hidden></span>
+            </div>
+            <div class="field">
+              <label for="register-status">Status</label>
+              <select id="register-status" name="status" required>
+                <option value="open" selected>open</option>
+                <option value="in_progress">in_progress</option>
+                <option value="resolved">resolved</option>
+                <option value="discarded">discarded</option>
+              </select>
+              <span class="field-error" id="error-status" hidden></span>
+            </div>
+            <div class="field">
+              <label for="register-origin">Origin</label>
+              <select id="register-origin" name="origin" required>
+                <option value="customer">customer</option>
+                <option value="branch">branch</option>
+                <option value="internal">internal</option>
+              </select>
+              <span class="field-error" id="error-origin" hidden></span>
+            </div>
+            <div class="field" id="register-branch-field">
+              <label for="register-branch">Branch</label>
+              <select id="register-branch" name="branch" required>
+                <option value="">Select branch</option>
+                <option value="Central">Central</option>
+                <option value="COL-01">COL-01</option>
+                <option value="COL-02">COL-02</option>
+                <option value="COL-03">COL-03</option>
+                <option value="COL-04">COL-04</option>
+                <option value="COL-05">COL-05</option>
+                <option value="COL-06">COL-06</option>
+                <option value="COL-07">COL-07</option>
+                <option value="COL-08">COL-08</option>
+                <option value="COL-09">COL-09</option>
+                <option value="COL-10">COL-10</option>
+                <option value="FLA-01">FLA-01</option>
+                <option value="FLA-02">FLA-02</option>
+                <option value="FLA-03">FLA-03</option>
+                <option value="FLA-04">FLA-04</option>
+              </select>
+              <p id="branch-helper" class="field-helper" hidden>
+                Reporting from a specific location — choose the branch where this
+                incident occurred.
+              </p>
+              <span class="field-error" id="error-branch" hidden></span>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="register-description">Description</label>
+            <textarea
+              id="register-description"
+              name="description"
+              rows="4"
+              required
+            ></textarea>
+            <span class="field-error" id="error-description" hidden></span>
+          </div>
+
+          <div
+            id="register-error"
+            class="error-banner panel-banner"
+            role="alert"
+            aria-live="assertive"
+            hidden
+          ></div>
+          <div
+            id="register-success"
+            class="status-banner panel-banner"
+            role="status"
+            aria-live="polite"
+            hidden
+          ></div>
+
+          <button type="submit" id="register-submit" class="btn-primary">
+            Register incident
+          </button>
+        </form>
+      </section>
+
+      <section class="panel" aria-labelledby="incidents-heading">
+        <div class="section-header">
+          <h2 id="incidents-heading">Incident List</h2>
+          <p id="incident-count" class="meta-text" role="status">Loading incidents…</p>
+        </div>
+
+        <div class="filter-bar">
+          <div class="field">
+            <label for="filter-status">Status</label>
+            <select id="filter-status" name="filter-status">
+              <option value="">All</option>
+              <option value="open">open</option>
+              <option value="in_progress">in_progress</option>
+              <option value="resolved">resolved</option>
+              <option value="discarded">discarded</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="filter-origin">Origin</label>
+            <select id="filter-origin" name="filter-origin">
+              <option value="">All</option>
+              <option value="customer">customer</option>
+              <option value="branch">branch</option>
+              <option value="internal">internal</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="filter-branch">Branch</label>
+            <select id="filter-branch" name="filter-branch">
+              <option value="">All</option>
+              <option value="Central">Central</option>
+              <option value="COL-01">COL-01</option>
+              <option value="COL-02">COL-02</option>
+              <option value="COL-03">COL-03</option>
+              <option value="COL-04">COL-04</option>
+              <option value="COL-05">COL-05</option>
+              <option value="COL-06">COL-06</option>
+              <option value="COL-07">COL-07</option>
+              <option value="COL-08">COL-08</option>
+              <option value="COL-09">COL-09</option>
+              <option value="COL-10">COL-10</option>
+              <option value="FLA-01">FLA-01</option>
+              <option value="FLA-02">FLA-02</option>
+              <option value="FLA-03">FLA-03</option>
+              <option value="FLA-04">FLA-04</option>
+            </select>
+          </div>
+        </div>
+
+        <div
+          id="list-error"
+          class="error-banner panel-banner"
+          role="alert"
+          aria-live="assertive"
+          hidden
+        >
+          <span id="list-error-message"></span>
+          <button type="button" id="list-retry" class="btn-secondary">Retry</button>
+        </div>
+
+        <div class="incident-table-wrap">
+          <table class="incident-table" aria-labelledby="incidents-heading">
+            <thead>
+              <tr>
+                <th scope="col">Title</th>
+                <th scope="col">Category</th>
+                <th scope="col">Branch</th>
+                <th scope="col">Origin</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody id="incidents-body"></tbody>
+          </table>
+        </div>
+        <p id="list-empty-state" class="empty-state" hidden>
+          No incidents match the current filters.
+        </p>
+        <div id="list-pagination" class="list-pagination" hidden>
+          <button type="button" id="list-prev" class="btn-secondary">Previous</button>
+          <span id="list-page-info" class="meta-text" role="status"></span>
+          <button type="button" id="list-next" class="btn-secondary">Next</button>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="summary-heading">
+        <div class="section-header">
+          <h2 id="summary-heading">Summary</h2>
+          <p id="summary-status" class="meta-text" role="status">Loading summary…</p>
+        </div>
+
+        <div
+          id="summary-error"
+          class="error-banner panel-banner"
+          role="alert"
+          aria-live="assertive"
+          hidden
+        >
+          <span id="summary-error-message"></span>
+          <button type="button" id="summary-retry" class="btn-secondary">Retry</button>
+        </div>
+
+        <div id="summary-content" class="summary-grid" hidden>
+          <div class="summary-card">
+            <h3>Total incidents</h3>
+            <p id="summary-total" class="summary-value">0</p>
+          </div>
+          <div class="summary-card">
+            <h3>By status</h3>
+            <ul id="summary-by-status" class="summary-list"></ul>
+          </div>
+          <div class="summary-card">
+            <h3>By category</h3>
+            <ul id="summary-by-category" class="summary-list"></ul>
+          </div>
+          <div class="summary-card">
+            <h3>By origin</h3>
+            <ul id="summary-by-origin" class="summary-list"></ul>
+          </div>
+          <div class="summary-card">
+            <h3>By branch</h3>
+            <ul id="summary-by-branch" class="summary-list"></ul>
+          </div>
+        </div>
+
+        <p id="summary-empty-state" class="empty-state" hidden>
+          No incident data yet. Summary metrics will appear after incidents are
+          registered.
+        </p>
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

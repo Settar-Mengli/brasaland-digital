@@ -4,6 +4,7 @@ import csv
 from datetime import datetime, timezone
 from pathlib import Path
 
+from incident_manager.translations import SPANISH_TO_ENGLISH
 from incident_manager.types import IncidentSeedInput
 
 _CSV_STATUS_TO_INCIDENT_STATUS: dict[str, str] = {
@@ -18,9 +19,23 @@ def csv_date_to_iso_midnight_utc(date_value: str) -> str:
     return parsed.replace(tzinfo=timezone.utc).isoformat()
 
 
+def translate_description(raw_description: str) -> str:
+    stripped = raw_description.strip()
+    if not stripped:
+        return ""
+
+    try:
+        return SPANISH_TO_ENGLISH[stripped]
+    except KeyError as error:
+        raise ValueError(
+            f"Untranslated incident description: {stripped!r}"
+        ) from error
+
+
 def map_csv_row(row: dict[str, str]) -> IncidentSeedInput:
     incident_id = row["incident_id"].strip()
-    description = row["description"].strip()
+    raw_description = row["description"].strip()
+    description = translate_description(raw_description)
     mapped_status = _CSV_STATUS_TO_INCIDENT_STATUS.get(row["status"].strip(), row["status"].strip())
     timestamp = csv_date_to_iso_midnight_utc(row["date"])
 

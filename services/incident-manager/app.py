@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from incident_manager.service import (
@@ -17,6 +19,8 @@ from incident_manager.service import (
 from incident_manager.types import IncidentRecord
 
 logger = logging.getLogger(__name__)
+
+STATIC_DIR = Path(__file__).parent / "static"
 
 app = FastAPI(title="Brasaland Incident Manager")
 
@@ -171,3 +175,11 @@ def patch_incident_status_route(
     if transition_message is not None:
         raise HTTPException(status_code=400, detail=transition_message)
     return _to_response(record)
+
+
+@app.get("/")
+async def read_index() -> FileResponse:
+    return FileResponse(STATIC_DIR / "index.html")
+
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
