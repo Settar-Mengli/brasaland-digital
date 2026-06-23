@@ -42,7 +42,7 @@ def load_incidents_from_csv(
     if isinstance(source, (str, Path)):
         path = Path(source)
         if not path.exists():
-            raise FileNotFoundError(f"CSV file not found: {path}")
+            raise FileNotFoundError("CSV file not found")
         with path.open(encoding="utf-8", newline="") as handle:
             return _read_csv(handle)
 

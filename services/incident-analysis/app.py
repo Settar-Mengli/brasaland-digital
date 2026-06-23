@@ -77,6 +77,11 @@ async def analyze_incidents(
         raise _map_analysis_error(error) from error
     except UnicodeDecodeError as error:
         raise _map_analysis_error(error) from error
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail="Analysis failed",
+        ) from error
 
     _last_analysis = result
     return _serialize_result(result)

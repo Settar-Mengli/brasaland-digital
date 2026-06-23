@@ -16,6 +16,20 @@ import type {
   UpdateCandidateStatusStageInput,
 } from '@/lib/api';
 
+function mapApiError(err: unknown): string {
+  if (err instanceof ApiError) {
+    if (err.kind === 'business') {
+      return err.message;
+    }
+    if (err.kind === 'schema') {
+      const entries = err.details as SchemaErrorEntry[] | undefined;
+      return entries?.[0]?.msg ?? 'Validation failed.';
+    }
+    return 'Network error. Please try again.';
+  }
+  return 'An unexpected error occurred.';
+}
+
 /** Result returned to the Client Component after a status/stage update. */
 export interface UpdateCandidateActionResult {
   success: boolean;
@@ -63,23 +77,12 @@ export async function updateCandidateAction(
 
   try {
     await updateCandidateStatusStage(candidateId, cleanPatch);
-    revalidatePath(`/candidates/${candidateId}`);
-    revalidatePath('/');
-    return { success: true };
   } catch (err) {
-    if (err instanceof ApiError) {
-      if (err.kind === 'business') {
-        return { success: false, error: err.message };
-      }
-      if (err.kind === 'schema') {
-        const entries = err.details as SchemaErrorEntry[] | undefined;
-        const firstMsg = entries?.[0]?.msg ?? 'Validation failed.';
-        return { success: false, error: firstMsg };
-      }
-      return { success: false, error: 'Network error. Please try again.' };
-    }
-    return { success: false, error: 'An unexpected error occurred.' };
+    return { success: false, error: mapApiError(err) };
   }
+  revalidatePath(`/candidates/${candidateId}`);
+  revalidatePath('/');
+  return { success: true };
 }
 
 /** Result returned to the Client Component after a note mutation. */
@@ -109,23 +112,12 @@ export async function createNoteAction(
 
   try {
     await createNote(candidateId, trimmed);
-    revalidatePath(`/candidates/${candidateId}`);
-    revalidatePath('/');
-    return { success: true };
   } catch (err) {
-    if (err instanceof ApiError) {
-      if (err.kind === 'business') {
-        return { success: false, error: err.message };
-      }
-      if (err.kind === 'schema') {
-        const entries = err.details as SchemaErrorEntry[] | undefined;
-        const firstMsg = entries?.[0]?.msg ?? 'Validation failed.';
-        return { success: false, error: firstMsg };
-      }
-      return { success: false, error: 'Network error. Please try again.' };
-    }
-    return { success: false, error: 'An unexpected error occurred.' };
+    return { success: false, error: mapApiError(err) };
   }
+  revalidatePath(`/candidates/${candidateId}`);
+  revalidatePath('/');
+  return { success: true };
 }
 
 /**
@@ -140,21 +132,10 @@ export async function deleteNoteAction(
 ): Promise<NoteActionResult> {
   try {
     await deleteNote(candidateId, noteId);
-    revalidatePath(`/candidates/${candidateId}`);
-    revalidatePath('/');
-    return { success: true };
   } catch (err) {
-    if (err instanceof ApiError) {
-      if (err.kind === 'business') {
-        return { success: false, error: err.message };
-      }
-      if (err.kind === 'schema') {
-        const entries = err.details as SchemaErrorEntry[] | undefined;
-        const firstMsg = entries?.[0]?.msg ?? 'Validation failed.';
-        return { success: false, error: firstMsg };
-      }
-      return { success: false, error: 'Network error. Please try again.' };
-    }
-    return { success: false, error: 'An unexpected error occurred.' };
+    return { success: false, error: mapApiError(err) };
   }
+  revalidatePath(`/candidates/${candidateId}`);
+  revalidatePath('/');
+  return { success: true };
 }

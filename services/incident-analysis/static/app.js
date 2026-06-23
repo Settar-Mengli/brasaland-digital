@@ -62,6 +62,32 @@ function clearError() {
   errorAlert.textContent = "";
 }
 
+function renderErrorDetail(detail) {
+  if (typeof detail === "string") {
+    return detail;
+  }
+
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => {
+        if (typeof item === "string") {
+          return item;
+        }
+        if (item && typeof item === "object" && typeof item.msg === "string") {
+          return item.msg;
+        }
+        return "Request failed.";
+      })
+      .join(" ");
+  }
+
+  if (detail && typeof detail === "object" && typeof detail.msg === "string") {
+    return detail.msg;
+  }
+
+  return "Request failed.";
+}
+
 function setLoading(isLoading) {
   loadingIndicator.hidden = !isLoading;
   analyzeButton.disabled = isLoading || !selectedFile;
@@ -177,7 +203,9 @@ async function analyzeFile() {
     const payload = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      showError(payload.detail || "Analysis failed. Please try again.");
+      showError(
+        renderErrorDetail(payload.detail) || "Analysis failed. Please try again.",
+      );
       return;
     }
 
@@ -189,8 +217,34 @@ async function analyzeFile() {
   }
 }
 
-function handleDownload() {
-  window.location.href = "/api/incidents/results/export";
+async function handleDownload() {
+  clearError();
+
+  try {
+    const response = await fetch("/api/incidents/results/export");
+
+    if (!response.ok) {
+      let message = "No analysis available yet. Run an analysis first.";
+      try {
+        const payload = await response.json();
+        message = renderErrorDetail(payload.detail) || message;
+      } catch {
+        // response body not JSON
+      }
+      showError(message);
+      return;
+    }
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = "incident-summary.csv";
+    link.click();
+    URL.revokeObjectURL(objectUrl);
+  } catch {
+    showError("Unable to download the export. Please try again.");
+  }
 }
 
 dropZone.addEventListener("dragover", (event) => {

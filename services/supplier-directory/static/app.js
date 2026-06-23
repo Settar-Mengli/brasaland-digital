@@ -366,40 +366,48 @@ function renderSupplierItem(supplier) {
     const newRate = Number(input.value);
 
     clearError();
-    const response = await fetch(`/suppliers/${supplier.id}/rate`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ rate_per_unit: newRate }),
-    });
+    try {
+      const response = await fetch(`/suppliers/${supplier.id}/rate`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rate_per_unit: newRate }),
+      });
 
-    if (!response.ok) {
-      showError(await readErrorMessage(response));
-      return;
+      if (!response.ok) {
+        showError(await readErrorMessage(response));
+        return;
+      }
+
+      const updated = await response.json();
+      updateSupplierRow(updated);
+      showStatus(`Rate updated for ${updated.name}.`);
+    } catch {
+      showError("Unable to reach the supplier directory. Please try again.");
     }
-
-    const updated = await response.json();
-    updateSupplierRow(updated);
-    showStatus(`Rate updated for ${updated.name}.`);
   });
 
   toggleButton.addEventListener("click", async () => {
     clearError();
     const nextStatus = toggleButton.dataset.nextStatus;
 
-    const response = await fetch(`/suppliers/${supplier.id}/status`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: nextStatus }),
-    });
+    try {
+      const response = await fetch(`/suppliers/${supplier.id}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: nextStatus }),
+      });
 
-    if (!response.ok) {
-      showError(await readErrorMessage(response));
-      return;
+      if (!response.ok) {
+        showError(await readErrorMessage(response));
+        return;
+      }
+
+      const updated = await response.json();
+      updateSupplierRow(updated);
+      showStatus(`${updated.name} is now ${updated.status}.`);
+    } catch {
+      showError("Unable to reach the supplier directory. Please try again.");
     }
-
-    const updated = await response.json();
-    updateSupplierRow(updated);
-    showStatus(`${updated.name} is now ${updated.status}.`);
   });
 
   return item;
@@ -436,6 +444,12 @@ function renderSuppliers(suppliers) {
   }
 }
 
+function resetSuppliersLoadFailure() {
+  suppliersList.replaceChildren();
+  emptyState.hidden = true;
+  supplierCount.textContent = "Unable to load suppliers";
+}
+
 async function loadSuppliers(country = "", category = "") {
   clearError();
   supplierCount.textContent = "Loading suppliers…";
@@ -449,18 +463,22 @@ async function loadSuppliers(country = "", category = "") {
   }
 
   const url = params.toString() ? `/suppliers?${params.toString()}` : "/suppliers";
-  const response = await fetch(url);
 
-  if (!response.ok) {
-    showError(await readErrorMessage(response));
-    suppliersList.replaceChildren();
-    emptyState.hidden = true;
-    supplierCount.textContent = "Unable to load suppliers";
-    return;
+  try {
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      showError(await readErrorMessage(response));
+      resetSuppliersLoadFailure();
+      return;
+    }
+
+    const suppliers = await response.json();
+    renderSuppliers(suppliers);
+  } catch {
+    showError("Unable to reach the supplier directory. Please try again.");
+    resetSuppliersLoadFailure();
   }
-
-  const suppliers = await response.json();
-  renderSuppliers(suppliers);
 }
 
 filterCountry.addEventListener("change", () => {
@@ -491,25 +509,29 @@ registerForm.addEventListener("submit", async (event) => {
     notes: String(formData.get("notes") || "").trim() || null,
   };
 
-  const response = await fetch("/suppliers", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  try {
+    const response = await fetch("/suppliers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
 
-  if (!response.ok) {
-    showError(await readErrorMessage(response));
-    return;
+    if (!response.ok) {
+      showError(await readErrorMessage(response));
+      return;
+    }
+
+    registerForm.reset();
+    syncRegisterCurrency();
+    registerCountry.value = "Colombia";
+    registerCurrency.value = "COP";
+    registerForm.querySelector('[name="status"]').value = "active";
+
+    showStatus("Supplier registered successfully.");
+    await loadSuppliers(filterCountry.value, filterCategory.value);
+  } catch {
+    showError("Unable to reach the supplier directory. Please try again.");
   }
-
-  registerForm.reset();
-  syncRegisterCurrency();
-  registerCountry.value = "Colombia";
-  registerCurrency.value = "COP";
-  registerForm.querySelector('[name="status"]').value = "active";
-
-  showStatus("Supplier registered successfully.");
-  await loadSuppliers(filterCountry.value, filterCategory.value);
 });
 
 syncRegisterCurrency();

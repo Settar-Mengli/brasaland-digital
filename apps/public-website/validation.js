@@ -350,16 +350,30 @@
 
   /** Wire up all event listeners. */
   function init() {
-    const form = getEl('brasa-points-form');
+    const form = document.getElementById('brasa-points-form');
+    const country = document.getElementById('country');
+    const city = document.getElementById('city');
+    if (!form || !country || !city) {
+      console.error('Brasa Points form: required elements missing; validation not initialized.');
+      return;
+    }
     form.addEventListener('submit', onSubmit);
     form.addEventListener('reset', onReset);
-    getEl('country').addEventListener('change', onCountryChange);
-    getEl('city').addEventListener('change', onCityChange);
+    country.addEventListener('change', onCountryChange);
+    city.addEventListener('change', onCityChange);
+  }
+
+  function boot() {
+    try {
+      init();
+    } catch (error) {
+      console.error('Brasa Points form: initialization failed.', error);
+    }
   }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', boot);
   } else {
-    init();
+    boot();
   }
 })();
