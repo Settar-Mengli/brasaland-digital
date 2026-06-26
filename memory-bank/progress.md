@@ -203,3 +203,19 @@ Created the backend architecture proposal document and recorded the planning and
 | Config / docs | `.env.example`, `README.md`, `TESTING.md` |
 
 **Verification:** `uv run pytest` in `services/auth/` → 64 passed; coverage gate met.
+
+## Auth verify-only package — Progress
+
+**Status:** Complete (branch `feature/auth-verify-package`).
+
+**Scope:** Extracted a verify-only RS256 JWT helper into `packages/auth-verify/` (`brasaland_auth_verify.verify_token`). `services/auth/auth/security.py` delegates `decode_access_token` to the package; signing and password hashing remain in auth. No route, field, or error-format changes.
+
+**Files touched (high level):**
+
+| Area | Files |
+| --- | --- |
+| Package | `packages/auth-verify/` (pyproject.toml, `brasaland_auth_verify/`, tests) |
+| Auth wiring | `services/auth/pyproject.toml`, `uv.lock`, `requirements.txt`, `auth/security.py` |
+| Docs | `packages/auth-verify/README.md`, `services/auth/README.md`, root `README.md` |
+
+**Verification:** `uv run pytest` in `packages/auth-verify/` → 5 passed; `uv run pytest` in `services/auth/` → 64 passed.

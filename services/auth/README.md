@@ -4,16 +4,16 @@ JWT authentication and route protection service for the Brasaland backend.
 
 ## Architecture
 
-The project follows **one pure security core, reused everywhere**. Hashing, JWT signing, and verification live in `auth/security.py` with no FastAPI and no database—so the same functions can be imported by future services (for example inventory or M5) without pulling in HTTP or storage code. TinyDB persistence sits in `auth/db.py` and `auth/repository.py`. `auth/service.py` orchestrates registration and authentication: emails are normalized to lowercase before storage, passwords are hashed before they ever reach the repository, and duplicate-email rules run in the service layer. `app.py` is a thin FastAPI layer—Pydantic request/response models, route handlers, and the `get_current_user` guard.
+The project follows **one pure security core, reused everywhere**. Hashing and JWT signing live in `auth/security.py`; JWT **verification** is delegated to the shared [`brasaland-auth-verify`](../../packages/auth-verify/) package (public key only). Neither layer imports FastAPI or a database—so the same functions can be imported by future services without pulling in HTTP or storage code. TinyDB persistence sits in `auth/db.py` and `auth/repository.py`. `auth/service.py` orchestrates registration and authentication: emails are normalized to lowercase before storage, passwords are hashed before they ever reach the repository, and duplicate-email rules run in the service layer. `app.py` is a thin FastAPI layer—Pydantic request/response models, route handlers, and the `get_current_user` guard.
 
 **Design principle:** one security core, layered storage and orchestration, thin HTTP boundary.
 
-Passwords are hashed with **bcrypt** via **passlib** and **never** stored in plain text. Access tokens are signed with a secret loaded from `.env` and verified on every protected request.
+Passwords are hashed with **bcrypt** via **passlib** and **never** stored in plain text. Access tokens are signed with RS256 (private key from `.env`) and verified on every protected request via `brasaland-auth-verify`.
 
 ```
 services/auth/
 ├── auth/                        # Shared core package
-│   ├── security.py              # bcrypt hashing + JWT create/decode (pure functions)
+│   ├── security.py              # bcrypt hashing + JWT sign; decode delegates to brasaland-auth-verify
 │   ├── types.py                 # UserRecord, domain exceptions
 │   ├── db.py                    # Lazy TinyDB singleton (see Ops notes)
 │   ├── repository.py            # User CRUD + id assignment
