@@ -109,7 +109,7 @@ For login in Swagger, use **POST /auth/login** with `username` = email and `pass
 4. **`send_password_reset_email`** (Resend) sends a link: `{RESET_LINK_BASE_URL}/reset-password?token=…` with plain-text and HTML bodies.
 5. **POST /auth/forgot-password** always returns the **same** `200` message whether the email exists, and even if Resend fails (errors are logged server-side only).
 6. User opens the link, sets a new password on **`/reset-password`**, which calls **POST /auth/reset-password**.
-7. **`reset_password`** verifies JWT signature/expiry, checks `type == "password_reset"`, compares SHA-256 digest (single-use), updates `hashed_password`, and **clears** `reset_token_hash` / `reset_token_expires`.
+7. **`reset_password`** verifies JWT signature/expiry, checks `type == "password_reset"`, compares SHA-256 digest (single-use), updates `hashed_password`, **clears** `reset_token_hash` / `reset_token_expires`, and **revokes all refresh tokens** for that user.
 8. Reusing, tampering, or using a login token → **400** “Invalid or expired reset token”.
 
 Passwords remain **bcrypt**-hashed; only reset **tokens** use SHA-256 for storage comparison (full JWT length, no bcrypt 72-byte truncation).
@@ -123,7 +123,7 @@ Login and register return **two** RS256 JWTs:
 | `access_token` | `ACCESS_TOKEN_EXPIRE_MINUTES` (default 30 min) | Bearer header for protected routes | Stateless |
 | `refresh_token` | `REFRESH_TOKEN_EXPIRE_MINUTES` (default 7 days) | **POST /auth/refresh** to obtain a new pair | SHA-256 hash in TinyDB `refresh_tokens` table (stateful, revocable) |
 
-Refresh tokens carry `type: "refresh"` and cannot be used as Bearer access tokens. Access tokens cannot be exchanged at `/auth/refresh`. Each refresh **rotates** the refresh token (old one is revoked). **POST /auth/logout** revokes the presented refresh token (idempotent `204`).
+Refresh tokens carry `type: "refresh"` and cannot be used as Bearer access tokens. Password-reset tokens carry `type: "password_reset"` and are likewise rejected as Bearer tokens. Only access tokens (no `type` claim) authenticate protected routes. Access tokens cannot be exchanged at `/auth/refresh`. Each refresh **rotates** the refresh token (old one is revoked). **POST /auth/logout** revokes the presented refresh token (idempotent `204`).
 
 ## API endpoints
 
@@ -159,7 +159,7 @@ From `services/auth/`:
 uv run pytest
 ```
 
-**82 tests** cover password hashing, JWT round-trip and tamper/expiry rejection, refresh-token sessions (service + API), user service orchestration, email sender, password-reset service/API routes, and existing FastAPI routes via `TestClient`. Coverage gate **70%** on the `auth/` package. See [TESTING.md](TESTING.md) for the full architecture, isolation strategy, and per-file test catalog.
+**84 tests** cover password hashing, JWT round-trip and tamper/expiry rejection, refresh-token sessions (service + API), user service orchestration, email sender, password-reset service/API routes, and existing FastAPI routes via `TestClient`. Coverage gate **70%** on the `auth/` package. See [TESTING.md](TESTING.md) for the full architecture, isolation strategy, and per-file test catalog.
 
 **Manual smoke check (auth):** register with **POST /auth/register** (`email` + `password` min 8 chars), copy `access_token` from the response, open **/docs**, click **Authorize**, paste the token, then call **GET /auth/me** — expect **200** with your email. Call **GET /auth/me** again without authorizing — expect **401**.
 
