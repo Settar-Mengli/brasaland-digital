@@ -56,16 +56,16 @@ def test_decode_access_token_rejects_expired_token() -> None:
         decode_access_token(token)
 
 
-def test_create_access_token_requires_jwt_secret_key(
+def test_create_access_token_requires_jwt_private_key(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.delenv("JWT_SECRET_KEY", raising=False)
+    monkeypatch.delenv("JWT_PRIVATE_KEY", raising=False)
 
-    with pytest.raises(ValueError, match="JWT_SECRET_KEY"):
+    with pytest.raises(ValueError, match="JWT_PRIVATE_KEY"):
         create_access_token({"user_id": 1})
 
 
-def test_jwt_algorithm_defaults_to_hs256(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_jwt_algorithm_defaults_to_rs256(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("JWT_ALGORITHM", raising=False)
     token = create_access_token({"user_id": 5})
     decoded = decode_access_token(token)

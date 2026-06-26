@@ -18,15 +18,22 @@ class TokenError(Exception):
     """Raised when a JWT cannot be decoded or validated."""
 
 
-def _require_jwt_secret_key() -> str:
-    secret = os.environ.get("JWT_SECRET_KEY")
-    if not secret:
-        raise ValueError("JWT_SECRET_KEY environment variable is required")
-    return secret
+def _require_jwt_private_key() -> str:
+    key = os.environ.get("JWT_PRIVATE_KEY")
+    if not key:
+        raise ValueError("JWT_PRIVATE_KEY environment variable is required")
+    return key
+
+
+def _require_jwt_public_key() -> str:
+    key = os.environ.get("JWT_PUBLIC_KEY")
+    if not key:
+        raise ValueError("JWT_PUBLIC_KEY environment variable is required")
+    return key
 
 
 def _jwt_algorithm() -> str:
-    return os.environ.get("JWT_ALGORITHM", "HS256")
+    return os.environ.get("JWT_ALGORITHM", "RS256")
 
 
 def _default_expire_minutes() -> int:
@@ -47,14 +54,14 @@ def create_access_token(data: dict, expires_minutes: int | None = None) -> str:
     minutes = _default_expire_minutes() if expires_minutes is None else expires_minutes
     expire_at = datetime.now(timezone.utc) + timedelta(minutes=minutes)
     payload["exp"] = int(expire_at.timestamp())
-    return jwt.encode(payload, _require_jwt_secret_key(), algorithm=_jwt_algorithm())
+    return jwt.encode(payload, _require_jwt_private_key(), algorithm=_jwt_algorithm())
 
 
 def decode_access_token(token: str) -> dict:
     try:
         return jwt.decode(
             token,
-            _require_jwt_secret_key(),
+            _require_jwt_public_key(),
             algorithms=[_jwt_algorithm()],
         )
     except JWTError as error:
