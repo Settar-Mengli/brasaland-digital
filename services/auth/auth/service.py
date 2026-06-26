@@ -267,7 +267,7 @@ def resolve_active_user(token: str) -> UserRecord | None:
     except TokenError:
         return None
 
-    if payload.get("type") == REFRESH_TOKEN_TYPE:
+    if payload.get("type") is not None:
         return None
 
     user_id = _user_id_from_token_payload(payload)
