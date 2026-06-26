@@ -11,6 +11,8 @@ from auth.service import (
     issue_refresh_token,
     issue_token_pair,
     register_user,
+    request_password_reset,
+    reset_password,
     resolve_active_user,
     revoke_refresh_token,
     rotate_refresh_token,
@@ -117,3 +119,17 @@ def test_rotate_refresh_token_rejects_tampered_token() -> None:
 
     with pytest.raises((InvalidRefreshTokenError, TokenError)):
         rotate_refresh_token(tampered_token)
+
+
+def test_password_reset_revokes_refresh_tokens() -> None:
+    email = "reset-revokes-refresh@brasaland.com"
+    user = register_user(email, "old-password1")
+    _, refresh_token = issue_token_pair(user)
+
+    reset_token = request_password_reset(email)
+    assert reset_token is not None
+
+    reset_password(reset_token, "new-password1")
+
+    with pytest.raises(InvalidRefreshTokenError):
+        rotate_refresh_token(refresh_token)

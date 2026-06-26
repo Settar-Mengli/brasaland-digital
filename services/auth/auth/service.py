@@ -11,6 +11,7 @@ from auth.refresh_repository import (
     create_refresh_token as create_refresh_token_record,
     get_by_hash as get_refresh_token_by_hash,
     revoke as revoke_refresh_token_record,
+    revoke_all_for_user,
 )
 from auth.repository import (
     create_user,
@@ -136,6 +137,7 @@ def reset_password(token: str, new_password: str) -> None:
             "reset_token_expires": None,
         },
     )
+    revoke_all_for_user(user_id)
 
 
 def register_user(
