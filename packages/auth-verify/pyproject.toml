@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "brasaland-auth-verify"
+version = "0.1.0"
+description = "Verify-only RS256 JWT validation for Brasaland Python services."
+requires-python = ">=3.11"
+dependencies = [
+    "python-jose[cryptography]==3.3.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==8.3.5",
+    "cryptography>=49.0.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["brasaland_auth_verify*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

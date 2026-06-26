@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "JWT authentication and password reset service for Brasaland."
 requires-python = ">=3.11"
 dependencies = [
+    "brasaland-auth-verify",
     "fastapi==0.115.12",
     "uvicorn[standard]==0.34.3",
     "tinydb==4.8.2",
@@ -26,6 +27,9 @@ dev = [
 
 [tool.uv]
 package = false
+
+[tool.uv.sources]
+brasaland-auth-verify = { path = "../../packages/auth-verify", editable = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

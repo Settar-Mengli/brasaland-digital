@@ -54,7 +54,8 @@ brasaland-digital/
 │   ├── website/                 # M4 — Next.js rebuild of public website (port 3002)
 │   └── backoffice/              # M4 — Operations dashboard with M2 integration (port 3003)
 ├── packages/
-│   └── shared/                  # Shared Python core (brasaland_shared — validation, lifecycle)
+│   ├── shared/                  # Shared Python core (brasaland_shared — validation, lifecycle)
+│   └── auth-verify/             # Verify-only RS256 JWT package (brasaland_auth_verify)
 ├── services/
 │   ├── incident-analysis/       # Python incident-analysis utility (CLI, FastAPI, web UI)
 │   ├── incident-manager/        # Centralized incident manager (FastAPI, TinyDB, web UI)
