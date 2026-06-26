@@ -52,28 +52,29 @@ Password-reset email delivery is never sent to Resend in tests. API tests monkey
 
 | Setting          | Value                                                                             |
 | ---------------- | --------------------------------------------------------------------------------- |
-| Measured package | `auth/` only (`security`, `service`, `repository`, `db`, `email_sender`, `types`) |
+| Measured package | `auth/` only (`security`, `service`, `repository`, `refresh_repository`, `db`, `email_sender`, `types`) |
 | `app.py`         | Exercised by TestClient tests but **not** included in the coverage denominator    |
 | Threshold        | `fail_under = 70`                                                                 |
-| Current total    | **100%** (232/232 statements)                                                     |
+| Current total    | **~97%** (343/355 statements)                                                     |
 
 Per-file coverage (last run):
 
-| Module                 | Coverage |
-| ---------------------- | -------- |
-| `auth/__init__.py`     | 100%     |
-| `auth/db.py`           | 100%     |
-| `auth/email_sender.py` | 100%     |
-| `auth/repository.py`   | 100%     |
-| `auth/security.py`     | 100%     |
-| `auth/service.py`      | 100%     |
-| `auth/types.py`        | 100%     |
+| Module                      | Coverage |
+| --------------------------- | -------- |
+| `auth/__init__.py`          | 100%     |
+| `auth/db.py`                | 100%     |
+| `auth/email_sender.py`      | 100%     |
+| `auth/refresh_repository.py`| 95%      |
+| `auth/repository.py`        | 100%     |
+| `auth/security.py`          | 100%     |
+| `auth/service.py`           | 94%      |
+| `auth/types.py`             | 100%     |
 
 Regenerate the report with `uv run pytest`.
 
 ## Test catalog
 
-**64 tests** across 8 files.
+**84 tests** across 9 files.
 
 ### `tests/test_security.py` (8)
 
@@ -118,7 +119,16 @@ Regenerate the report with `uv run pytest`.
 - Builds Resend payload and reset link correctly.
 - Missing `RESEND_API_KEY`, `RESET_EMAIL_FROM`, or `RESET_LINK_BASE_URL` raises `RuntimeError`.
 
-### `tests/test_api.py` (17)
+### `tests/test_refresh_service.py` (12)
+
+- `issue_refresh_token` stores a hashed record; `issue_token_pair` returns distinct access and refresh tokens.
+- `rotate_refresh_token` issues a new pair and revokes the old; rejects reuse, expired, access, garbage, and tampered tokens.
+- `revoke_refresh_token` makes subsequent rotation fail.
+- `resolve_active_user` rejects refresh tokens and accepts access tokens.
+- Refresh token carries `type: "refresh"` claim.
+- Password reset revokes the user's refresh tokens (H4).
+
+### `tests/test_api.py` (25)
 
 - Register + `/auth/me`; 401 without or with invalid token.
 - Login success and wrong password.
@@ -129,6 +139,10 @@ Regenerate the report with `uv run pytest`.
 - Inactive user receives 401 on protected routes.
 - Empty PUT body returns current user unchanged.
 - Token with `sub`-only claim accepted by `/auth/me`.
+- `/auth/refresh` returns a new working access token and rotates the refresh token.
+- `/auth/refresh` rejects garbage and access tokens.
+- Refresh and password-reset tokens are rejected as Bearer access tokens (H1).
+- `/auth/logout` revokes the presented refresh token.
 - Static pages `/`, `/forgot-password`, `/reset-password` return HTML.
 
 ### `tests/test_reset_api.py` (6)

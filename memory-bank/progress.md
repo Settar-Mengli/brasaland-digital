@@ -268,3 +268,45 @@ Created the backend architecture proposal document and recorded the planning and
 | Docs | `services/auth/README.md`, `.env.example` |
 
 **Verification:** `uv run pytest` in `services/auth/` → 82 passed; coverage gate met.
+
+## Auth security fixes — Progress
+
+**Status:** Complete (branch `feature/auth-security-fixes`).
+
+**Scope:** Two behavior tightenings in `services/auth/` with no public contract change (routes, response shapes, status codes unchanged).
+
+| Fix | Change |
+| --- | --- |
+| H1 | `resolve_active_user` rejects any JWT with a `type` claim — password-reset and refresh tokens can no longer authenticate at `/auth/me` or `/users/*` |
+| H4 | `reset_password` calls `revoke_all_for_user` after a successful password change — existing refresh sessions are invalidated |
+
+**Files touched (high level):**
+
+| Area | Files |
+| --- | --- |
+| Service | `auth/service.py` |
+| Tests | `tests/test_api.py`, `tests/test_refresh_service.py` |
+| Docs | `services/auth/README.md`, `memory-bank/progress.md` |
+
+**Verification:** `uv run pytest` in `services/auth/` → 84 passed; coverage gate met.
+
+## Auth security fixes — Progress
+
+**Status:** Complete (branch `feature/auth-security-fixes`).
+
+**Scope:** Two behavior tightenings in `services/auth/` with no public contract change (routes, response shapes, status codes unchanged).
+
+| Fix | Change |
+| --- | --- |
+| H1 | `resolve_active_user` rejects any JWT with a `type` claim — password-reset and refresh tokens can no longer authenticate at `/auth/me` or `/users/*` |
+| H4 | `reset_password` calls `revoke_all_for_user` after a successful password change — existing refresh sessions are invalidated |
+
+**Files touched (high level):**
+
+| Area | Files |
+| --- | --- |
+| Service | `auth/service.py` |
+| Tests | `tests/test_api.py`, `tests/test_refresh_service.py` |
+| Docs | `services/auth/README.md`, `memory-bank/progress.md` |
+
+**Verification:** `uv run pytest` in `services/auth/` → 84 passed; coverage gate met.

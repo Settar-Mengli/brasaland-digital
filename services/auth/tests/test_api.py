@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 import app as app_module
 from auth.security import create_access_token
-from auth.service import update_user
+from auth.service import PASSWORD_RESET_TOKEN_TYPE, update_user
 
 
 @pytest.fixture
@@ -377,6 +377,26 @@ def test_refresh_token_rejected_as_bearer_access_token(client: TestClient) -> No
         "/auth/me",
         headers=_auth_header(token_payload["refresh_token"]),
     )
+    assert response.status_code == 401
+
+
+def test_password_reset_token_rejected_as_bearer_access_token(
+    client: TestClient,
+) -> None:
+    token_payload = _register(client, "reset-bearer-api@brasaland.com", "password123")
+    me = client.get(
+        "/auth/me",
+        headers=_auth_header(token_payload["access_token"]),
+    ).json()
+
+    reset_token = create_access_token(
+        {
+            "sub": str(me["id"]),
+            "user_id": me["id"],
+            "type": PASSWORD_RESET_TOKEN_TYPE,
+        },
+    )
+    response = client.get("/auth/me", headers=_auth_header(reset_token))
     assert response.status_code == 401
 
 
