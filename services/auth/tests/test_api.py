@@ -6,6 +6,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 import app as app_module
+from auth.security import create_access_token
+from auth.service import update_user
 
 
 @pytest.fixture
@@ -219,3 +221,90 @@ def test_hashed_password_never_appears_in_responses(client: TestClient) -> None:
     )
     assert created.status_code == 201
     _assert_no_hashed_password(created.json())
+
+
+def test_register_duplicate_email_returns_named_constant(client: TestClient) -> None:
+    _register(client, "dup@brasaland.com", "password123")
+
+    response = client.post(
+        "/auth/register",
+        json={"email": "dup@brasaland.com", "password": "password123"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == app_module.EMAIL_ALREADY_REGISTERED
+
+
+def test_read_missing_user_returns_named_constant(client: TestClient) -> None:
+    token_payload = _register(client, "reader@brasaland.com", "password123")
+    headers = _auth_header(token_payload["access_token"])
+
+    response = client.get("/users/9999", headers=headers)
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == app_module.USER_NOT_FOUND
+
+
+def test_delete_missing_user_returns_named_constant(client: TestClient) -> None:
+    from auth.service import register_user as register_user_service
+
+    admin = register_user_service(
+        "admin-delete@brasaland.com",
+        "password123",
+        is_admin=True,
+    )
+    admin_token = create_access_token(
+        {"sub": str(admin["id"]), "user_id": admin["id"]},
+    )
+    headers = _auth_header(admin_token)
+
+    response = client.delete("/users/9999", headers=headers)
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == app_module.USER_NOT_FOUND
+
+
+def test_inactive_user_cannot_access_protected_route(client: TestClient) -> None:
+    token_payload = _register(client, "inactive@brasaland.com", "password123")
+    headers = _auth_header(token_payload["access_token"])
+    me = client.get("/auth/me", headers=headers).json()
+
+    update_user(me["id"], {"is_active": False})
+
+    response = client.get("/auth/me", headers=headers)
+    assert response.status_code == 401
+
+
+def test_empty_update_returns_current_user_without_changes(
+    client: TestClient,
+) -> None:
+    token_payload = _register(client, "empty-update@brasaland.com", "password123")
+    headers = _auth_header(token_payload["access_token"])
+    me = client.get("/auth/me", headers=headers).json()
+
+    response = client.put(f"/users/{me['id']}", headers=headers, json={})
+
+    assert response.status_code == 200
+    assert response.json()["email"] == me["email"]
+    assert response.json()["is_active"] is True
+
+
+def test_me_accepts_token_with_sub_only_claim(client: TestClient) -> None:
+    token_payload = _register(client, "subonly@brasaland.com", "password123")
+    me = client.get(
+        "/auth/me",
+        headers=_auth_header(token_payload["access_token"]),
+    ).json()
+
+    sub_only_token = create_access_token({"sub": str(me["id"])})
+    response = client.get("/auth/me", headers=_auth_header(sub_only_token))
+
+    assert response.status_code == 200
+    assert response.json()["email"] == "subonly@brasaland.com"
+
+
+def test_static_pages_are_served(client: TestClient) -> None:
+    for path in ("/", "/forgot-password", "/reset-password"):
+        response = client.get(path)
+        assert response.status_code == 200
+        assert "text/html" in response.headers["content-type"]

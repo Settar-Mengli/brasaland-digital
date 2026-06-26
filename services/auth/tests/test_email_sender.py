@@ -61,3 +61,25 @@ def test_send_password_reset_email_missing_api_key_raises(
 
     with pytest.raises(RuntimeError, match="RESEND_API_KEY"):
         send_password_reset_email("user@brasaland.com", "unused-token")
+
+
+def test_send_password_reset_email_missing_from_raises(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("RESEND_API_KEY", "re_test_key")
+    monkeypatch.delenv("RESET_EMAIL_FROM", raising=False)
+    monkeypatch.setenv("RESET_LINK_BASE_URL", "http://127.0.0.1:8002")
+
+    with pytest.raises(RuntimeError, match="RESET_EMAIL_FROM"):
+        send_password_reset_email("user@brasaland.com", "unused-token")
+
+
+def test_send_password_reset_email_missing_link_base_raises(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("RESEND_API_KEY", "re_test_key")
+    monkeypatch.setenv("RESET_EMAIL_FROM", "onboarding@resend.dev")
+    monkeypatch.delenv("RESET_LINK_BASE_URL", raising=False)
+
+    with pytest.raises(RuntimeError, match="RESET_LINK_BASE_URL"):
+        send_password_reset_email("user@brasaland.com", "unused-token")
