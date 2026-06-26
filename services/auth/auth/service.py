@@ -3,9 +3,15 @@ from __future__ import annotations
 import hashlib
 import hmac
 import os
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from auth.refresh_repository import (
+    create_refresh_token as create_refresh_token_record,
+    get_by_hash as get_refresh_token_by_hash,
+    revoke as revoke_refresh_token_record,
+)
 from auth.repository import (
     create_user,
     delete_user as delete_user_record,
@@ -23,12 +29,14 @@ from auth.security import (
 )
 from auth.types import (
     EmailAlreadyExistsError,
+    InvalidRefreshTokenError,
     InvalidResetTokenError,
     UserNotFoundError,
     UserRecord,
 )
 
 PASSWORD_RESET_TOKEN_TYPE = "password_reset"
+REFRESH_TOKEN_TYPE = "refresh"
 
 
 def _utc_now_iso() -> str:
@@ -45,6 +53,21 @@ def _reset_token_expire_minutes() -> int:
 
 def _hash_reset_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
+
+
+def _hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def _refresh_token_expire_minutes() -> int:
+    return int(os.environ.get("REFRESH_TOKEN_EXPIRE_MINUTES", "10080"))
+
+
+def _refresh_token_expired(expires_at: str) -> bool:
+    expire_dt = datetime.fromisoformat(expires_at)
+    if expire_dt.tzinfo is None:
+        expire_dt = expire_dt.replace(tzinfo=timezone.utc)
+    return expire_dt <= datetime.now(timezone.utc)
 
 
 def _user_id_from_token_payload(payload: dict[str, Any]) -> int | None:
@@ -150,6 +173,81 @@ def issue_access_token(user: UserRecord) -> str:
     return create_access_token({"sub": str(user["id"]), "user_id": user["id"]})
 
 
+def issue_refresh_token(user: UserRecord, expires_minutes: int | None = None) -> str:
+    minutes = _refresh_token_expire_minutes() if expires_minutes is None else expires_minutes
+    expire_at = datetime.now(timezone.utc) + timedelta(minutes=minutes)
+    token = create_access_token(
+        {
+            "sub": str(user["id"]),
+            "user_id": user["id"],
+            "type": REFRESH_TOKEN_TYPE,
+            "jti": secrets.token_urlsafe(16),
+        },
+        expires_minutes=minutes,
+    )
+    create_refresh_token_record(
+        {
+            "user_id": user["id"],
+            "token_hash": _hash_token(token),
+            "expires_at": expire_at.isoformat(),
+            "revoked": False,
+            "created_at": _utc_now_iso(),
+        },
+    )
+    return token
+
+
+def issue_token_pair(user: UserRecord) -> tuple[str, str]:
+    return issue_access_token(user), issue_refresh_token(user)
+
+
+def rotate_refresh_token(token: str) -> tuple[str, str]:
+    try:
+        payload = decode_access_token(token)
+    except TokenError as error:
+        raise InvalidRefreshTokenError("Invalid or expired refresh token") from error
+
+    if payload.get("type") != REFRESH_TOKEN_TYPE:
+        raise InvalidRefreshTokenError("Invalid or expired refresh token")
+
+    stored = get_refresh_token_by_hash(_hash_token(token))
+    if stored is None:
+        raise InvalidRefreshTokenError("Invalid or expired refresh token")
+    if stored.get("revoked"):
+        raise InvalidRefreshTokenError("Invalid or expired refresh token")
+    if _refresh_token_expired(stored["expires_at"]):
+        raise InvalidRefreshTokenError("Invalid or expired refresh token")
+    if not hmac.compare_digest(_hash_token(token), stored["token_hash"]):
+        raise InvalidRefreshTokenError("Invalid or expired refresh token")
+
+    user_id = _user_id_from_token_payload(payload)
+    if user_id is None:
+        raise InvalidRefreshTokenError("Invalid or expired refresh token")
+
+    user = get_user_by_id(user_id)
+    if user is None or not user["is_active"]:
+        raise InvalidRefreshTokenError("Invalid or expired refresh token")
+
+    revoke_refresh_token_record(stored["token_hash"])
+    return issue_token_pair(user)
+
+
+def revoke_refresh_token(token: str) -> None:
+    try:
+        payload = decode_access_token(token)
+    except TokenError:
+        return
+
+    if payload.get("type") != REFRESH_TOKEN_TYPE:
+        return
+
+    stored = get_refresh_token_by_hash(_hash_token(token))
+    if stored is None:
+        return
+
+    revoke_refresh_token_record(stored["token_hash"])
+
+
 def can_modify_user(requester: UserRecord, target_user_id: int) -> bool:
     return requester["id"] == target_user_id or requester["is_admin"]
 
@@ -167,6 +265,9 @@ def resolve_active_user(token: str) -> UserRecord | None:
     try:
         payload = decode_access_token(token)
     except TokenError:
+        return None
+
+    if payload.get("type") == REFRESH_TOKEN_TYPE:
         return None
 
     user_id = _user_id_from_token_payload(payload)
