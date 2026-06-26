@@ -5,8 +5,10 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
-from jose import JWTError, jwt
+from jose import jwt
 from passlib.context import CryptContext
+
+from brasaland_auth_verify import TokenError, verify_token
 
 _ENV_PATH = Path(__file__).resolve().parent.parent / ".env"
 load_dotenv(_ENV_PATH)
@@ -14,21 +16,10 @@ load_dotenv(_ENV_PATH)
 _pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
-class TokenError(Exception):
-    """Raised when a JWT cannot be decoded or validated."""
-
-
 def _require_jwt_private_key() -> str:
     key = os.environ.get("JWT_PRIVATE_KEY")
     if not key:
         raise ValueError("JWT_PRIVATE_KEY environment variable is required")
-    return key
-
-
-def _require_jwt_public_key() -> str:
-    key = os.environ.get("JWT_PUBLIC_KEY")
-    if not key:
-        raise ValueError("JWT_PUBLIC_KEY environment variable is required")
     return key
 
 
@@ -58,11 +49,4 @@ def create_access_token(data: dict, expires_minutes: int | None = None) -> str:
 
 
 def decode_access_token(token: str) -> dict:
-    try:
-        return jwt.decode(
-            token,
-            _require_jwt_public_key(),
-            algorithms=[_jwt_algorithm()],
-        )
-    except JWTError as error:
-        raise TokenError("Invalid or expired access token") from error
+    return verify_token(token)
