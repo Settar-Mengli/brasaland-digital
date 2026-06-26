@@ -235,3 +235,18 @@ Created the backend architecture proposal document and recorded the planning and
 | Docs | `memory-bank/progress.md` |
 
 **Verification:** `uv run pytest` in `services/auth/` → 64 passed; coverage gate met.
+
+## Python test CI — Progress
+
+**Status:** Complete (branch `feature/ci`).
+
+**Scope:** Added GitHub Actions workflow `.github/workflows/ci.yml` to run all Python test suites on push and pull request to `main`. Two jobs: `pip-tests` (matrix: incident-analysis, supplier-directory, incident-manager, packages/shared) and `uv-tests` (matrix: services/auth, packages/auth-verify). Each suite runs in its own working directory; Python 3.13.
+
+**Files touched (high level):**
+
+| Area | Files |
+| --- | --- |
+| CI | `.github/workflows/ci.yml` |
+| Docs | `README.md` (CI badge), `memory-bank/progress.md` |
+
+**Verification:** Workflow runs six isolated pytest suites; auth enforces `fail_under = 70` via existing pyproject config.

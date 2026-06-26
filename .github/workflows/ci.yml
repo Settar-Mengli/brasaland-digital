@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  pip-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - dir: services/incident-analysis
+            install: pip install -r requirements.txt
+          - dir: services/supplier-directory
+            install: pip install -r requirements.txt
+          - dir: services/incident-manager
+            install: pip install -r requirements.txt
+          - dir: packages/shared
+            install: pip install -e . pytest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install dependencies
+        run: ${{ matrix.install }}
+        working-directory: ${{ matrix.dir }}
+      - name: Run tests
+        run: pytest
+        working-directory: ${{ matrix.dir }}
+
+  uv-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dir: [services/auth, packages/auth-verify]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: '3.13'
+      - name: Run tests
+        run: uv run pytest
+        working-directory: ${{ matrix.dir }}
