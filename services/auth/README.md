@@ -55,19 +55,23 @@ Copy from [`.env.example`](.env.example) and set real values locally in `.env` (
 
 | Variable | Purpose | Default / placeholder |
 | --- | --- | --- |
-| `JWT_SECRET_KEY` | Signs access and reset JWTs | `replace-with-a-long-random-secret` in example |
-| `JWT_ALGORITHM` | JWT algorithm | `HS256` |
+| `JWT_PRIVATE_KEY` | RSA private key PEM (signs access and reset JWTs) | placeholder PEM in example |
+| `JWT_PUBLIC_KEY` | RSA public key PEM (verifies JWTs) | placeholder PEM in example |
+| `JWT_ALGORITHM` | JWT algorithm | `RS256` |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Login/register token TTL | `30` |
 | `RESET_TOKEN_EXPIRE_MINUTES` | Password-reset token TTL | `30` |
 | `RESEND_API_KEY` | [Resend](https://resend.com) API key for reset emails | `replace-with-your-resend-api-key` in example |
 | `RESET_EMAIL_FROM` | Sender address for reset emails | `onboarding@resend.dev` (Resend sandbox) |
 | `RESET_LINK_BASE_URL` | Base URL for links in email (no trailing slash) | `http://127.0.0.1:8002` |
 
-Generate a strong `JWT_SECRET_KEY`:
+Generate an RSA keypair for RS256 signing:
 
 ```powershell
-python -c "import secrets; print(secrets.token_hex(32))"
+openssl genpkey -algorithm RSA -pkcs8 -out private.pem -pkeyopt rsa_keygen_bits:2048
+openssl rsa -in private.pem -pubout -out public.pem
 ```
+
+Copy the PEM contents into `JWT_PRIVATE_KEY` and `JWT_PUBLIC_KEY` in `.env` (multiline quoted values are supported).
 
 Start the server:
 

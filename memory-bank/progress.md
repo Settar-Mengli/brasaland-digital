@@ -187,3 +187,19 @@ Created the backend architecture proposal document and recorded the planning and
 | Docs | `TESTING.md` |
 
 **Verification:** `uv run pytest` in `services/auth/` → 64 passed; 100% coverage on the `auth/` package (`fail_under = 70`).
+
+## Auth RS256 Migration — Progress
+
+**Status:** Complete (branch `feature/auth-rs256`).
+
+**Scope:** Migrated JWT signing in `services/auth/` from HS256 (symmetric secret) to RS256 (RSA private/public keypair). Changes limited to `auth/security.py`, test fixtures, and configuration docs. Public function signatures (`create_access_token`, `decode_access_token`) and token claim shape unchanged; `app.py` and `service.py` untouched.
+
+**Files touched (high level):**
+
+| Area | Files |
+| --- | --- |
+| Core | `auth/security.py` |
+| Tests | `tests/conftest.py`, `tests/test_security.py` |
+| Config / docs | `.env.example`, `README.md`, `TESTING.md` |
+
+**Verification:** `uv run pytest` in `services/auth/` → 64 passed; coverage gate met.
