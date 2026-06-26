@@ -79,8 +79,8 @@ Regenerate the report with `uv run pytest`.
 
 - Password hashing differs from plaintext; verify accepts/rejects.
 - JWT create/decode round-trip; tampered and expired tokens raise `TokenError`.
-- Missing `JWT_SECRET_KEY` raises `ValueError`.
-- Default algorithm (HS256) and `ACCESS_TOKEN_EXPIRE_MINUTES` from env.
+- Missing `JWT_PRIVATE_KEY` raises `ValueError`.
+- Default algorithm (RS256) and `ACCESS_TOKEN_EXPIRE_MINUTES` from env.
 
 ### `tests/test_db.py` (5)
 
