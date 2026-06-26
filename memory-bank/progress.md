@@ -250,3 +250,21 @@ Created the backend architecture proposal document and recorded the planning and
 | Docs | `README.md` (CI badge), `memory-bank/progress.md` |
 
 **Verification:** Workflow runs six isolated pytest suites; auth enforces `fail_under = 70` via existing pyproject config.
+
+## Auth refresh-token sessions — Progress
+
+**Status:** Complete (branch `feature/auth-refresh-tokens`).
+
+**Scope:** Added stateful, rotating refresh-token sessions to `services/auth/`. Login and register return access + refresh tokens; **POST /auth/refresh** exchanges a refresh token for a rotated pair; **POST /auth/logout** revokes a refresh token. Refresh tokens stored hashed in TinyDB `refresh_tokens` table; access tokens remain short-lived and stateless.
+
+**Files touched (high level):**
+
+| Area | Files |
+| --- | --- |
+| Storage | `auth/refresh_repository.py` |
+| Service | `auth/service.py`, `auth/types.py` |
+| Routes | `services/auth/app.py` |
+| Tests | `tests/test_refresh_service.py`, `tests/test_api.py` |
+| Docs | `services/auth/README.md`, `.env.example` |
+
+**Verification:** `uv run pytest` in `services/auth/` → 82 passed; coverage gate met.

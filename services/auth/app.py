@@ -18,15 +18,23 @@ from auth.service import (
     can_modify_user,
     delete_user,
     get_user,
-    issue_access_token,
+    issue_token_pair,
     list_all_users,
     register_user,
     request_password_reset,
     reset_password,
     resolve_active_user,
+    revoke_refresh_token,
+    rotate_refresh_token,
     update_user,
 )
-from auth.types import EmailAlreadyExistsError, InvalidResetTokenError, UserNotFoundError, UserRecord
+from auth.types import (
+    EmailAlreadyExistsError,
+    InvalidRefreshTokenError,
+    InvalidResetTokenError,
+    UserNotFoundError,
+    UserRecord,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +47,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 FORGOT_PASSWORD_MESSAGE = "If that email is registered, a reset link has been sent."
 EMAIL_ALREADY_REGISTERED = "Email already registered"
 USER_NOT_FOUND = "User not found"
+INVALID_REFRESH_TOKEN = "Invalid or expired refresh token"
 
 
 class UserRegister(BaseModel):
@@ -61,7 +70,12 @@ class UserResponse(BaseModel):
 
 class TokenResponse(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
 
 
 class ForgotPasswordRequest(BaseModel):
@@ -99,13 +113,21 @@ def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> UserRecor
     return user
 
 
+def _token_response(access_token: str, refresh_token: str) -> TokenResponse:
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer",
+    )
+
+
 @app.post("/auth/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 def auth_register(body: UserRegister) -> TokenResponse:
     try:
         user = register_user(body.email, body.password)
     except EmailAlreadyExistsError as error:
         raise HTTPException(status_code=400, detail=EMAIL_ALREADY_REGISTERED) from error
-    return TokenResponse(access_token=issue_access_token(user))
+    return _token_response(*issue_token_pair(user))
 
 
 @app.post("/auth/login", response_model=TokenResponse)
@@ -119,7 +141,25 @@ def auth_login(
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    return TokenResponse(access_token=issue_access_token(user))
+    return _token_response(*issue_token_pair(user))
+
+
+@app.post("/auth/refresh", response_model=TokenResponse)
+def auth_refresh(body: RefreshRequest) -> TokenResponse:
+    try:
+        access_token, refresh_token = rotate_refresh_token(body.refresh_token)
+    except InvalidRefreshTokenError as error:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=INVALID_REFRESH_TOKEN,
+        ) from error
+    return _token_response(access_token, refresh_token)
+
+
+@app.post("/auth/logout", status_code=status.HTTP_204_NO_CONTENT)
+def auth_logout(body: RefreshRequest) -> Response:
+    revoke_refresh_token(body.refresh_token)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @app.post("/auth/forgot-password", response_model=MessageResponse)

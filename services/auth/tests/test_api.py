@@ -44,6 +44,7 @@ def test_register_returns_token_and_me_shows_email(client: TestClient) -> None:
     token_payload = _register(client, "ops@brasaland.com", "password123")
     assert token_payload["token_type"] == "bearer"
     assert token_payload["access_token"]
+    assert token_payload["refresh_token"]
 
     me_response = client.get(
         "/auth/me",
@@ -78,6 +79,7 @@ def test_login_success_and_wrong_password(client: TestClient) -> None:
     assert success.status_code == 200
     _assert_no_hashed_password(success.json())
     assert success.json()["access_token"]
+    assert success.json()["refresh_token"]
 
     failure = client.post(
         "/auth/login",
@@ -308,3 +310,95 @@ def test_static_pages_are_served(client: TestClient) -> None:
         response = client.get(path)
         assert response.status_code == 200
         assert "text/html" in response.headers["content-type"]
+
+
+def test_refresh_returns_new_working_access_token(client: TestClient) -> None:
+    token_payload = _register(client, "refresh-api@brasaland.com", "password123")
+    refresh_response = client.post(
+        "/auth/refresh",
+        json={"refresh_token": token_payload["refresh_token"]},
+    )
+
+    assert refresh_response.status_code == 200
+    refreshed = refresh_response.json()
+    assert refreshed["access_token"]
+    assert refreshed["refresh_token"]
+
+    me_response = client.get(
+        "/auth/me",
+        headers=_auth_header(refreshed["access_token"]),
+    )
+    assert me_response.status_code == 200
+    assert me_response.json()["email"] == "refresh-api@brasaland.com"
+
+
+def test_refresh_rotates_refresh_token(client: TestClient) -> None:
+    token_payload = _register(client, "refresh-rotate-api@brasaland.com", "password123")
+    old_refresh = token_payload["refresh_token"]
+
+    refresh_response = client.post(
+        "/auth/refresh",
+        json={"refresh_token": old_refresh},
+    )
+    assert refresh_response.status_code == 200
+    new_refresh = refresh_response.json()["refresh_token"]
+    assert new_refresh != old_refresh
+
+    stale_response = client.post(
+        "/auth/refresh",
+        json={"refresh_token": old_refresh},
+    )
+    assert stale_response.status_code == 401
+    assert stale_response.json()["detail"] == app_module.INVALID_REFRESH_TOKEN
+
+
+def test_refresh_rejects_garbage_token(client: TestClient) -> None:
+    response = client.post(
+        "/auth/refresh",
+        json={"refresh_token": "not.a.valid.token"},
+    )
+    assert response.status_code == 401
+    assert response.json()["detail"] == app_module.INVALID_REFRESH_TOKEN
+
+
+def test_refresh_rejects_access_token(client: TestClient) -> None:
+    token_payload = _register(client, "refresh-access-api@brasaland.com", "password123")
+    response = client.post(
+        "/auth/refresh",
+        json={"refresh_token": token_payload["access_token"]},
+    )
+    assert response.status_code == 401
+    assert response.json()["detail"] == app_module.INVALID_REFRESH_TOKEN
+
+
+def test_refresh_token_rejected_as_bearer_access_token(client: TestClient) -> None:
+    token_payload = _register(client, "refresh-bearer-api@brasaland.com", "password123")
+    response = client.get(
+        "/auth/me",
+        headers=_auth_header(token_payload["refresh_token"]),
+    )
+    assert response.status_code == 401
+
+
+def test_logout_revokes_refresh_token(client: TestClient) -> None:
+    token_payload = _register(client, "logout-api@brasaland.com", "password123")
+    logout_response = client.post(
+        "/auth/logout",
+        json={"refresh_token": token_payload["refresh_token"]},
+    )
+    assert logout_response.status_code == 204
+
+    refresh_response = client.post(
+        "/auth/refresh",
+        json={"refresh_token": token_payload["refresh_token"]},
+    )
+    assert refresh_response.status_code == 401
+    assert refresh_response.json()["detail"] == app_module.INVALID_REFRESH_TOKEN
+
+
+def test_logout_is_idempotent_for_invalid_token(client: TestClient) -> None:
+    response = client.post(
+        "/auth/logout",
+        json={"refresh_token": "not.a.valid.token"},
+    )
+    assert response.status_code == 204

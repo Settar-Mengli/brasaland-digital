@@ -58,7 +58,8 @@ Copy from [`.env.example`](.env.example) and set real values locally in `.env` (
 | `JWT_PRIVATE_KEY` | RSA private key PEM (signs access and reset JWTs) | placeholder PEM in example |
 | `JWT_PUBLIC_KEY` | RSA public key PEM (verifies JWTs) | placeholder PEM in example |
 | `JWT_ALGORITHM` | JWT algorithm | `RS256` |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | Login/register token TTL | `30` |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Access token TTL | `30` |
+| `REFRESH_TOKEN_EXPIRE_MINUTES` | Refresh token TTL | `10080` (7 days) |
 | `RESET_TOKEN_EXPIRE_MINUTES` | Password-reset token TTL | `30` |
 | `RESEND_API_KEY` | [Resend](https://resend.com) API key for reset emails | `replace-with-your-resend-api-key` in example |
 | `RESET_EMAIL_FROM` | Sender address for reset emails | `onboarding@resend.dev` (Resend sandbox) |
@@ -113,14 +114,27 @@ For login in Swagger, use **POST /auth/login** with `username` = email and `pass
 
 Passwords remain **bcrypt**-hashed; only reset **tokens** use SHA-256 for storage comparison (full JWT length, no bcrypt 72-byte truncation).
 
+## Token model
+
+Login and register return **two** RS256 JWTs:
+
+| Token | Lifetime | Use | Storage |
+| --- | --- | --- | --- |
+| `access_token` | `ACCESS_TOKEN_EXPIRE_MINUTES` (default 30 min) | Bearer header for protected routes | Stateless |
+| `refresh_token` | `REFRESH_TOKEN_EXPIRE_MINUTES` (default 7 days) | **POST /auth/refresh** to obtain a new pair | SHA-256 hash in TinyDB `refresh_tokens` table (stateful, revocable) |
+
+Refresh tokens carry `type: "refresh"` and cannot be used as Bearer access tokens. Access tokens cannot be exchanged at `/auth/refresh`. Each refresh **rotates** the refresh token (old one is revoked). **POST /auth/logout** revokes the presented refresh token (idempotent `204`).
+
 ## API endpoints
 
 | Method | Path | Auth | Success | Error responses | Description |
 | --- | --- | --- | --- | --- | --- |
 | `POST` | `/auth/forgot-password` | Public | `200` + message (always) | `422` validation | Request reset link; **enumeration-safe** — identical response whether email exists; email sent only when registered |
 | `POST` | `/auth/reset-password` | Public | `200` + message | `400` invalid/expired/used token, `422` validation | Set new password with token from email; **single-use** |
-| `POST` | `/auth/register` | Public | `201` + token | `400` duplicate email, `422` validation | Sign up; returns JWT so the new user is logged in immediately |
-| `POST` | `/auth/login` | Public | `200` + token | `401` invalid credentials | Log in with email (`username`) and password |
+| `POST` | `/auth/register` | Public | `201` + access + refresh tokens | `400` duplicate email, `422` validation | Sign up; returns token pair so the new user is logged in immediately |
+| `POST` | `/auth/login` | Public | `200` + access + refresh tokens | `401` invalid credentials | Log in with email (`username`) and password |
+| `POST` | `/auth/refresh` | Public | `200` + new token pair | `401` invalid/expired/revoked refresh | Exchange refresh token for rotated access + refresh tokens |
+| `POST` | `/auth/logout` | Public | `204` empty body | `422` validation | Revoke refresh token (idempotent; unknown tokens still `204`) |
 | `GET` | `/auth/me` | Protected | `200` + user JSON | `401` missing/invalid/expired token | Current user profile (email always shown for self) |
 | `POST` | `/users` | Protected | `201` + user JSON | `400` duplicate email, `401`, `422` | Create another user (admin/ops path; public signup is `/auth/register`) |
 | `GET` | `/users` | Protected | `200` + list | `401` | List all users; email hidden unless requester is owner or admin |
@@ -135,7 +149,7 @@ Passwords remain **bcrypt**-hashed; only reset **tokens** use SHA-256 for storag
 - **`hashed_password` never appears in any API response** — only safe fields via `UserResponse`.
 - **Email privacy:** when listing or viewing other users, email is omitted unless the requester is that user or an admin.
 - **`.env` is gitignored** — copy from `.env.example`; never commit real secrets.
-- **Protect by default:** only `/auth/register`, `/auth/login`, `/auth/forgot-password`, and `/auth/reset-password` are public API routes; HTML pages at `/`, `/forgot-password`, and `/reset-password` are also public. All `/users` routes and `/auth/me` require a valid Bearer token.
+- **Protect by default:** public API routes are `/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/forgot-password`, and `/auth/reset-password`; HTML pages at `/`, `/forgot-password`, and `/reset-password` are also public. All `/users` routes and `/auth/me` require a valid Bearer **access** token.
 
 ## Verification
 
@@ -145,7 +159,7 @@ From `services/auth/`:
 uv run pytest
 ```
 
-**64 tests** cover password hashing, JWT round-trip and tamper/expiry rejection, user service orchestration, email sender, password-reset service/API routes, and existing FastAPI routes via `TestClient`. Coverage is **100%** on the `auth/` package with a `fail_under` gate of **70**. See [TESTING.md](TESTING.md) for the full architecture, isolation strategy, and per-file test catalog.
+**82 tests** cover password hashing, JWT round-trip and tamper/expiry rejection, refresh-token sessions (service + API), user service orchestration, email sender, password-reset service/API routes, and existing FastAPI routes via `TestClient`. Coverage gate **70%** on the `auth/` package. See [TESTING.md](TESTING.md) for the full architecture, isolation strategy, and per-file test catalog.
 
 **Manual smoke check (auth):** register with **POST /auth/register** (`email` + `password` min 8 chars), copy `access_token` from the response, open **/docs**, click **Authorize**, paste the token, then call **GET /auth/me** — expect **200** with your email. Call **GET /auth/me** again without authorizing — expect **401**.
 
