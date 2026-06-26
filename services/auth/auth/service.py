@@ -146,6 +146,43 @@ def authenticate_user(email: str, password: str) -> UserRecord | None:
     return user
 
 
+def issue_access_token(user: UserRecord) -> str:
+    return create_access_token({"sub": str(user["id"]), "user_id": user["id"]})
+
+
+def can_modify_user(requester: UserRecord, target_user_id: int) -> bool:
+    return requester["id"] == target_user_id or requester["is_admin"]
+
+
+def build_update_fields(email: str | None, password: str | None) -> dict[str, Any]:
+    fields: dict[str, Any] = {}
+    if email is not None:
+        fields["email"] = str(email)
+    if password is not None:
+        fields["hashed_password"] = hash_password(password)
+    return fields
+
+
+def resolve_active_user(token: str) -> UserRecord | None:
+    try:
+        payload = decode_access_token(token)
+    except TokenError:
+        return None
+
+    user_id = _user_id_from_token_payload(payload)
+    if user_id is None:
+        return None
+
+    user = get_user_by_id(user_id)
+    if user is None:
+        return None
+
+    if not user["is_active"]:
+        return None
+
+    return user
+
+
 def get_user(user_id: int) -> UserRecord:
     user = get_user_by_id(user_id)
     if user is None:
