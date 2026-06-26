@@ -11,15 +11,19 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr, Field
 
 from auth.email_sender import send_password_reset_email
-from auth.security import TokenError, create_access_token, decode_access_token, hash_password
+from auth.security import TokenError
 from auth.service import (
     authenticate_user,
+    build_update_fields,
+    can_modify_user,
     delete_user,
     get_user,
+    issue_access_token,
     list_all_users,
     register_user,
     request_password_reset,
     reset_password,
+    resolve_active_user,
     update_user,
 )
 from auth.types import EmailAlreadyExistsError, InvalidResetTokenError, UserNotFoundError, UserRecord
@@ -84,58 +88,15 @@ def _to_response(user: UserRecord, requester: UserRecord) -> UserResponse:
     )
 
 
-def _issue_token(user: UserRecord) -> TokenResponse:
-    token = create_access_token({"sub": str(user["id"]), "user_id": user["id"]})
-    return TokenResponse(access_token=token, token_type="bearer")
-
-
-def _user_id_from_token(payload: dict) -> int | None:
-    if "user_id" in payload:
-        return int(payload["user_id"])
-    subject = payload.get("sub")
-    if subject is None:
-        return None
-    return int(subject)
-
-
 def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> UserRecord:
-    credentials_error = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-
-    try:
-        payload = decode_access_token(token)
-    except TokenError as error:
-        raise credentials_error from error
-
-    user_id = _user_id_from_token(payload)
-    if user_id is None:
-        raise credentials_error
-
-    try:
-        user = get_user(user_id)
-    except UserNotFoundError as error:
-        raise credentials_error from error
-
-    if not user["is_active"]:
-        raise credentials_error
-
+    user = resolve_active_user(token)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     return user
-
-
-def _can_modify_user(requester: UserRecord, target_user_id: int) -> bool:
-    return requester["id"] == target_user_id or requester["is_admin"]
-
-
-def _build_update_fields(body: UserUpdate) -> dict[str, object]:
-    fields: dict[str, object] = {}
-    if body.email is not None:
-        fields["email"] = str(body.email)
-    if body.password is not None:
-        fields["hashed_password"] = hash_password(body.password)
-    return fields
 
 
 @app.post("/auth/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
@@ -144,7 +105,7 @@ def auth_register(body: UserRegister) -> TokenResponse:
         user = register_user(body.email, body.password)
     except EmailAlreadyExistsError as error:
         raise HTTPException(status_code=400, detail=EMAIL_ALREADY_REGISTERED) from error
-    return _issue_token(user)
+    return TokenResponse(access_token=issue_access_token(user))
 
 
 @app.post("/auth/login", response_model=TokenResponse)
@@ -158,7 +119,7 @@ def auth_login(
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    return _issue_token(user)
+    return TokenResponse(access_token=issue_access_token(user))
 
 
 @app.post("/auth/forgot-password", response_model=MessageResponse)
@@ -226,10 +187,10 @@ def update_user_by_id(
     body: UserUpdate,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
 ) -> UserResponse:
-    if not _can_modify_user(current_user, user_id):
+    if not can_modify_user(current_user, user_id):
         raise HTTPException(status_code=403, detail="Not allowed to update this user")
 
-    fields = _build_update_fields(body)
+    fields = build_update_fields(body.email, body.password)
     if not fields:
         try:
             user = get_user(user_id)
@@ -251,7 +212,7 @@ def delete_user_by_id(
     user_id: int,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
 ) -> Response:
-    if not _can_modify_user(current_user, user_id):
+    if not can_modify_user(current_user, user_id):
         raise HTTPException(status_code=403, detail="Not allowed to delete this user")
 
     try:

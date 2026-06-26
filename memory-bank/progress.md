@@ -219,3 +219,19 @@ Created the backend architecture proposal document and recorded the planning and
 | Docs | `packages/auth-verify/README.md`, `services/auth/README.md`, root `README.md` |
 
 **Verification:** `uv run pytest` in `packages/auth-verify/` → 5 passed; `uv run pytest` in `services/auth/` → 64 passed.
+
+## Auth app.py thinning — Progress
+
+**Status:** Complete (branch `feature/auth-app-thinning`).
+
+**Scope:** Moved business/auth logic out of `services/auth/app.py` into `auth/service.py`: `issue_access_token`, `can_modify_user`, `build_update_fields`, and `resolve_active_user`. Removed duplicated `_user_id_from_token` from app.py; `get_current_user` is now a thin HTTP wrapper. No route, status code, error string, or response-model changes.
+
+**Files touched (high level):**
+
+| Area | Files |
+| --- | --- |
+| Routes | `services/auth/app.py` |
+| Service | `services/auth/auth/service.py` |
+| Docs | `memory-bank/progress.md` |
+
+**Verification:** `uv run pytest` in `services/auth/` → 64 passed; coverage gate met.
