@@ -77,3 +77,22 @@ def test_get_list_update_delete_users() -> None:
 
     with pytest.raises(UserNotFoundError):
         delete_user(first["id"])
+
+
+def test_update_user_raises_when_user_missing() -> None:
+    with pytest.raises(UserNotFoundError):
+        update_user(9999, {"is_active": False})
+
+
+def test_update_user_raises_when_email_taken_by_other_user() -> None:
+    first = register_user("owner@brasaland.com", "password-a")
+    register_user("other@brasaland.com", "password-b")
+
+    with pytest.raises(EmailAlreadyExistsError):
+        update_user(first["id"], {"email": "other@brasaland.com"})
+
+
+def test_update_user_normalizes_email_on_update() -> None:
+    user = register_user("normalize@brasaland.com", "password-a")
+    updated = update_user(user["id"], {"email": "Normalize@Brasaland.com"})
+    assert updated["email"] == "normalize@brasaland.com"

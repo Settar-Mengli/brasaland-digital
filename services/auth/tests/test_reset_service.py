@@ -10,8 +10,9 @@ from auth.service import (
     register_user,
     request_password_reset,
     reset_password,
+    update_user,
 )
-from auth.types import InvalidResetTokenError
+from auth.types import EmailAlreadyExistsError, InvalidResetTokenError, UserNotFoundError
 
 
 def test_request_password_reset_stores_hashed_token_for_known_email() -> None:
@@ -101,3 +102,69 @@ def test_reset_token_hash_differs_for_distinct_full_tokens() -> None:
     token_b = shared_prefix + "second-distinct-reset-token-suffix"
 
     assert _hash_reset_token(token_a) != _hash_reset_token(token_b)
+
+
+def test_reset_password_rejects_token_without_user_id() -> None:
+    token = create_access_token(
+        {"type": PASSWORD_RESET_TOKEN_TYPE},
+        expires_minutes=30,
+    )
+
+    with pytest.raises(InvalidResetTokenError):
+        reset_password(token, "new-password1")
+
+
+def test_reset_password_rejects_token_for_deleted_user() -> None:
+    user = register_user("reset-deleted@brasaland.com", "old-password1")
+    token = request_password_reset("reset-deleted@brasaland.com")
+    assert token is not None
+
+    from auth.repository import delete_user as delete_user_record
+
+    delete_user_record(user["id"])
+
+    with pytest.raises(InvalidResetTokenError):
+        reset_password(token, "new-password1")
+
+
+def test_reset_password_accepts_token_with_sub_only_user_id() -> None:
+    user = register_user("reset-subonly@brasaland.com", "old-password1")
+    token = create_access_token(
+        {
+            "sub": str(user["id"]),
+            "type": PASSWORD_RESET_TOKEN_TYPE,
+        },
+        expires_minutes=30,
+    )
+
+    from auth.repository import update_user as update_user_record
+    from auth.service import _hash_reset_token
+
+    update_user_record(
+        user["id"],
+        {
+            "reset_token_hash": _hash_reset_token(token),
+            "reset_token_expires": "2099-01-01T00:00:00+00:00",
+        },
+    )
+
+    reset_password(token, "new-password1")
+    assert authenticate_user("reset-subonly@brasaland.com", "new-password1") is not None
+
+
+def test_reset_password_rejects_mismatched_stored_hash() -> None:
+    register_user("reset-mismatch@brasaland.com", "old-password1")
+    token = request_password_reset("reset-mismatch@brasaland.com")
+    assert token is not None
+
+    other_token = create_access_token(
+        {
+            "sub": "999",
+            "user_id": 999,
+            "type": PASSWORD_RESET_TOKEN_TYPE,
+        },
+        expires_minutes=30,
+    )
+
+    with pytest.raises(InvalidResetTokenError):
+        reset_password(other_token, "new-password1")
