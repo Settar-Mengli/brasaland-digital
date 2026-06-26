@@ -171,3 +171,19 @@ Created the backend architecture proposal document and recorded the planning and
 | Docs | `README.md`, `CONTEXT-brasaland.md` (spec — authoritative) |
 
 **Verification:** `pytest` in `services/supplier-directory/` → 40 passed.
+
+## Building Bullet-Proof Applications (Auth Testing) — Progress
+
+**Status:** Complete (merged into main via PR #8).
+
+**Scope:** Added a pytest suite and `TESTING.md` to `services/auth/` and migrated the service from pip → uv. No auth business logic changed; tests assert behavior as implemented.
+
+**Files touched (high level):**
+
+| Area | Files |
+| --- | --- |
+| Tooling | `pyproject.toml`, `uv.lock`, `requirements.txt` (exported via `uv export`) |
+| Tests | `tests/` (security, db, repository, user service, reset service, email sender, API, reset API) |
+| Docs | `TESTING.md` |
+
+**Verification:** `uv run pytest` in `services/auth/` → 64 passed; 100% coverage on the `auth/` package (`fail_under = 70`).
