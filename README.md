@@ -1,5 +1,7 @@
 # brasaland-digital
 
+![CI](https://github.com/Settar-Mengli/brasaland-digital/actions/workflows/ci.yml/badge.svg)
+
 The digital platform for Brasaland, a 14-location grilled-food restaurant chain across Colombia and the United States.
 
 Brasaland Digital is primarily a TypeScript monorepo, now extended with Python backend services under `services/`, containing five independent workspaces: a public marketing site, an operations utility library, an internal talent pipeline tracker, a Next.js rebuild of the public website, and an internal operations dashboard. Each workspace is a separately deployable unit, structured to reflect a real product-team architecture — shared tooling and conventions without shared runtime dependencies.
