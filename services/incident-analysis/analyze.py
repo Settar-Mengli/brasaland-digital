@@ -136,8 +136,11 @@ def _configure_stdout() -> None:
 
 
 def _write_export(result: AnalysisResult, export_path: Path) -> None:
-    export_path.write_text(export_summary_csv(result), encoding="utf-8")
-    print(f"Summary exported to: {export_path}")
+    try:
+        export_path.write_text(export_summary_csv(result), encoding="utf-8")
+    except OSError as error:
+        raise OSError("Could not write export file") from error
+    print(f"Summary exported to: {export_path.name}")
 
 
 def _maybe_export_interactive(result: AnalysisResult) -> None:
@@ -177,14 +180,21 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         result = run_analysis(csv_path)
-    except (FileNotFoundError, CsvStructureError) as error:
+    except FileNotFoundError:
+        print("Error: CSV file not found", file=sys.stderr)
+        return 1
+    except CsvStructureError as error:
         print(f"Error: {error}", file=sys.stderr)
         return _resolve_exit_code(error)
 
     _print_summary(result, source_name)
 
     if args.export_path:
-        _write_export(result, Path(args.export_path))
+        try:
+            _write_export(result, Path(args.export_path))
+        except OSError:
+            print("Error: Could not write export file", file=sys.stderr)
+            return 4
     else:
         _maybe_export_interactive(result)
 

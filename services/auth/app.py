@@ -33,6 +33,8 @@ app = FastAPI(title="Brasaland Auth Service")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 FORGOT_PASSWORD_MESSAGE = "If that email is registered, a reset link has been sent."
+EMAIL_ALREADY_REGISTERED = "Email already registered"
+USER_NOT_FOUND = "User not found"
 
 
 class UserRegister(BaseModel):
@@ -141,7 +143,7 @@ def auth_register(body: UserRegister) -> TokenResponse:
     try:
         user = register_user(body.email, body.password)
     except EmailAlreadyExistsError as error:
-        raise HTTPException(status_code=400, detail=str(error)) from error
+        raise HTTPException(status_code=400, detail=EMAIL_ALREADY_REGISTERED) from error
     return _issue_token(user)
 
 
@@ -195,7 +197,7 @@ def create_user(
     try:
         user = register_user(body.email, body.password)
     except EmailAlreadyExistsError as error:
-        raise HTTPException(status_code=400, detail=str(error)) from error
+        raise HTTPException(status_code=400, detail=EMAIL_ALREADY_REGISTERED) from error
     return _to_response(user, current_user)
 
 
@@ -214,7 +216,7 @@ def read_user(
     try:
         user = get_user(user_id)
     except UserNotFoundError as error:
-        raise HTTPException(status_code=404, detail=str(error)) from error
+        raise HTTPException(status_code=404, detail=USER_NOT_FOUND) from error
     return _to_response(user, current_user)
 
 
@@ -232,15 +234,15 @@ def update_user_by_id(
         try:
             user = get_user(user_id)
         except UserNotFoundError as error:
-            raise HTTPException(status_code=404, detail=str(error)) from error
+            raise HTTPException(status_code=404, detail=USER_NOT_FOUND) from error
         return _to_response(user, current_user)
 
     try:
         user = update_user(user_id, fields)
     except EmailAlreadyExistsError as error:
-        raise HTTPException(status_code=400, detail=str(error)) from error
+        raise HTTPException(status_code=400, detail=EMAIL_ALREADY_REGISTERED) from error
     except UserNotFoundError as error:
-        raise HTTPException(status_code=404, detail=str(error)) from error
+        raise HTTPException(status_code=404, detail=USER_NOT_FOUND) from error
     return _to_response(user, current_user)
 
 
@@ -255,7 +257,7 @@ def delete_user_by_id(
     try:
         delete_user(user_id)
     except UserNotFoundError as error:
-        raise HTTPException(status_code=404, detail=str(error)) from error
+        raise HTTPException(status_code=404, detail=USER_NOT_FOUND) from error
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
