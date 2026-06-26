@@ -135,13 +135,13 @@ Passwords remain **bcrypt**-hashed; only reset **tokens** use SHA-256 for storag
 
 ## Verification
 
-From `services/auth/` with the venv active:
+From `services/auth/`:
 
 ```powershell
-pytest
+uv run pytest
 ```
 
-**35 tests** cover password hashing, JWT round-trip and tamper/expiry rejection, user service orchestration, email sender, password-reset service/API routes, and existing FastAPI routes via `TestClient`.
+**64 tests** cover password hashing, JWT round-trip and tamper/expiry rejection, user service orchestration, email sender, password-reset service/API routes, and existing FastAPI routes via `TestClient`. Coverage is **100%** on the `auth/` package with a `fail_under` gate of **70**. See [TESTING.md](TESTING.md) for the full architecture, isolation strategy, and per-file test catalog.
 
 **Manual smoke check (auth):** register with **POST /auth/register** (`email` + `password` min 8 chars), copy `access_token` from the response, open **/docs**, click **Authorize**, paste the token, then call **GET /auth/me** — expect **200** with your email. Call **GET /auth/me** again without authorizing — expect **401**.
 
