@@ -7,6 +7,7 @@ from sqlmodel import SQLModel
 
 import models  # noqa: F401
 from database import engine
+from routers.inventory import router as inventory_router
 
 
 @asynccontextmanager
@@ -16,6 +17,7 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(title="Brasaland Inventory API", lifespan=lifespan)
+app.include_router(inventory_router)
 
 
 @app.get("/")
