@@ -26,33 +26,32 @@ services/incident-analysis/
 │   └── app.js
 ├── tests/                      # pytest suite (golden fixture + unit + API tests)
 ├── incidents-brasaland.csv     # 100-row sample dataset
-├── requirements.txt
+├── pyproject.toml
+├── requirements.txt             # Generated pip-compat export (uv export)
 └── README.md
 ```
 
-## Setup (Windows + venv)
+## Setup
 
 ```powershell
 cd services/incident-analysis
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+uv sync
 ```
 
-Requires **Python 3.11+**.
+Requires **Python 3.11+**. Dependencies are managed with [uv](https://docs.astral.sh/uv/). `requirements.txt` is a generated pip-compat artifact (`uv export --no-hashes -o requirements.txt`).
 
 ## CLI usage
 
 Analyze the sample file and print a summary to the console:
 
 ```powershell
-python analyze.py incidents-brasaland.csv
+uv run python analyze.py incidents-brasaland.csv
 ```
 
 Export metrics to CSV without prompts:
 
 ```powershell
-python analyze.py incidents-brasaland.csv --export results.csv
+uv run python analyze.py incidents-brasaland.csv --export results.csv
 ```
 
 When run **without** `--export` in an **interactive** terminal, the CLI asks:
@@ -70,7 +69,7 @@ On `y` or `yes`, it prompts for a filename (default `results.csv`) and writes th
 Start the server:
 
 ```powershell
-uvicorn app:app --reload --port 8000
+uv run uvicorn app:app --reload --port 8000
 ```
 
 Open **http://127.0.0.1:8000/** , upload `incidents-brasaland.csv`, click **Analyze**, then **Download CSV Summary**.
@@ -97,10 +96,10 @@ A row is **invalid** if any of these apply. **All** failed rules are recorded pe
 
 ## Verification
 
-From `services/incident-analysis/` with the venv active:
+From `services/incident-analysis/`:
 
 ```powershell
-pytest
+uv run pytest
 ```
 
 **18 tests** cover validator rules, metric edge cases, API endpoints, and a golden fixture. The golden test loads the 100-row sample and asserts:
