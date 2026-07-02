@@ -375,3 +375,21 @@ Created the backend architecture proposal document and recorded the planning and
 | CI | `.github/workflows/ci.yml` (`pip-tests` job removed; `services/incident-manager` added to `uv-tests`) |
 
 **Verification:** `uv run pytest` in `services/incident-manager/` → 23 passed.
+
+## M5 Inventory API — Progress
+
+**Status:** Complete (branch `feat/m5-inventory-backend`, staged, not committed).
+
+**Scope:** New `services/inventory/` — dual-database inventory layer. TinyDB auth (`services/auth`) unchanged; ingredient data in Supabase PostgreSQL via SQLModel. Six endpoints under `/inventory`. `current_stock` computed from entry/exit aggregates (not stored). Write routes authenticated via `brasaland-auth-verify` (`user_uuid` = stringified JWT `user_id`). Negative-stock outbound guard returns HTTP 400 with CONTEXT message.
+
+**Files touched (high level):**
+
+| Area | Files |
+| --- | --- |
+| Service | `app.py`, `database.py`, `models.py`, `schemas.py`, `dependencies.py`, `routers/inventory.py`, `seed.py` |
+| Tooling | `pyproject.toml`, `uv.lock`, `requirements.txt`, `.env.example` |
+| Tests | `tests/` (scaffold, database, schemas, auth, products, orders, stock) |
+| Docs | `README.md`, `CONTEXT-brasaland.md` (user-authored spec) |
+| CI | `.github/workflows/ci.yml` (`services/inventory` in `uv-tests` matrix) |
+
+**Verification:** `uv run pytest` in `services/inventory/` → 27 passed.
