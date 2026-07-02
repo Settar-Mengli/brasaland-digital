@@ -1,11 +1,8 @@
-data/*
-!data/.gitkeep
 .venv/
 __pycache__/
 *.py[cod]
 .pytest_cache/
-.coverage
-.coverage.*
+.env
 *.pem
 keys_for_env.txt
 fmt_keys.py
