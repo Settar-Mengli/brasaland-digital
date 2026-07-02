@@ -61,3 +61,45 @@ class IngredientExitResponse(BaseModel):
     location_id: int
     created_at: datetime
     user_uuid: str
+
+
+class IngredientInfo(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    sku: str
+    unit: str
+    category: str
+    country: str
+
+
+class IngredientEntryWithIngredientResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    ingredient_id: int
+    quantity: float
+    supplier_name: str
+    location_id: int
+    created_at: datetime
+    user_uuid: str
+    ingredient: IngredientInfo
+
+
+class IngredientExitWithIngredientResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    ingredient_id: int
+    quantity: float
+    reason: str
+    location_id: int
+    created_at: datetime
+    user_uuid: str
+    ingredient: IngredientInfo
+
+
+class OrdersListResponse(BaseModel):
+    entries: list[IngredientEntryWithIngredientResponse]
+    exits: list[IngredientExitWithIngredientResponse]
