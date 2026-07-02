@@ -1,6 +1,21 @@
-from fastapi import FastAPI
+from __future__ import annotations
 
-app = FastAPI(title="Brasaland Inventory API")
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from sqlmodel import SQLModel
+
+import models  # noqa: F401
+from database import engine
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    SQLModel.metadata.create_all(engine)
+    yield
+
+
+app = FastAPI(title="Brasaland Inventory API", lifespan=lifespan)
 
 
 @app.get("/")
