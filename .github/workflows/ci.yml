@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dir: [services/auth, packages/auth-verify, packages/shared, services/supplier-directory, services/incident-analysis, services/incident-manager]
+        dir: [services/auth, packages/auth-verify, packages/shared, services/supplier-directory, services/incident-analysis, services/incident-manager, services/inventory]
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5

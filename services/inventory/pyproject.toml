@@ -1,0 +1,30 @@
+[project]
+name = "inventory"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "brasaland-auth-verify",
+    "fastapi==0.115.12",
+    "uvicorn[standard]==0.34.3",
+    "pydantic==2.11.4",
+    "sqlmodel",
+    "psycopg2-binary",
+    "python-dotenv==1.0.1",
+]
+
+[tool.uv.sources]
+brasaland-auth-verify = { path = "../../packages/auth-verify", editable = true }
+
+[dependency-groups]
+dev = [
+    "pytest==8.3.5",
+    "httpx==0.28.1",
+    "python-jose[cryptography]==3.3.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
