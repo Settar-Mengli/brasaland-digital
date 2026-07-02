@@ -393,3 +393,22 @@ Created the backend architecture proposal document and recorded the planning and
 | CI | `.github/workflows/ci.yml` (`services/inventory` in `uv-tests` matrix) |
 
 **Verification:** `uv run pytest` in `services/inventory/` → 27 passed.
+
+## M5 Backoffice Inventory UI — Progress
+
+**Status:** Complete (branch `feat/m5-backoffice-inventory`, staged, not committed).
+
+**Scope:** Inventory management UI in `uis/backoffice/` — login + four protected views consuming `services/inventory` via `lib/inventory.ts`. JWT login against `services/auth` (`localStorage`). `InventoryAuthGuard` on inventory routes. Next.js rewrites proxy `/api/inventory` → :8012 and `/api/auth` → :8002 (no backend CORS changes). Dashboard and Locations remain M2 fixture-only and unchanged.
+
+**Files touched (high level):**
+
+| Area | Files |
+| --- | --- |
+| API layer | `lib/inventory.ts`, `lib/inventory-types.ts`, `lib/auth.ts`, `lib/api-error.ts`, `lib/stock-level.ts` |
+| Pages | `app/login`, `app/inventory/products`, `app/inventory/orders/inbound`, `app/inventory/orders/outbound`, `app/inventory/orders` |
+| Components | `InventoryAuthGuard`, `ProductSelect`, `NavLinks` |
+| Config | `next.config.ts` (rewrites), `.env.example` |
+| Tests | `lib/*.test.ts` (Vitest) |
+| Docs | `README.md`, `AGENTS.md` |
+
+**Verification:** `npm run test` in `uis/backoffice/` → 9 passed; `npm run build` includes `/inventory/orders` route.
