@@ -240,7 +240,7 @@ Created the backend architecture proposal document and recorded the planning and
 
 **Status:** Complete (branch `feature/ci`).
 
-**Scope:** Added GitHub Actions workflow `.github/workflows/ci.yml` to run all Python test suites on push and pull request to `main`. Two jobs: `pip-tests` (matrix: incident-analysis, incident-manager) and `uv-tests` (matrix: services/auth, packages/auth-verify, packages/shared, services/supplier-directory). Each suite runs in its own working directory; Python 3.13.
+**Scope:** Added GitHub Actions workflow `.github/workflows/ci.yml` to run all Python test suites on push and pull request to `main`. Two jobs: `pip-tests` (matrix: incident-manager) and `uv-tests` (matrix: services/auth, packages/auth-verify, packages/shared, services/supplier-directory, services/incident-analysis). Each suite runs in its own working directory; Python 3.13.
 
 **Files touched (high level):**
 
@@ -342,3 +342,19 @@ Created the backend architecture proposal document and recorded the planning and
 | CI | `.github/workflows/ci.yml` (`services/supplier-directory` moved from `pip-tests` to `uv-tests`) |
 
 **Verification:** `uv run pytest` in `services/supplier-directory/` → 40 passed.
+
+## incident-analysis uv migration — Progress
+
+**Status:** Complete (staged, not committed).
+
+**Scope:** Migrated `services/incident-analysis` from pip/requirements.txt-only to uv (`[tool.uv] package = false`). No `tests/conftest.py` — `[tool.pytest.ini_options] pythonpath = ["."]` resolves imports under `uv run pytest`.
+
+**Files touched:**
+
+| Area | Files |
+| --- | --- |
+| Tooling | `services/incident-analysis/pyproject.toml`, `services/incident-analysis/uv.lock`, `services/incident-analysis/requirements.txt` |
+| Docs | `services/incident-analysis/README.md`, `memory-bank/progress.md` |
+| CI | `.github/workflows/ci.yml` (`services/incident-analysis` moved from `pip-tests` to `uv-tests`) |
+
+**Verification:** `uv run pytest` in `services/incident-analysis/` → 18 passed.
