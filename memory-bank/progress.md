@@ -240,7 +240,7 @@ Created the backend architecture proposal document and recorded the planning and
 
 **Status:** Complete (branch `feature/ci`).
 
-**Scope:** Added GitHub Actions workflow `.github/workflows/ci.yml` to run all Python test suites on push and pull request to `main`. Two jobs: `pip-tests` (matrix: incident-analysis, supplier-directory, incident-manager, packages/shared) and `uv-tests` (matrix: services/auth, packages/auth-verify). Each suite runs in its own working directory; Python 3.13.
+**Scope:** Added GitHub Actions workflow `.github/workflows/ci.yml` to run all Python test suites on push and pull request to `main`. Two jobs: `pip-tests` (matrix: incident-analysis, supplier-directory, incident-manager) and `uv-tests` (matrix: services/auth, packages/auth-verify, packages/shared). Each suite runs in its own working directory; Python 3.13.
 
 **Files touched (high level):**
 
@@ -310,3 +310,19 @@ Created the backend architecture proposal document and recorded the planning and
 | Docs | `services/auth/README.md`, `memory-bank/progress.md` |
 
 **Verification:** `uv run pytest` in `services/auth/` → 84 passed; coverage gate met.
+
+## packages/shared uv migration — Progress
+
+**Status:** Complete (staged, not committed).
+
+**Scope:** Migrated `packages/shared` from pip/setuptools-only to uv, matching `packages/auth-verify`. No changes to `[build-system]` or `[tool.setuptools.packages.find]`. `services/incident-manager` unchanged — still installs via `-e ../../packages/shared`.
+
+**Files touched:**
+
+| Area | Files |
+| --- | --- |
+| Tooling | `packages/shared/pyproject.toml`, `packages/shared/uv.lock`, `packages/shared/requirements.txt` |
+| Docs | `packages/shared/README.md`, `memory-bank/progress.md` |
+| CI | `.github/workflows/ci.yml` (`packages/shared` moved from `pip-tests` to `uv-tests`) |
+
+**Verification:** `uv run pytest` in `packages/shared/` → 33 passed.
