@@ -15,8 +15,6 @@ jobs:
         include:
           - dir: services/incident-analysis
             install: pip install -r requirements.txt
-          - dir: services/supplier-directory
-            install: pip install -r requirements.txt
           - dir: services/incident-manager
             install: pip install -r requirements.txt
     steps:
@@ -36,7 +34,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dir: [services/auth, packages/auth-verify, packages/shared]
+        dir: [services/auth, packages/auth-verify, packages/shared, services/supplier-directory]
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5

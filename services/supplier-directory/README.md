@@ -27,27 +27,26 @@ services/supplier-directory/
 ├── tests/                       # pytest suite (validator + golden seed + API)
 ├── data/                        # Runtime TinyDB (gitignored except .gitkeep)
 ├── CONTEXT-brasaland.md         # Product spec and business context (authoritative)
-├── requirements.txt
+├── pyproject.toml
+├── requirements.txt             # Generated pip-compat export (uv export)
 └── README.md
 ```
 
 For field definitions, category codes, and operational context, see **`CONTEXT-brasaland.md`**. For the exact seed records, see **`supplier_directory/seed_data.py`**.
 
-## Setup (Windows + venv)
+## Setup
 
 ```powershell
 cd services/supplier-directory
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
+uv sync
 ```
 
-Requires **Python 3.11+**.
+Requires **Python 3.11+**. Dependencies are managed with [uv](https://docs.astral.sh/uv/). `requirements.txt` is a generated pip-compat artifact (`uv export --no-hashes -o requirements.txt`).
 
 ## Seed the database
 
 ```powershell
-python seed.py
+uv run python seed.py
 ```
 
 Expected output on a fresh database:
@@ -63,7 +62,7 @@ Re-running is idempotent: existing name+country pairs are skipped.
 Start the server:
 
 ```powershell
-python -m uvicorn app:app --port 8001
+uv run python -m uvicorn app:app --port 8001
 ```
 
 Open **http://127.0.0.1:8001/** — filter suppliers, register new ones, update rates, and change status without leaving the page.
@@ -98,10 +97,10 @@ Invalid category values in `GET /suppliers?category=…` return **422** before q
 
 ## Verification
 
-From `services/supplier-directory/` with the venv active:
+From `services/supplier-directory/`:
 
 ```powershell
-pytest
+uv run pytest
 ```
 
 **40 tests** cover validator rules, API endpoints, and golden seed behavior. The golden seed tests load `seed_data.py` and assert:

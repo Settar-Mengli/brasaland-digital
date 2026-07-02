@@ -240,7 +240,7 @@ Created the backend architecture proposal document and recorded the planning and
 
 **Status:** Complete (branch `feature/ci`).
 
-**Scope:** Added GitHub Actions workflow `.github/workflows/ci.yml` to run all Python test suites on push and pull request to `main`. Two jobs: `pip-tests` (matrix: incident-analysis, supplier-directory, incident-manager) and `uv-tests` (matrix: services/auth, packages/auth-verify, packages/shared). Each suite runs in its own working directory; Python 3.13.
+**Scope:** Added GitHub Actions workflow `.github/workflows/ci.yml` to run all Python test suites on push and pull request to `main`. Two jobs: `pip-tests` (matrix: incident-analysis, incident-manager) and `uv-tests` (matrix: services/auth, packages/auth-verify, packages/shared, services/supplier-directory). Each suite runs in its own working directory; Python 3.13.
 
 **Files touched (high level):**
 
@@ -326,3 +326,19 @@ Created the backend architecture proposal document and recorded the planning and
 | CI | `.github/workflows/ci.yml` (`packages/shared` moved from `pip-tests` to `uv-tests`) |
 
 **Verification:** `uv run pytest` in `packages/shared/` → 33 passed.
+
+## supplier-directory uv migration — Progress
+
+**Status:** Complete (staged, not committed).
+
+**Scope:** Migrated `services/supplier-directory` from pip/requirements.txt-only to uv (`[tool.uv] package = false`). `tests/conftest.py` and `seed.py` unchanged.
+
+**Files touched:**
+
+| Area | Files |
+| --- | --- |
+| Tooling | `services/supplier-directory/pyproject.toml`, `services/supplier-directory/uv.lock`, `services/supplier-directory/requirements.txt` |
+| Docs | `services/supplier-directory/README.md`, `memory-bank/progress.md` |
+| CI | `.github/workflows/ci.yml` (`services/supplier-directory` moved from `pip-tests` to `uv-tests`) |
+
+**Verification:** `uv run pytest` in `services/supplier-directory/` → 40 passed.
