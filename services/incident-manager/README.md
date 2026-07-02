@@ -34,7 +34,8 @@ services/incident-manager/
 ├── data/                          # Runtime TinyDB (gitignored except .gitkeep)
 ├── app.py                         # FastAPI app + static file serving
 ├── CONTEXT-brasaland.md           # Data contract (authoritative)
-├── requirements.txt               # -e ../../packages/shared (must install from this dir)
+├── pyproject.toml
+├── requirements.txt             # Generated pip-compat export (uv export)
 └── README.md
 ```
 
@@ -106,22 +107,20 @@ English display labels are **UI-only** (list, summary, and registration dropdown
 
 POST requests still send the raw code (e.g. `QUEJA_CLIENTE`).
 
-## Setup (Windows PowerShell)
+## Setup
 
-Run every command from **`services/incident-manager/`** so the editable install `../../packages/shared` resolves correctly.
+Run every command from **`services/incident-manager/`** so the editable `brasaland-shared` path (`../../packages/shared`) resolves correctly via `[tool.uv.sources]`.
 
 ```powershell
 cd services/incident-manager
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-python scripts/seed_incidents.py
-uvicorn app:app --reload --port 8011
+uv sync
+uv run python scripts/seed_incidents.py
+uv run uvicorn app:app --reload --port 8011
 ```
 
 Open **http://127.0.0.1:8011/**
 
-Requires **Python 3.11+**.
+Requires **Python 3.11+**. Dependencies are managed with [uv](https://docs.astral.sh/uv/). `requirements.txt` is a generated pip-compat artifact (`uv export --no-hashes -o requirements.txt`).
 
 ## Seed
 
@@ -140,13 +139,13 @@ The seed script reads the historical CSV export (default: `services/incident-ana
 | `BRS-000079` | empty description |
 
 ```powershell
-python scripts/seed_incidents.py
+uv run python scripts/seed_incidents.py
 ```
 
 Optional custom CSV path:
 
 ```powershell
-python scripts/seed_incidents.py path\to\incidents.csv
+uv run python scripts/seed_incidents.py path\to\incidents.csv
 ```
 
 ## API endpoints
@@ -185,14 +184,14 @@ Each panel supports three states: **loading**, **empty**, and **error** (banner 
 
 ```powershell
 cd packages/shared
-pytest
+uv run pytest
 ```
 
 Expect **33** passed.
 
 ```powershell
 cd services/incident-manager
-pytest
+uv run pytest
 ```
 
 Expect **23** passed.
