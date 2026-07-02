@@ -7,32 +7,12 @@ on:
     branches: [main]
 
 jobs:
-  pip-tests:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - dir: services/incident-manager
-            install: pip install -r requirements.txt
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-      - name: Install dependencies
-        run: ${{ matrix.install }}
-        working-directory: ${{ matrix.dir }}
-      - name: Run tests
-        run: pytest
-        working-directory: ${{ matrix.dir }}
-
   uv-tests:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        dir: [services/auth, packages/auth-verify, packages/shared, services/supplier-directory, services/incident-analysis]
+        dir: [services/auth, packages/auth-verify, packages/shared, services/supplier-directory, services/incident-analysis, services/incident-manager]
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5

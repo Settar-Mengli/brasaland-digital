@@ -240,7 +240,7 @@ Created the backend architecture proposal document and recorded the planning and
 
 **Status:** Complete (branch `feature/ci`).
 
-**Scope:** Added GitHub Actions workflow `.github/workflows/ci.yml` to run all Python test suites on push and pull request to `main`. Two jobs: `pip-tests` (matrix: incident-manager) and `uv-tests` (matrix: services/auth, packages/auth-verify, packages/shared, services/supplier-directory, services/incident-analysis). Each suite runs in its own working directory; Python 3.13.
+**Scope:** Added GitHub Actions workflow `.github/workflows/ci.yml` to run all Python test suites on push and pull request to `main`. Single job: `uv-tests` (matrix: services/auth, packages/auth-verify, packages/shared, services/supplier-directory, services/incident-analysis, services/incident-manager). Each suite runs in its own working directory; Python 3.13.
 
 **Files touched (high level):**
 
@@ -358,3 +358,20 @@ Created the backend architecture proposal document and recorded the planning and
 | CI | `.github/workflows/ci.yml` (`services/incident-analysis` moved from `pip-tests` to `uv-tests`) |
 
 **Verification:** `uv run pytest` in `services/incident-analysis/` → 18 passed.
+
+## incident-manager uv migration — Progress
+
+**Status:** Complete (staged, not committed).
+
+**Scope:** Final service in the Python uv migration. Migrated `services/incident-manager` from pip/requirements.txt to uv with `brasaland-shared` via `[tool.uv.sources]`. `tests/conftest.py` and `scripts/seed_incidents.py` unchanged (sys.path hacks retained). `pip-tests` CI job removed (matrix was empty).
+
+**Files touched:**
+
+| Area | Files |
+| --- | --- |
+| Tooling | `services/incident-manager/pyproject.toml`, `services/incident-manager/uv.lock`, `services/incident-manager/requirements.txt` |
+| Tests | `services/incident-manager/tests/test_scaffold.py` (error message only) |
+| Docs | `services/incident-manager/README.md`, `memory-bank/progress.md` |
+| CI | `.github/workflows/ci.yml` (`pip-tests` job removed; `services/incident-manager` added to `uv-tests`) |
+
+**Verification:** `uv run pytest` in `services/incident-manager/` → 23 passed.
