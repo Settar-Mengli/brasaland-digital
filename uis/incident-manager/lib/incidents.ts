@@ -1,4 +1,4 @@
-import { parseApiError } from './api-error';
+import { parseApiErrorResponse, type FieldError } from './api-error';
 import type {
   Incident,
   IncidentCreateInput,
@@ -18,9 +18,38 @@ function getIncidentsBaseUrl(): string {
 async function incidentsFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${getIncidentsBaseUrl()}${path}`, init);
   if (!response.ok) {
-    throw new Error(await parseApiError(response));
+    const parsed = await parseApiErrorResponse(response);
+    throw new Error(parsed.message);
   }
   return response.json() as Promise<T>;
+}
+
+export class CreateIncidentError extends Error {
+  readonly fieldErrors: FieldError[];
+
+  constructor(message: string, fieldErrors: FieldError[]) {
+    super(message);
+    this.name = 'CreateIncidentError';
+    this.fieldErrors = fieldErrors;
+  }
+}
+
+export async function createIncident(body: IncidentCreateInput): Promise<Incident> {
+  const response = await fetch(`${getIncidentsBaseUrl()}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const parsed = await parseApiErrorResponse(response);
+    if (parsed.fieldErrors.length > 0) {
+      throw new CreateIncidentError(parsed.message, parsed.fieldErrors);
+    }
+    throw new Error(parsed.message);
+  }
+
+  return response.json() as Promise<Incident>;
 }
 
 function buildQueryString(filters: IncidentListFilters): string {
@@ -47,14 +76,6 @@ export function getIncidents(filters: IncidentListFilters = {}): Promise<Inciden
 
 export function getIncident(id: number): Promise<Incident> {
   return incidentsFetch<Incident>(`/${id}`);
-}
-
-export function createIncident(body: IncidentCreateInput): Promise<Incident> {
-  return incidentsFetch<Incident>('', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
 }
 
 export function updateStatus(id: number, status: IncidentStatus): Promise<Incident> {

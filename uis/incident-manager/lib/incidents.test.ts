@@ -95,4 +95,36 @@ describe('incidents client', () => {
     const { getIncident } = await import('./incidents');
     await expect(getIncident(999)).rejects.toThrow('Incident not found');
   });
+
+  it('throws CreateIncidentError with field errors on validation failure', async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          detail: {
+            errors: [{ field: 'title', message: 'title is required' }],
+          },
+        }),
+        { status: 400, statusText: 'Bad Request' },
+      ),
+    );
+
+    const { createIncident, CreateIncidentError } = await import('./incidents');
+
+    await expect(
+      createIncident({
+        title: '',
+        description: 'Test',
+        category: 'QUEJA_CLIENTE',
+        origin: 'customer',
+        branch: 'COL-01',
+      }),
+    ).rejects.toSatisfy((error: unknown) => {
+      return (
+        error instanceof CreateIncidentError &&
+        error.fieldErrors.length === 1 &&
+        error.fieldErrors[0]?.field === 'title'
+      );
+    });
+  });
 });

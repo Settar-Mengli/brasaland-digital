@@ -30,6 +30,26 @@ describe('parseApiError', () => {
     expect(message).toBe('title: Field required; branch: branch is required');
   });
 
+  it('extracts incident field errors from nested detail object', async () => {
+    const response = mockResponse({
+      detail: {
+        errors: [
+          { field: 'title', message: 'title is required' },
+          { field: 'branch', message: 'branch is required' },
+        ],
+      },
+    });
+
+    const { parseApiErrorResponse } = await import('./api-error');
+    const parsed = await parseApiErrorResponse(response);
+
+    expect(parsed.message).toBe('Please check the form and try again.');
+    expect(parsed.fieldErrors).toEqual([
+      { field: 'title', message: 'title is required' },
+      { field: 'branch', message: 'branch is required' },
+    ]);
+  });
+
   it('falls back to status text when detail is missing', async () => {
     const message = await parseApiError(
       new Response(null, { status: 500, statusText: 'Internal Server Error' }),
