@@ -6,7 +6,6 @@ dependencies = [
     "brasaland-shared",
     "fastapi==0.115.12",
     "uvicorn[standard]==0.34.3",
-    "tinydb==4.8.2",
     "pydantic==2.11.4",
     "sqlmodel",
     "psycopg2-binary",

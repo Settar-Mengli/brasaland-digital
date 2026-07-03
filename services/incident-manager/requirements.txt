@@ -22,6 +22,8 @@ colorama==0.4.6 ; sys_platform == 'win32'
     #   uvicorn
 fastapi==0.115.12
     # via incident-manager
+greenlet==3.5.3 ; platform_machine == 'AMD64' or platform_machine == 'WIN32' or platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'ppc64le' or platform_machine == 'win32' or platform_machine == 'x86_64'
+    # via sqlalchemy
 h11==0.16.0
     # via
     #   httpcore
@@ -41,27 +43,36 @@ packaging==26.2
     # via pytest
 pluggy==1.6.0
     # via pytest
+psycopg2-binary==2.9.12
+    # via incident-manager
 pydantic==2.11.4
     # via
     #   fastapi
     #   incident-manager
+    #   sqlmodel
 pydantic-core==2.33.2
     # via pydantic
 pytest==8.3.5
-python-dotenv==1.2.2
-    # via uvicorn
+python-dotenv==1.0.1
+    # via
+    #   incident-manager
+    #   uvicorn
 pyyaml==6.0.3
     # via uvicorn
+sqlalchemy==2.0.51
+    # via sqlmodel
+sqlmodel==0.0.39
+    # via incident-manager
 starlette==0.46.2
     # via fastapi
-tinydb==4.8.2
-    # via incident-manager
 typing-extensions==4.15.0
     # via
     #   anyio
     #   fastapi
     #   pydantic
     #   pydantic-core
+    #   sqlalchemy
+    #   sqlmodel
     #   typing-inspection
 typing-inspection==0.4.2
     # via pydantic

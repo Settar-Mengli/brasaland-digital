@@ -1,8 +1,8 @@
 # Brasaland Centralized Incident Manager
 
-An internal Brasaland Operations service for registering operational incidents, tracking their lifecycle across 14 locations, and viewing summary metrics. It is part of the **brasaland-digital** monorepo and replaces the spreadsheet workflow with a single TinyDB-backed store, a FastAPI REST API, and a three-panel web UI.
+An internal Brasaland Operations service for registering operational incidents, tracking their lifecycle across 14 locations, and viewing summary metrics. It is part of the **brasaland-digital** monorepo and replaces the spreadsheet workflow with a PostgreSQL-backed store (SQLModel + Supabase), a FastAPI REST API, and a three-panel web UI.
 
-Field validation and lifecycle rules live once in **`packages/shared/brasaland_shared`** and are reused by the **seed script** and the **API** — never duplicated in the service layer.
+Field validation and lifecycle rules live once in **`packages/shared/brasaland_shared`** and are reused by the **seed script** and the **API** — never duplicated in the service layer. That shared package is unchanged by the persistence migration; it has no database code.
 
 ## Architecture
 
@@ -17,46 +17,49 @@ packages/shared/
     └── types.py                   # FieldError, TransitionResult
 
 services/incident-manager/
-├── incident_manager/              # Service layer (TinyDB, seed mapping, translations)
-│   ├── db.py                      # Lazy TinyDB singleton
-│   ├── repository.py              # CRUD + id assignment
+├── incident_manager/
+│   ├── database.py                # SQLModel engine, lazy ensure_schema()
+│   ├── models.py                  # Incident table (PostgreSQL)
+│   ├── repository.py              # CRUD (Path A — stable function signatures)
 │   ├── service.py                 # create, list, summary, seed_batch, status updates
 │   ├── seed_mapping.py            # CSV row → incident field mapping
 │   ├── translations.py            # Spanish → English description map (seed-time only)
 │   └── types.py                   # IncidentRecord, SeedReport, etc.
 ├── scripts/
-│   └── seed_incidents.py          # CLI: load historical CSV into TinyDB
+│   └── seed_incidents.py          # CLI: load historical CSV into PostgreSQL
 ├── static/                        # Single-page web UI (HTML, CSS, JS)
 │   ├── index.html
 │   ├── styles.css
 │   └── app.js
 ├── tests/                         # pytest (seed golden, API, static routes, translations)
-├── data/                          # Runtime TinyDB (gitignored except .gitkeep)
 ├── app.py                         # FastAPI app + static file serving
 ├── CONTEXT-brasaland.md           # Data contract (authoritative)
+├── .env.example                   # DATABASE_URL (same brasaland-m5 project as inventory)
 ├── pyproject.toml
-├── requirements.txt             # Generated pip-compat export (uv export)
+├── requirements.txt               # Generated pip-compat export (uv export)
 └── README.md
 ```
+
+Persistence uses the **same Supabase project (brasaland-m5)** as `services/inventory` via `DATABASE_URL`. The `incident` table is created in code (`SQLModel.metadata.create_all`) on first database access through `ensure_schema()` — not via Supabase MCP or manual DDL.
 
 For categories, branches, CSV mapping, and the `CERRADO` → `resolved` assumption, see **`CONTEXT-brasaland.md`**.
 
 ## Data model
 
-Each incident stored in TinyDB has the following fields:
+Each incident is stored in the PostgreSQL `incident` table with the following fields:
 
 | Field | Type | Description |
 | --- | --- | --- |
 | `id` | integer | Auto-assigned primary key |
-| `source_incident_id` | string | Stable external ID (`BRS-XXXXXX` from CSV, or `MANUAL-{id}` for UI-created rows) |
+| `source_incident_id` | string | Stable external ID (`BRS-XXXXXX` from CSV, or `MANUAL-{id}` for UI-created rows); unique |
 | `title` | string | Short headline (required) |
 | `description` | string | Full narrative (required; at least one non-whitespace character) |
 | `category` | string | One of five fixed category codes (required) |
 | `status` | string | Lifecycle status (required) |
 | `origin` | string | Who reported the incident (required) |
 | `branch` | string | Location or `Central` (required) |
-| `created_at` | string | ISO 8601 UTC timestamp |
-| `updated_at` | string | ISO 8601 UTC timestamp |
+| `created_at` | string | ISO 8601 UTC timestamp (API boundary) |
+| `updated_at` | string | ISO 8601 UTC timestamp (API boundary) |
 
 ### Required fields
 
@@ -111,9 +114,15 @@ POST requests still send the raw code (e.g. `QUEJA_CLIENTE`).
 
 Run every command from **`services/incident-manager/`** so the editable `brasaland-shared` path (`../../packages/shared`) resolves correctly via `[tool.uv.sources]`.
 
+1. Copy `.env.example` to `.env` and set `DATABASE_URL` (same value as `services/inventory/.env`).
+2. Install dependencies and run tests.
+
 ```powershell
 cd services/incident-manager
+copy .env.example .env
+# Edit .env — paste DATABASE_URL from services/inventory
 uv sync
+uv run pytest
 uv run python scripts/seed_incidents.py
 uv run uvicorn app:app --reload --port 8011
 ```
@@ -122,13 +131,16 @@ Open **http://127.0.0.1:8011/**
 
 Requires **Python 3.11+**. Dependencies are managed with [uv](https://docs.astral.sh/uv/). `requirements.txt` is a generated pip-compat artifact (`uv export --no-hashes -o requirements.txt`).
 
+Schema is created lazily: `ensure_schema()` runs on first repository or seed access and calls `SQLModel.metadata.create_all(engine)`.
+
 ## Seed
 
-The seed script reads the historical CSV export (default: `services/incident-analysis/incidents-brasaland.csv`), maps each row to an incident record, and inserts into TinyDB.
+The seed script reads the historical CSV export (default: `services/incident-analysis/incidents-brasaland.csv`), maps each row to an incident record, and inserts via `seed_batch()` → `repository.insert()` into PostgreSQL.
 
 - **Spanish descriptions** are translated to **English at seed-time** via `translations.py`. The CSV file is never edited.
 - **`origin`** is set to `customer` for all seeded rows.
 - **Idempotent:** re-running after a successful seed inserts **0** new rows (duplicates skipped by `source_incident_id`).
+- Calls `ensure_schema()` before inserting so the `incident` table exists.
 
 **Golden result (100-row fixture):** **97 inserted**, **3 rejected**
 
@@ -194,7 +206,7 @@ cd services/incident-manager
 uv run pytest
 ```
 
-Expect **23** passed.
+Expect **24** passed (23 original + migration model smoke test).
 
 From the monorepo root, M2 must stay green:
 
