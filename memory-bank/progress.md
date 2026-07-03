@@ -412,3 +412,22 @@ Created the backend architecture proposal document and recorded the planning and
 | Docs | `README.md`, `AGENTS.md` |
 
 **Verification:** `npm run test` in `uis/backoffice/` → 9 passed; `npm run build` includes `/inventory/orders` route.
+
+## incident-manager SQLModel migration — Progress
+
+**Status:** Complete (Part 1 backend migration — staged, not committed).
+
+**Scope:** Migrated `services/incident-manager` persistence from TinyDB to SQLModel/Supabase (Path A). Repository internals swapped to SQLModel while keeping the same public function signatures; `service.py` and `app.py` unchanged. Reuses the brasaland-m5 Supabase project (`DATABASE_URL` shared with `services/inventory`). Schema created via lazy `ensure_schema()` on first DB access. `packages/shared/brasaland_shared` untouched (validation + lifecycle only). `tinydb` dependency removed.
+
+**Files touched:**
+
+| Area | Files |
+| --- | --- |
+| Persistence | `incident_manager/database.py`, `incident_manager/models.py`, `incident_manager/repository.py` (Chunk B) |
+| Seed | `scripts/seed_incidents.py` (`ensure_schema` before batch) |
+| Tooling | `pyproject.toml`, `uv.lock`, `requirements.txt`, `.env.example`, `.gitignore` |
+| Tests | `tests/conftest.py` (SQLite in-memory), `tests/test_migration_model.py` |
+| Removed | `incident_manager/db.py` (TinyDB singleton) |
+| Docs | `README.md`, `memory-bank/progress.md` |
+
+**Verification:** `uv run pytest` in `services/incident-manager/` → 24 passed. Golden seed preserved: **97 inserted**, **3 rejected** (`BRS-000044`, `BRS-000049`, `BRS-000079`); idempotent re-seed skips 97 duplicates.
