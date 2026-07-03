@@ -26,3 +26,12 @@ export function getEmptyIncidentsMessage(filtersActive: boolean, hasLoadedOnce: 
 
   return 'No incidents recorded yet.';
 }
+
+export function sortedCountEntries<T extends string>(
+  counts: Partial<Record<T, number>>,
+): Array<{ key: T; count: number }> {
+  return Object.entries(counts)
+    .filter((entry): entry is [string, number] => typeof entry[1] === 'number')
+    .map(([key, count]) => ({ key: key as T, count }))
+    .sort((left, right) => left.key.localeCompare(right.key));
+}

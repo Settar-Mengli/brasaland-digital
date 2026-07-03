@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter, Playfair_Display } from 'next/font/google';
 import Link from 'next/link';
+import NavLinks from './_components/NavLinks';
 import './globals.css';
 
 const inter = Inter({
@@ -36,9 +37,7 @@ export default function IncidentManagerLayout({
             >
               Brasaland Incident Manager
             </Link>
-            <nav aria-label="Main navigation" className="text-sm text-brasaland-ivory/60">
-              {/* Register, Incidents, and Summary links — Chunk D */}
-            </nav>
+            <NavLinks />
           </div>
         </header>
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">{children}</main>

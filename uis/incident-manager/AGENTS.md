@@ -8,4 +8,6 @@ This is Next.js 16.2.6 with React 19 and Tailwind v4.
 **Auth:** The incident API has **no authentication**. Do not add login, guards, or `Authorization` headers unless the backend changes.
 
 **Vocabulary:** Category codes, statuses, origins, and branches must match `services/incident-manager/CONTEXT-brasaland.md` exactly.
+
+**Routes:** `/register`, `/incidents`, `/summary` — see `README.md` for manual test flow.
 <!-- END:incident-manager-agent-rules -->
