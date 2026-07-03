@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from incident_manager.database import ensure_schema
 from incident_manager.seed_mapping import load_mapped_rows_from_csv
 from incident_manager.service import seed_batch
 
@@ -34,6 +35,7 @@ def main() -> None:
         raise SystemExit(1)
 
     rows = load_mapped_rows_from_csv(csv_path)
+    ensure_schema()
     report = seed_batch(rows)
 
     print(f"Inserted: {report.inserted}")
