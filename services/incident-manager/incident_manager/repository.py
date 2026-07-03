@@ -1,66 +1,113 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any
 
-from tinydb import Query
+from sqlalchemy import func
+from sqlmodel import select
 
-from incident_manager.db import get_db
+from incident_manager.database import ensure_schema, get_session
+from incident_manager.models import Incident
 from incident_manager.types import IncidentRecord
 
 
-def _table() -> Any:
-    return get_db().table("incidents")
+def _parse_timestamp(value: str) -> datetime:
+    normalized = value[:-1] + "+00:00" if value.endswith("Z") else value
+    parsed = datetime.fromisoformat(normalized)
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed
 
 
-def _next_id(records: list[IncidentRecord]) -> int:
-    if not records:
-        return 1
-    return max(record["id"] for record in records) + 1
+def _format_timestamp(value: datetime) -> str:
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=UTC)
+    return value.isoformat()
+
+
+def _to_record(incident: Incident) -> IncidentRecord:
+    if incident.id is None:
+        raise ValueError("incident id is required")
+
+    return IncidentRecord(
+        id=incident.id,
+        source_incident_id=incident.source_incident_id,
+        title=incident.title,
+        description=incident.description,
+        category=incident.category,
+        status=incident.status,
+        origin=incident.origin,
+        branch=incident.branch,
+        created_at=_format_timestamp(incident.created_at),
+        updated_at=_format_timestamp(incident.updated_at),
+    )
 
 
 def insert(incident: dict[str, Any]) -> IncidentRecord:
-    table = _table()
-    existing = table.all()
-    incident_id = _next_id(existing)
-    source_incident_id = incident.get("source_incident_id") or f"MANUAL-{incident_id}"
-    stored: IncidentRecord = {
-        "id": incident_id,
-        "source_incident_id": source_incident_id,
-        "title": incident["title"],
-        "description": incident["description"],
-        "category": incident["category"],
-        "status": incident["status"],
-        "origin": incident["origin"],
-        "branch": incident["branch"],
-        "created_at": incident["created_at"],
-        "updated_at": incident["updated_at"],
-    }
-    table.insert(stored)
-    return stored
+    ensure_schema()
+    provided_source = incident.get("source_incident_id")
+    created_at = _parse_timestamp(str(incident["created_at"]))
+    updated_at = _parse_timestamp(str(incident["updated_at"]))
+
+    with get_session() as session:
+        row = Incident(
+            source_incident_id=provided_source or "__pending__",
+            title=incident["title"],
+            description=incident["description"],
+            category=incident["category"],
+            status=incident["status"],
+            origin=incident["origin"],
+            branch=incident["branch"],
+            created_at=created_at,
+            updated_at=updated_at,
+        )
+        session.add(row)
+        session.flush()
+
+        if not provided_source:
+            row.source_incident_id = f"MANUAL-{row.id}"
+
+        session.commit()
+        session.refresh(row)
+        return _to_record(row)
 
 
 def find_by_source_incident_id(source_id: str) -> IncidentRecord | None:
-    query = Query()
-    result = _table().get(query.source_incident_id == source_id)
-    if result is None:
-        return None
-    return result
+    ensure_schema()
+
+    with get_session() as session:
+        row = session.exec(
+            select(Incident).where(Incident.source_incident_id == source_id)
+        ).first()
+        if row is None:
+            return None
+        return _to_record(row)
 
 
 def list_all() -> list[IncidentRecord]:
-    return sorted(_table().all(), key=lambda record: record["id"])
+    ensure_schema()
+
+    with get_session() as session:
+        rows = session.exec(select(Incident).order_by(Incident.id)).all()
+        return [_to_record(row) for row in rows]
 
 
 def get(incident_id: int) -> IncidentRecord | None:
-    query = Query()
-    result = _table().get(query.id == incident_id)
-    if result is None:
-        return None
-    return result
+    ensure_schema()
+
+    with get_session() as session:
+        row = session.get(Incident, incident_id)
+        if row is None:
+            return None
+        return _to_record(row)
 
 
 def count_all() -> int:
-    return len(_table().all())
+    ensure_schema()
+
+    with get_session() as session:
+        count = session.exec(select(func.count()).select_from(Incident)).one()
+        return int(count)
 
 
 def list_with_filters(
@@ -69,21 +116,27 @@ def list_with_filters(
     branch: str | None = None,
     category: str | None = None,
 ) -> list[IncidentRecord]:
-    records = list_all()
+    ensure_schema()
+
+    statement = select(Incident)
 
     if status is not None:
-        records = [record for record in records if record["status"] == status]
+        statement = statement.where(Incident.status == status)
 
     if origin is not None:
-        records = [record for record in records if record["origin"] == origin]
+        statement = statement.where(Incident.origin == origin)
 
     if branch is not None:
-        records = [record for record in records if record["branch"] == branch]
+        statement = statement.where(Incident.branch == branch)
 
     if category is not None:
-        records = [record for record in records if record["category"] == category]
+        statement = statement.where(Incident.category == category)
 
-    return records
+    statement = statement.order_by(Incident.id)
+
+    with get_session() as session:
+        rows = session.exec(statement).all()
+        return [_to_record(row) for row in rows]
 
 
 def update_status_fields(
@@ -91,13 +144,16 @@ def update_status_fields(
     status: str,
     updated_at: str,
 ) -> IncidentRecord | None:
-    query = Query()
-    table = _table()
-    if not table.contains(query.id == incident_id):
-        return None
+    ensure_schema()
 
-    table.update(
-        {"status": status, "updated_at": updated_at},
-        query.id == incident_id,
-    )
-    return get(incident_id)
+    with get_session() as session:
+        row = session.get(Incident, incident_id)
+        if row is None:
+            return None
+
+        row.status = status
+        row.updated_at = _parse_timestamp(updated_at)
+        session.add(row)
+        session.commit()
+        session.refresh(row)
+        return _to_record(row)
