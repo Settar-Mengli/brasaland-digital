@@ -431,3 +431,28 @@ Created the backend architecture proposal document and recorded the planning and
 | Docs | `README.md`, `memory-bank/progress.md` |
 
 **Verification:** `uv run pytest` in `services/incident-manager/` → 24 passed. Golden seed preserved: **97 inserted**, **3 rejected** (`BRS-000044`, `BRS-000049`, `BRS-000079`); idempotent re-seed skips 97 duplicates.
+
+## incident-manager UI — Progress
+
+**Status:** Complete (Part 2 frontend — staged, not committed).
+
+**Scope:** New `uis/incident-manager/` Next.js 16 app (port **3004**) replicating the static incident UI as three App Router views. Consumes `services/incident-manager` on **:8011** via Next.js rewrites (`/api/incidents/*`). No authentication (open API endpoints). `lib/incidents.ts` is the sole fetch layer; Vitest covers lib helpers.
+
+**Views:**
+
+| Route | Features |
+| --- | --- |
+| `/register` | Registration form; branch field always visible; highlight when `origin === branch`; client validation; field-level API errors |
+| `/incidents` | Filters (status, origin, branch, category); loading/error+retry/empty states; inline status update with valid transitions only; revert on failure |
+| `/summary` | `GET /api/incidents/summary` metrics; self-contained loading/error; zero-state message |
+
+**Files touched (high level):**
+
+| Area | Files |
+| --- | --- |
+| App | `app/layout.tsx`, `app/page.tsx`, `app/register/page.tsx`, `app/incidents/page.tsx`, `app/summary/page.tsx`, `app/_components/NavLinks.tsx`, `app/_components/FormField.tsx` |
+| Lib | `lib/incidents.ts`, `lib/incident-types.ts`, `lib/api-error.ts`, `lib/validate-register-form.ts`, `lib/incident-status-control.ts`, `lib/incident-display.ts` |
+| Config | `package.json`, `next.config.ts`, `.env.example`, `vitest.config.ts` |
+| Docs | `README.md`, `AGENTS.md`, `memory-bank/progress.md` |
+
+**Verification:** `npm run test` in `uis/incident-manager/` → 24 passed; `npm run build` includes `/register`, `/incidents`, `/summary`.
