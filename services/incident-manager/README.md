@@ -218,6 +218,10 @@ Expect **115** passed.
 
 ## Screenshots
 
-![Incident manager overview](../../docs/screenshots/incident-manager-overview.png)
+![Incident manager landing page](../../docs/screenshots/incident-manager-ui-landing.png)
 
-![Registration form validation errors](../../docs/screenshots/incident-manager-form-error.png)
+![Register incident form](../../docs/screenshots/incident-manager-ui-register.png)
+
+![Incident list with filters](../../docs/screenshots/incident-manager-ui-incidents.png)
+
+![Summary metrics](../../docs/screenshots/incident-manager-ui-summary.png)
