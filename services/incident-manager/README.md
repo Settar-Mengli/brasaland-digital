@@ -218,10 +218,18 @@ Expect **115** passed.
 
 ## Screenshots
 
+### Landing
 ![Incident manager landing page](../../docs/screenshots/incident-manager-ui-landing.png)
+*Entry point linking to the three views (Register, Incidents, Summary).*
 
+### Register
 ![Register incident form](../../docs/screenshots/incident-manager-ui-register.png)
+*Registration form with category, origin, and branch selection; the branch field highlights when origin is "branch".*
 
+### Incidents
 ![Incident list with filters](../../docs/screenshots/incident-manager-ui-incidents.png)
+*Incident list with status/origin/branch/category filters and inline status updates (valid transitions only).*
 
+### Summary
 ![Summary metrics](../../docs/screenshots/incident-manager-ui-summary.png)
+*Chain-wide metrics: totals by status, category, origin, and branch.*
