@@ -150,6 +150,22 @@ The backoffice and incident-manager UIs proxy API calls through Next.js rewrites
 
 **Build context note:** Both backend and UI images use the repo root as Docker build context. Only the root [`.dockerignore`](.dockerignore) is effective; per-folder ignore files under `services/` or `uis/` are not read by Docker.
 
+### Database security (RLS)
+
+All four brasaland-m5 public tables (`ingredient`, `ingrediententry`, `ingredientexit`, `incident`) have **Row-Level Security enabled with zero policies** — a deny-by-default posture on the PostgREST/anon Data API path, which nothing in this repo uses.
+
+The FastAPI services (`services/inventory`, `services/incident-manager`) connect via `DATABASE_URL` as the table owner and bypass RLS. **FORCE ROW LEVEL SECURITY** is deliberately not set.
+
+One-time enablement (or re-enablement after adding tables):
+
+```bash
+cd services/inventory
+uv run --python 3.13 python ../../scripts/enable_rls.py
+uv run --python 3.13 python ../../scripts/enable_rls.py --dry-run
+```
+
+**Future-table caveat:** `SQLModel.metadata.create_all` creates new tables with RLS **disabled**. Re-run `scripts/enable_rls.py` after adding any table.
+
 ## Engineering decisions
 
 **M2 is a standalone library, not inline code.** Business logic (filtering, ranking, financial
