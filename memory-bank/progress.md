@@ -475,3 +475,20 @@ Created the backend architecture proposal document and recorded the planning and
 | D | `docker-compose.yml`, `.env.example`, `README.md` Docker section, this entry |
 
 **Locked decisions:** Repo-root build context; TinyDB named volumes for auth + supplier-directory; `RESET_LINK_BASE_URL` stays browser-reachable (`127.0.0.1:8002`); `requirements.txt` files untouched.
+
+## brasaland-m5 RLS enablement — Progress
+
+**Date:** 2026-07-07
+
+**Status:** Complete.
+
+**Scope:** Row-Level Security enabled on the four brasaland-m5 public tables (`ingredient`, `ingrediententry`, `ingredientexit`, `incident`) via `scripts/enable_rls.py`. Zero policies; no `FORCE ROW LEVEL SECURITY`.
+
+**Files touched (high level):**
+
+| Area | Files |
+| --- | --- |
+| Ops script | `scripts/enable_rls.py` |
+| Docs | `README.md`, `memory-bank/progress.md` |
+
+**Verification:** Script before/after output (4× DISABLED → 4× ENABLED). MCP read-only re-check (RLS true ×4, zero policies, counts 6/4/3/97). Live smoke GETs on both services returning real rows. `uv run pytest` in `services/inventory/` → 27 passed; `services/incident-manager/` → 24 passed.
