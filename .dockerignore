@@ -8,8 +8,8 @@ node_modules
 **/.mypy_cache
 .git
 **/.git
-apps/
-uis/
+apps/*
+!apps/operations-toolkit
 docs/
 memory-bank/
 **/.env
