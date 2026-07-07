@@ -117,6 +117,39 @@ npm run dev --workspace @brasaland/website
 npm run dev --workspace @brasaland/backoffice
 ```
 
+## Local development with Docker
+
+**Prerequisites:** Docker Desktop (Linux engine), a filled root `.env` (see below).
+
+1. Copy the template and set real values (Supabase `DATABASE_URL`, JWT PEM keys, Resend key if using password reset):
+
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Build and start all six containers:
+
+   ```bash
+   docker compose up --build
+   ```
+
+   Services communicate over the named network `brasaland-dev` using Docker DNS names (`http://inventory:8012`, etc.). Your browser uses host-published ports on `localhost`.
+
+| Service | URL |
+| --- | --- |
+| Auth API | http://localhost:8002 |
+| Supplier directory | http://localhost:8001 |
+| Incident analysis | http://localhost:8000 |
+| Incident manager API | http://localhost:8011 |
+| Inventory API | http://localhost:8012 |
+| Website (Next.js) | http://localhost:3002 |
+| Backoffice (Next.js) | http://localhost:3003 |
+| Incident manager UI (Next.js) | http://localhost:3004 |
+
+The backoffice and incident-manager UIs proxy API calls through Next.js rewrites to backend service names inside the `ui` container; `NEXT_PUBLIC_*` URLs still point at same-origin localhost UI ports.
+
+**Build context note:** Both backend and UI images use the repo root as Docker build context. Only the root [`.dockerignore`](.dockerignore) is effective; per-folder ignore files under `services/` or `uis/` are not read by Docker.
+
 ## Engineering decisions
 
 **M2 is a standalone library, not inline code.** Business logic (filtering, ranking, financial
