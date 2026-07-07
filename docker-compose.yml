@@ -1,0 +1,154 @@
+services:
+  auth:
+    build:
+      context: .
+      dockerfile: services/Dockerfile
+      args:
+        SERVICE: auth
+    command: uv run uvicorn app:app --host 0.0.0.0 --port 8002 --reload
+    ports:
+      - '8002:8002'
+    environment:
+      WATCHFILES_FORCE_POLLING: 'true'
+      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
+      REFRESH_TOKEN_EXPIRE_MINUTES: ${REFRESH_TOKEN_EXPIRE_MINUTES}
+      RESET_TOKEN_EXPIRE_MINUTES: ${RESET_TOKEN_EXPIRE_MINUTES}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      RESET_EMAIL_FROM: ${RESET_EMAIL_FROM}
+      RESET_LINK_BASE_URL: ${RESET_LINK_BASE_URL}
+    volumes:
+      - ./services/auth:/app/services/auth
+      - ./packages:/app/packages
+      - auth_venv:/app/services/auth/.venv
+      - auth_data:/app/services/auth/data
+    restart: unless-stopped
+    networks:
+      - brasaland-dev
+
+  inventory:
+    build:
+      context: .
+      dockerfile: services/Dockerfile
+      args:
+        SERVICE: inventory
+    command: uv run uvicorn app:app --host 0.0.0.0 --port 8012 --reload
+    ports:
+      - '8012:8012'
+    environment:
+      WATCHFILES_FORCE_POLLING: 'true'
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+    volumes:
+      - ./services/inventory:/app/services/inventory
+      - ./packages:/app/packages
+      - inventory_venv:/app/services/inventory/.venv
+    restart: unless-stopped
+    networks:
+      - brasaland-dev
+
+  incident-manager:
+    build:
+      context: .
+      dockerfile: services/Dockerfile
+      args:
+        SERVICE: incident-manager
+    command: uv run uvicorn app:app --host 0.0.0.0 --port 8011 --reload
+    ports:
+      - '8011:8011'
+    environment:
+      WATCHFILES_FORCE_POLLING: 'true'
+      DATABASE_URL: ${DATABASE_URL}
+    volumes:
+      - ./services/incident-manager:/app/services/incident-manager
+      - ./packages:/app/packages
+      - incident-manager_venv:/app/services/incident-manager/.venv
+    restart: unless-stopped
+    networks:
+      - brasaland-dev
+
+  incident-analysis:
+    build:
+      context: .
+      dockerfile: services/Dockerfile
+      args:
+        SERVICE: incident-analysis
+    command: uv run uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - '8000:8000'
+    environment:
+      WATCHFILES_FORCE_POLLING: 'true'
+    volumes:
+      - ./services/incident-analysis:/app/services/incident-analysis
+      - ./packages:/app/packages
+      - incident-analysis_venv:/app/services/incident-analysis/.venv
+    restart: unless-stopped
+    networks:
+      - brasaland-dev
+
+  supplier-directory:
+    build:
+      context: .
+      dockerfile: services/Dockerfile
+      args:
+        SERVICE: supplier-directory
+    command: uv run uvicorn app:app --host 0.0.0.0 --port 8001 --reload
+    ports:
+      - '8001:8001'
+    environment:
+      WATCHFILES_FORCE_POLLING: 'true'
+    volumes:
+      - ./services/supplier-directory:/app/services/supplier-directory
+      - ./packages:/app/packages
+      - supplier-directory_venv:/app/services/supplier-directory/.venv
+      - supplier_data:/app/services/supplier-directory/data
+    restart: unless-stopped
+    networks:
+      - brasaland-dev
+
+  ui:
+    build:
+      context: .
+      dockerfile: uis/Dockerfile
+    ports:
+      - '3002:3002'
+      - '3003:3003'
+      - '3004:3004'
+    environment:
+      WATCHPACK_POLLING: 'true'
+      INVENTORY_API_ORIGIN: http://inventory:8012
+      AUTH_API_ORIGIN: http://auth:8002
+      INCIDENTS_API_ORIGIN: http://incident-manager:8011
+      NEXT_PUBLIC_INVENTORY_API_URL: http://localhost:3003/api/inventory
+      NEXT_PUBLIC_AUTH_API_URL: http://localhost:3003/api/auth
+      NEXT_PUBLIC_INCIDENTS_API_URL: http://localhost:3004/api/incidents
+    volumes:
+      - ./uis:/app/uis
+      - ./apps/operations-toolkit:/app/apps/operations-toolkit
+      - ui_node_modules:/app/node_modules
+      - ui_uis_node_modules:/app/uis/node_modules
+    depends_on:
+      - auth
+      - inventory
+      - incident-manager
+    restart: unless-stopped
+    networks:
+      - brasaland-dev
+
+networks:
+  brasaland-dev:
+    name: brasaland-dev
+
+volumes:
+  auth_data:
+  supplier_data:
+  auth_venv:
+  inventory_venv:
+  incident-manager_venv:
+  incident-analysis_venv:
+  supplier-directory_venv:
+  ui_node_modules:
+  ui_uis_node_modules:

@@ -456,3 +456,22 @@ Created the backend architecture proposal document and recorded the planning and
 | Docs | `README.md`, `AGENTS.md`, `memory-bank/progress.md` |
 
 **Verification:** `npm run test` in `uis/incident-manager/` → 24 passed; `npm run build` includes `/register`, `/incidents`, `/summary`.
+
+## Monorepo containerization (local Docker) — Progress
+
+**Date:** 2026-07-07
+
+**Status:** Complete (Chunk D — compose + docs + smoke test; staged, not committed).
+
+**Scope:** Local development via `docker compose up` from repo root on named network `brasaland-dev`: five FastAPI backends (shared `services/Dockerfile`, uv 3.13, `--host 0.0.0.0`) + one UI container (three Next.js dev servers via `uis/start.sh`). Cloud Supabase via root `.env` `DATABASE_URL` (no local Postgres). Next.js rewrites use server-side origin env vars (`INVENTORY_API_ORIGIN`, `AUTH_API_ORIGIN`, `INCIDENTS_API_ORIGIN`).
+
+**Chunks delivered:**
+
+| Chunk | Files |
+| --- | --- |
+| A | `uis/backoffice/next.config.ts`, `uis/incident-manager/next.config.ts`, UI `.env.example` updates |
+| B | `services/Dockerfile`, root `.dockerignore` (seed) |
+| C | `uis/Dockerfile`, `uis/start.sh`, `.dockerignore` extended for UI paths |
+| D | `docker-compose.yml`, `.env.example`, `README.md` Docker section, this entry |
+
+**Locked decisions:** Repo-root build context; TinyDB named volumes for auth + supplier-directory; `RESET_LINK_BASE_URL` stays browser-reachable (`127.0.0.1:8002`); `requirements.txt` files untouched.
