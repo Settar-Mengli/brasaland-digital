@@ -67,7 +67,8 @@ brasaland-digital/
 ├── .agents/                     # Agent rules and skills
 ├── docs/
 │   ├── brand-tokens.md          # Shared visual identity — colors, typography, tokens
-│   └── screenshots/             # Live demo screenshots
+│   ├── screenshots/             # Live demo screenshots
+│   └── telemetry/               # Phase 1 inventory telemetry plan + event schemas
 ├── AGENTS.md                    # Root agent rules
 ├── package.json                 # npm workspaces root
 └── README.md
