@@ -492,3 +492,7 @@ Created the backend architecture proposal document and recorded the planning and
 | Docs | `README.md`, `memory-bank/progress.md` |
 
 **Verification:** Script before/after output (4× DISABLED → 4× ENABLED). MCP read-only re-check (RLS true ×4, zero policies, counts 6/4/3/97). Live smoke GETs on both services returning real rows. `uv run pytest` in `services/inventory/` → 27 passed; `services/incident-manager/` → 24 passed.
+
+## Telemetry Phase 1 — Progress
+
+**Status:** Complete. **Scope:** `docs/telemetry/telemetry-plan.md` + `event-schemas.json` (W16D46). No application code changes.
