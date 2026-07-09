@@ -498,3 +498,5 @@ Created the backend architecture proposal document and recorded the planning and
 **Status:** Complete. **Scope:** `docs/telemetry/telemetry-plan.md` + `event-schemas.json` (W16D46). No application code changes.
 
 **Telemetry Phase 1 plan amended to 2.0.0** — `docs/telemetry/telemetry-plan.md` + `event-schemas.json` only. Changes: envelope `service`; `schemaVersion` 2.0.0; `location_id` as location slug string; re-admitted `ingredient_list_viewed` + `user_login_succeeded`; frontend `TelemetryService` capture model (§3); `reason` enum `consumption` | `waste`; capture-metadata sourcing (integer→slug map, sessionId, userId, server-derived `level`); conflict resolutions in §1–§8. No application code.
+
+**Telemetry Phase A — stub service** — `services/telemetry/` FastAPI on :8013, `POST /telemetry/events` tolerant envelope validation stub (per-event warnings, no persistence), CI + compose wired. No backoffice client yet.

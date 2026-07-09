@@ -50,6 +50,25 @@ services:
     networks:
       - brasaland-dev
 
+  telemetry:
+    build:
+      context: .
+      dockerfile: services/Dockerfile
+      args:
+        SERVICE: telemetry
+    command: uv run uvicorn app:app --host 0.0.0.0 --port 8013 --reload
+    ports:
+      - '8013:8013'
+    environment:
+      WATCHFILES_FORCE_POLLING: 'true'
+      TELEMETRY_ENDPOINT: http://telemetry:8013/telemetry/events
+    volumes:
+      - ./services/telemetry:/app/services/telemetry
+      - telemetry_venv:/app/services/telemetry/.venv
+    restart: unless-stopped
+    networks:
+      - brasaland-dev
+
   incident-manager:
     build:
       context: .
@@ -147,6 +166,7 @@ volumes:
   supplier_data:
   auth_venv:
   inventory_venv:
+  telemetry_venv:
   incident-manager_venv:
   incident-analysis_venv:
   supplier-directory_venv:
