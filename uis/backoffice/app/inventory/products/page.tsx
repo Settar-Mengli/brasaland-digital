@@ -6,7 +6,9 @@ import { useEffect, useState } from 'react';
 import InventoryAuthGuard from '@/app/_components/InventoryAuthGuard';
 import { getProducts } from '@/lib/inventory';
 import type { Ingredient } from '@/lib/inventory-types';
+import { getSessionLocationSlug } from '@/lib/locations';
 import { getStockLevel, type StockLevel } from '@/lib/stock-level';
+import { track } from '@/lib/telemetry';
 
 const STOCK_BADGE_CLASSES: Record<StockLevel, string> = {
   healthy: 'bg-brasaland-success/10 text-brasaland-success',
@@ -38,6 +40,13 @@ function ProductsContent() {
         const data = await getProducts();
         if (!cancelled) {
           setProducts(data);
+          const locationId = getSessionLocationSlug();
+          if (locationId) {
+            track('ingredient_list_viewed', {
+              location_id: locationId,
+              item_count: data.length,
+            });
+          }
         }
       } catch (loadError) {
         if (!cancelled) {
@@ -65,7 +74,10 @@ function ProductsContent() {
 
   if (error) {
     return (
-      <p role="alert" className="text-sm text-brasaland-error bg-brasaland-error/10 rounded-md px-3 py-2">
+      <p
+        role="alert"
+        className="text-sm text-brasaland-error bg-brasaland-error/10 rounded-md px-3 py-2"
+      >
         {error}
       </p>
     );

@@ -128,7 +128,7 @@ npm run dev --workspace @brasaland/backoffice
    cp .env.example .env
    ```
 
-2. Build and start all six containers:
+2. Build and start all seven backend containers:
 
    ```bash
    docker compose up --build
@@ -143,6 +143,7 @@ npm run dev --workspace @brasaland/backoffice
 | Incident analysis | http://localhost:8000 |
 | Incident manager API | http://localhost:8011 |
 | Inventory API | http://localhost:8012 |
+| Telemetry API | http://localhost:8013 |
 | Website (Next.js) | http://localhost:3002 |
 | Backoffice (Next.js) | http://localhost:3003 |
 | Incident manager UI (Next.js) | http://localhost:3004 |
