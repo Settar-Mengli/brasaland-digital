@@ -3,25 +3,45 @@
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
 
+import { LOCATION_OPTIONS, setSessionLocationSlug } from '@/lib/locations';
 import { login } from '@/lib/auth';
+import { mapLoginFailureReason } from '@/lib/login-failure-aggregation';
+import { track } from '@/lib/telemetry';
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [locationSlug, setLocationSlug] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  function handleLocationChange(value: string) {
+    setLocationSlug(value);
+    setSessionLocationSlug(value);
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+
+    if (!locationSlug) {
+      setError('Select a location.');
+      return;
+    }
+
     setSubmitting(true);
     try {
       await login(email, password);
+      track('user_login_succeeded', { location_id: locationSlug });
       router.replace('/inventory/products');
     } catch (submitError) {
       const message =
         submitError instanceof Error ? submitError.message : 'Login failed. Please try again.';
+      track('user_login_failed', {
+        failure_reason: mapLoginFailureReason(message),
+        source: 'backoffice',
+      });
       setError(message);
     } finally {
       setSubmitting(false);
@@ -49,6 +69,29 @@ export default function LoginPage() {
             {error}
           </p>
         ) : null}
+
+        <div>
+          <label htmlFor="location" className="block text-sm font-medium mb-1">
+            Location
+          </label>
+          <select
+            id="location"
+            name="location"
+            required
+            value={locationSlug}
+            onChange={(event) => handleLocationChange(event.target.value)}
+            className="w-full rounded-md border border-brasaland-charcoal/20 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brasaland-ember"
+          >
+            <option value="" disabled>
+              Select a location…
+            </option>
+            {LOCATION_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
 
         <div>
           <label htmlFor="email" className="block text-sm font-medium mb-1">

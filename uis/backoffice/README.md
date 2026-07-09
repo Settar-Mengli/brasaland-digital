@@ -64,13 +64,42 @@ Port **3003** (`next dev -p 3003`).
 
 All inventory HTTP calls go through **`lib/inventory.ts`**. Auth token helpers live in **`lib/auth.ts`**. Components must not call `fetch` directly.
 
+## Telemetry
+
+All telemetry HTTP calls go through **`lib/telemetry.ts`** via `track(eventType, properties)`. Set `NEXT_PUBLIC_TELEMETRY_ENDPOINT` in `.env.local` (see `.env.example`); the Next.js rewrite forwards `/api/telemetry/*` to the telemetry service on **:8013**.
+
+Copy `.env.example` to `.env.local` before running locally:
+
+```powershell
+cd uis/backoffice
+copy .env.example .env.local
+```
+
+Phase 1 events emitted from the backoffice UI:
+
+| Event | Trigger |
+| --- | --- |
+| `user_login_succeeded` | Successful login with location selected |
+| `user_login_failed` | Failed login (60s burst aggregation) |
+| `session_expired` | Missing or expired JWT on guarded routes |
+| `ingredient_list_viewed` | Products list loads successfully |
+| `supply_order_created` | Inbound order submitted successfully |
+| `supply_order_failed` | Inbound order rejected |
+| `consumption_order_created` | Outbound order submitted successfully |
+| `consumption_order_failed` | Outbound order rejected |
+| `order_form_abandoned` | Order form idle 30s after interaction without submit |
+
+`supply_order_created` currently emits `supplier_id: 0` because the inventory API uses `supplier_name` only (telemetry plan §8 gap — no supplier directory id yet).
+
+Manual test: start telemetry with `cd services/telemetry && uv run uvicorn app:app --port 8013` alongside auth and inventory.
+
 ## Testing
 
 ```powershell
 npm run test
 ```
 
-Vitest unit tests cover `lib/api-error.ts`, `lib/inventory.ts`, and `lib/stock-level.ts`.
+Vitest unit tests cover `lib/api-error.ts`, `lib/inventory.ts`, `lib/stock-level.ts`, `lib/telemetry.ts`, `lib/locations.ts`, and `lib/login-failure-aggregation.ts`.
 
 ```powershell
 npm run build

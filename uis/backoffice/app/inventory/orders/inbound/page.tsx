@@ -7,6 +7,10 @@ import { type FormEvent, useState } from 'react';
 import InventoryAuthGuard from '@/app/_components/InventoryAuthGuard';
 import ProductSelect from '@/app/_components/ProductSelect';
 import { createInbound } from '@/lib/inventory';
+import { locationSlug } from '@/lib/locations';
+import { mapSupplyFailure } from '@/lib/order-failure-codes';
+import { track } from '@/lib/telemetry';
+import { useOrderFormAbandonment } from '@/lib/use-order-form-abandonment';
 
 const INPUT_CLASS =
   'w-full rounded-md border border-brasaland-charcoal/20 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brasaland-ember';
@@ -30,6 +34,14 @@ function InboundForm() {
   const [formError, setFormError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  const { onFieldChange } = useOrderFormAbandonment({
+    orderType: 'supply',
+    locationFormValue: locationId,
+    ingredientId,
+    submitted,
+  });
 
   function resetForm() {
     setIngredientId('');
@@ -50,17 +62,31 @@ function InboundForm() {
 
     setSubmitting(true);
     try {
-      await createInbound({
+      const response = await createInbound({
         ingredient_id: ingredientId,
         quantity: Number(quantity),
         supplier_name: supplierName.trim(),
         location_id: Number(locationId),
       });
+      track('supply_order_created', {
+        supply_order_id: response.id,
+        ingredient_id: response.ingredient_id,
+        quantity: response.quantity,
+        // §8 gap: API uses supplier_name; no supplier directory id yet.
+        supplier_id: 0,
+        location_id: locationSlug(locationId),
+        created_by: response.user_uuid,
+      });
+      setSubmitted(true);
       setSuccessMessage('Ingredient entry logged successfully.');
       resetForm();
     } catch (submitError) {
       const message =
         submitError instanceof Error ? submitError.message : 'Failed to log ingredient entry.';
+      track(
+        'supply_order_failed',
+        mapSupplyFailure(message, ingredientId, Number(quantity), locationSlug(locationId)),
+      );
       setFormError(message);
     } finally {
       setSubmitting(false);
@@ -107,7 +133,10 @@ function InboundForm() {
           <ProductSelect
             id="inbound-product"
             value={ingredientId}
-            onChange={setIngredientId}
+            onChange={(value) => {
+              onFieldChange();
+              setIngredientId(value);
+            }}
             disabled={submitting}
           />
         </div>
@@ -124,7 +153,10 @@ function InboundForm() {
             step="any"
             required
             value={quantity}
-            onChange={(event) => setQuantity(event.target.value)}
+            onChange={(event) => {
+              onFieldChange();
+              setQuantity(event.target.value);
+            }}
             className={INPUT_CLASS}
           />
         </div>
@@ -139,7 +171,10 @@ function InboundForm() {
             type="text"
             required
             value={supplierName}
-            onChange={(event) => setSupplierName(event.target.value)}
+            onChange={(event) => {
+              onFieldChange();
+              setSupplierName(event.target.value);
+            }}
             className={INPUT_CLASS}
           />
         </div>
@@ -156,7 +191,10 @@ function InboundForm() {
             max={14}
             required
             value={locationId}
-            onChange={(event) => setLocationId(event.target.value)}
+            onChange={(event) => {
+              onFieldChange();
+              setLocationId(event.target.value);
+            }}
             className={INPUT_CLASS}
           />
           <p className="text-xs text-brasaland-charcoal/40 mt-1">Receiving location (1–14).</p>

@@ -7,6 +7,10 @@ import { type FormEvent, useEffect, useState } from 'react';
 import InventoryAuthGuard from '@/app/_components/InventoryAuthGuard';
 import ProductSelect from '@/app/_components/ProductSelect';
 import { createOutbound, getProduct } from '@/lib/inventory';
+import { locationSlug } from '@/lib/locations';
+import { mapConsumptionFailure } from '@/lib/order-failure-codes';
+import { track } from '@/lib/telemetry';
+import { useOrderFormAbandonment } from '@/lib/use-order-form-abandonment';
 
 const INPUT_CLASS =
   'w-full rounded-md border border-brasaland-charcoal/20 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brasaland-ember';
@@ -39,6 +43,14 @@ function OutboundForm() {
   const [quantityError, setQuantityError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  const { onFieldChange } = useOrderFormAbandonment({
+    orderType: 'consumption',
+    locationFormValue: locationId,
+    ingredientId,
+    submitted,
+  });
 
   useEffect(() => {
     if (ingredientId === '') {
@@ -60,8 +72,7 @@ function OutboundForm() {
         }
       } catch (error) {
         if (!cancelled) {
-          const message =
-            error instanceof Error ? error.message : 'Failed to load current stock.';
+          const message = error instanceof Error ? error.message : 'Failed to load current stock.';
           setCurrentStock(null);
           setStockError(message);
         }
@@ -108,17 +119,37 @@ function OutboundForm() {
 
     setSubmitting(true);
     try {
-      await createOutbound({
+      const response = await createOutbound({
         ingredient_id: ingredientId,
         quantity: Number(quantity),
         reason,
         location_id: Number(locationId),
       });
+      track('consumption_order_created', {
+        consumption_order_id: response.id,
+        ingredient_id: response.ingredient_id,
+        quantity: response.quantity,
+        reason: response.reason as 'consumption' | 'waste',
+        location_id: locationSlug(locationId),
+        created_by: response.user_uuid,
+        restricted_access: false,
+      });
+      setSubmitted(true);
       setSuccessMessage('Ingredient exit logged successfully.');
       resetForm();
     } catch (submitError) {
       const message =
         submitError instanceof Error ? submitError.message : 'Failed to log ingredient exit.';
+      track(
+        'consumption_order_failed',
+        mapConsumptionFailure(
+          message,
+          ingredientId,
+          Number(quantity),
+          locationSlug(locationId),
+          reason,
+        ),
+      );
       if (message.startsWith('Insufficient stock for ingredient')) {
         setQuantityError(message);
       } else {
@@ -169,7 +200,10 @@ function OutboundForm() {
           <ProductSelect
             id="outbound-product"
             value={ingredientId}
-            onChange={setIngredientId}
+            onChange={(value) => {
+              onFieldChange();
+              setIngredientId(value);
+            }}
             disabled={submitting}
           />
         </div>
@@ -204,6 +238,7 @@ function OutboundForm() {
             required
             value={quantity}
             onChange={(event) => {
+              onFieldChange();
               setQuantity(event.target.value);
               setQuantityError(null);
             }}
@@ -240,7 +275,10 @@ function OutboundForm() {
             name="reason"
             required
             value={reason}
-            onChange={(event) => setReason(event.target.value as 'consumption' | 'waste')}
+            onChange={(event) => {
+              onFieldChange();
+              setReason(event.target.value as 'consumption' | 'waste');
+            }}
             className={INPUT_CLASS}
           >
             {REASON_OPTIONS.map((option) => (
@@ -263,10 +301,15 @@ function OutboundForm() {
             max={14}
             required
             value={locationId}
-            onChange={(event) => setLocationId(event.target.value)}
+            onChange={(event) => {
+              onFieldChange();
+              setLocationId(event.target.value);
+            }}
             className={INPUT_CLASS}
           />
-          <p className="text-xs text-brasaland-charcoal/40 mt-1">Location where the exit occurred (1–14).</p>
+          <p className="text-xs text-brasaland-charcoal/40 mt-1">
+            Location where the exit occurred (1–14).
+          </p>
         </div>
 
         <button
