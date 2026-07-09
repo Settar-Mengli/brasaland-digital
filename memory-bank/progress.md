@@ -502,3 +502,5 @@ Created the backend architecture proposal document and recorded the planning and
 **Telemetry Phase A — stub service** — `services/telemetry/` FastAPI on :8013, `POST /telemetry/events` tolerant envelope validation stub (per-event warnings, no persistence), CI + compose wired. No backoffice client yet.
 
 **Telemetry Phase B — backoffice capture** — `uis/backoffice/lib/telemetry.ts` (`track()` queue/flush/beacon), `lib/locations.ts`, nine instrumentation call sites (login, guard, products, inbound/outbound + form abandonment), Next rewrite `/api/telemetry/*` → :8013, Vitest lib tests, README telemetry section.
+
+**Telemetry storage phase** — `services/telemetry` persists to `telemetry_events` (8-column SQLModel table on brasaland-m5), stage-1 envelope + strict stage-2 allowlist validation, server-derived `level`, single `INSERT ... ON CONFLICT DO NOTHING` bulk write, `scripts/setup_telemetry_table.py` indexes, `enable_rls.py` table list updated.

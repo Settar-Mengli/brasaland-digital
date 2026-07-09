@@ -1,0 +1,431 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://brasaland.digital/schemas/telemetry/2.0.0",
+  "title": "Brasaland Telemetry Event Schemas",
+  "description": "Phase 1 inventory telemetry event schemas (v2.0.0). Validate against #/definitions/<event_type>.",
+  "definitions": {
+    "currency": {
+      "type": "string",
+      "enum": ["COP", "USD"],
+      "description": "Colombian locations use COP; Florida locations use USD."
+    },
+    "consumptionReason": {
+      "type": "string",
+      "enum": ["consumption", "waste"],
+      "description": "API-emitted exit reasons. Canonical kitchen_use maps to consumption."
+    },
+    "locationId": {
+      "type": "string",
+      "enum": [
+        "medellin_centro",
+        "medellin_poblado",
+        "medellin_laureles",
+        "bogota_zona_rosa",
+        "bogota_chapinero",
+        "bogota_usaquen",
+        "bogota_norte",
+        "cali_san_fernando",
+        "cali_granada",
+        "cali_ciudad_jardin",
+        "miami_brickell",
+        "miami_wynwood",
+        "miami_coral_gables",
+        "miami_kendall"
+      ],
+      "description": "Brasaland restaurant location slug. Numeric form values (1-14) are translated to this slug at capture."
+    },
+    "opaqueUserId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Opaque stringified numeric TinyDB user id (JWT sub). Never a name or email address."
+    },
+    "eventEnvelope": {
+      "type": "object",
+      "required": [
+        "eventId",
+        "timestamp",
+        "sessionId",
+        "userId",
+        "event_type",
+        "schemaVersion",
+        "requestId",
+        "service",
+        "properties"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "eventId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique event identifier (UUID v4)."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 UTC timestamp."
+        },
+        "sessionId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Browser or app session correlation ID."
+        },
+        "userId": {
+          "$ref": "#/definitions/opaqueUserId"
+        },
+        "event_type": {
+          "type": "string",
+          "description": "entity_action taxonomy in snake_case."
+        },
+        "schemaVersion": {
+          "type": "string",
+          "const": "2.0.0"
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "HTTP request correlation ID."
+        },
+        "service": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Emitting application identifier (e.g. backoffice)."
+        },
+        "properties": {
+          "type": "object"
+        }
+      }
+    },
+    "supply_order_created": {
+      "allOf": [
+        { "$ref": "#/definitions/eventEnvelope" },
+        {
+          "properties": {
+            "event_type": { "const": "supply_order_created" },
+            "properties": {
+              "type": "object",
+              "required": [
+                "supply_order_id",
+                "ingredient_id",
+                "quantity",
+                "supplier_id",
+                "location_id",
+                "created_by"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "supply_order_id": { "type": "integer" },
+                "ingredient_id": { "type": "integer" },
+                "quantity": { "type": "number", "exclusiveMinimum": 0 },
+                "supplier_id": { "type": "integer" },
+                "location_id": { "$ref": "#/definitions/locationId" },
+                "created_by": { "$ref": "#/definitions/opaqueUserId" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "supply_order_failed": {
+      "allOf": [
+        { "$ref": "#/definitions/eventEnvelope" },
+        {
+          "properties": {
+            "event_type": { "const": "supply_order_failed" },
+            "properties": {
+              "type": "object",
+              "required": [
+                "ingredient_id",
+                "quantity",
+                "location_id",
+                "failure_code",
+                "failure_message"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "ingredient_id": { "type": "integer" },
+                "quantity": { "type": "number", "minimum": 0 },
+                "supplier_id": { "type": "integer" },
+                "location_id": { "$ref": "#/definitions/locationId" },
+                "failure_code": {
+                  "type": "string",
+                  "enum": [
+                    "ingredient_not_found",
+                    "validation_error",
+                    "unknown_supplier"
+                  ]
+                },
+                "failure_message": { "type": "string" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "consumption_order_created": {
+      "allOf": [
+        { "$ref": "#/definitions/eventEnvelope" },
+        {
+          "properties": {
+            "event_type": { "const": "consumption_order_created" },
+            "properties": {
+              "type": "object",
+              "required": [
+                "consumption_order_id",
+                "ingredient_id",
+                "quantity",
+                "reason",
+                "location_id",
+                "created_by",
+                "restricted_access"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "consumption_order_id": { "type": "integer" },
+                "ingredient_id": { "type": "integer" },
+                "quantity": { "type": "number", "exclusiveMinimum": 0 },
+                "reason": { "$ref": "#/definitions/consumptionReason" },
+                "location_id": { "$ref": "#/definitions/locationId" },
+                "created_by": { "$ref": "#/definitions/opaqueUserId" },
+                "restricted_access": {
+                  "type": "boolean",
+                  "description": "Must be true when reason is theft (forward-compatible; theft is not currently emittable by the API). Events with restricted_access true require role-gated storage (Operations Director and CTO only)."
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "properties": {
+                "type": "object",
+                "required": ["reason"],
+                "properties": {
+                  "reason": { "const": "theft" }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "properties": {
+                "type": "object",
+                "required": ["restricted_access"],
+                "properties": {
+                  "restricted_access": { "const": true }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "consumption_order_failed": {
+      "allOf": [
+        { "$ref": "#/definitions/eventEnvelope" },
+        {
+          "properties": {
+            "event_type": { "const": "consumption_order_failed" },
+            "properties": {
+              "type": "object",
+              "required": [
+                "ingredient_id",
+                "quantity",
+                "location_id",
+                "failure_code"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "ingredient_id": { "type": "integer" },
+                "quantity": { "type": "number", "minimum": 0 },
+                "reason": {
+                  "type": "string",
+                  "description": "Attempted reason value as submitted; plain string (not the consumptionReason enum) so invalid values that caused validation failure are captured."
+                },
+                "location_id": { "$ref": "#/definitions/locationId" },
+                "failure_code": {
+                  "type": "string",
+                  "enum": ["insufficient_stock", "invalid_reason", "validation_error"]
+                },
+                "available_stock": { "type": "number", "minimum": 0 }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "stock_threshold_triggered": {
+      "allOf": [
+        { "$ref": "#/definitions/eventEnvelope" },
+        {
+          "properties": {
+            "event_type": { "const": "stock_threshold_triggered" },
+            "properties": {
+              "type": "object",
+              "required": [
+                "ingredient_id",
+                "location_id",
+                "current_stock",
+                "min_stock_threshold",
+                "currency"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "ingredient_id": { "type": "integer" },
+                "location_id": { "$ref": "#/definitions/locationId" },
+                "current_stock": { "type": "number", "minimum": 0 },
+                "min_stock_threshold": { "type": "number", "minimum": 0 },
+                "currency": { "$ref": "#/definitions/currency" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "direct_stock_edit_rejected": {
+      "allOf": [
+        { "$ref": "#/definitions/eventEnvelope" },
+        {
+          "properties": {
+            "event_type": { "const": "direct_stock_edit_rejected" },
+            "properties": {
+              "type": "object",
+              "required": [
+                "ingredient_id",
+                "location_id",
+                "attempted_action",
+                "rejection_reason"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "ingredient_id": { "type": "integer" },
+                "location_id": { "$ref": "#/definitions/locationId" },
+                "attempted_action": {
+                  "type": "string",
+                  "enum": ["patch_stock", "put_stock"]
+                },
+                "rejection_reason": {
+                  "type": "string",
+                  "const": "stock_read_only"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "user_login_failed": {
+      "allOf": [
+        { "$ref": "#/definitions/eventEnvelope" },
+        {
+          "properties": {
+            "event_type": { "const": "user_login_failed" },
+            "properties": {
+              "type": "object",
+              "required": ["failure_reason", "source", "attempt_count"],
+              "additionalProperties": false,
+              "properties": {
+                "failure_reason": {
+                  "type": "string",
+                  "enum": ["wrong_credentials", "account_locked"]
+                },
+                "source": {
+                  "type": "string",
+                  "const": "backoffice"
+                },
+                "attempt_count": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Client-side aggregated failure count within the 60-second burst window (TelemetryService)."
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "session_expired": {
+      "allOf": [
+        { "$ref": "#/definitions/eventEnvelope" },
+        {
+          "properties": {
+            "event_type": { "const": "session_expired" },
+            "properties": {
+              "type": "object",
+              "required": ["idle_duration_ms", "source"],
+              "additionalProperties": false,
+              "properties": {
+                "idle_duration_ms": { "type": "integer", "minimum": 0 },
+                "source": {
+                  "type": "string",
+                  "const": "backoffice"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "order_form_abandoned": {
+      "allOf": [
+        { "$ref": "#/definitions/eventEnvelope" },
+        {
+          "properties": {
+            "event_type": { "const": "order_form_abandoned" },
+            "properties": {
+              "type": "object",
+              "required": ["order_type", "location_id", "form_session_id"],
+              "additionalProperties": false,
+              "properties": {
+                "order_type": {
+                  "type": "string",
+                  "enum": ["supply", "consumption"]
+                },
+                "location_id": { "$ref": "#/definitions/locationId" },
+                "form_session_id": { "type": "string", "minLength": 1 },
+                "ingredient_id": { "type": "integer" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ingredient_list_viewed": {
+      "allOf": [
+        { "$ref": "#/definitions/eventEnvelope" },
+        {
+          "properties": {
+            "event_type": { "const": "ingredient_list_viewed" },
+            "properties": {
+              "type": "object",
+              "required": ["location_id", "item_count"],
+              "additionalProperties": false,
+              "properties": {
+                "location_id": { "$ref": "#/definitions/locationId" },
+                "item_count": { "type": "integer", "minimum": 0 }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "user_login_succeeded": {
+      "allOf": [
+        { "$ref": "#/definitions/eventEnvelope" },
+        {
+          "properties": {
+            "event_type": { "const": "user_login_succeeded" },
+            "properties": {
+              "type": "object",
+              "required": ["location_id"],
+              "additionalProperties": false,
+              "properties": {
+                "location_id": { "$ref": "#/definitions/locationId" }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

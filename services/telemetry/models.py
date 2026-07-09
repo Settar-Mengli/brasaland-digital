@@ -24,3 +24,5 @@ class EventsIngestBody(BaseModel):
 
 class IngestResponse(BaseModel):
     received: int
+    stored: int
+    rejected: int

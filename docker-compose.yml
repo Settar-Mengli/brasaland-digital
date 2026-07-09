@@ -61,6 +61,7 @@ services:
       - '8013:8013'
     environment:
       WATCHFILES_FORCE_POLLING: 'true'
+      DATABASE_URL: ${DATABASE_URL}
       TELEMETRY_ENDPOINT: http://telemetry:8013/telemetry/events
     volumes:
       - ./services/telemetry:/app/services/telemetry
