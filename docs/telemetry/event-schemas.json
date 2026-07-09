@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://brasaland.digital/schemas/telemetry/1.0.0",
+  "$id": "https://brasaland.digital/schemas/telemetry/2.0.0",
   "title": "Brasaland Telemetry Event Schemas",
-  "description": "Phase 1 inventory telemetry event schemas. Validate against #/definitions/<event_type>.",
+  "description": "Phase 1 inventory telemetry event schemas (v2.0.0). Validate against #/definitions/<event_type>.",
   "definitions": {
     "currency": {
       "type": "string",
@@ -11,18 +11,33 @@
     },
     "consumptionReason": {
       "type": "string",
-      "enum": ["kitchen_use", "waste", "spoilage", "theft"]
+      "enum": ["consumption", "waste"],
+      "description": "API-emitted exit reasons. Canonical kitchen_use maps to consumption."
     },
     "locationId": {
-      "type": "integer",
-      "minimum": 1,
-      "maximum": 14,
-      "description": "Brasaland restaurant location identifier (1-14)."
+      "type": "string",
+      "enum": [
+        "medellin_centro",
+        "medellin_poblado",
+        "medellin_laureles",
+        "bogota_zona_rosa",
+        "bogota_chapinero",
+        "bogota_usaquen",
+        "bogota_norte",
+        "cali_san_fernando",
+        "cali_granada",
+        "cali_ciudad_jardin",
+        "miami_brickell",
+        "miami_wynwood",
+        "miami_coral_gables",
+        "miami_kendall"
+      ],
+      "description": "Brasaland restaurant location slug. Numeric form values (1-14) are translated to this slug at capture."
     },
     "opaqueUserId": {
       "type": "string",
       "minLength": 1,
-      "description": "Opaque TinyDB user UUID. Never a name or email address."
+      "description": "Opaque stringified numeric TinyDB user id (JWT sub). Never a name or email address."
     },
     "eventEnvelope": {
       "type": "object",
@@ -34,6 +49,7 @@
         "event_type",
         "schemaVersion",
         "requestId",
+        "service",
         "properties"
       ],
       "additionalProperties": false,
@@ -62,12 +78,17 @@
         },
         "schemaVersion": {
           "type": "string",
-          "const": "1.0.0"
+          "const": "2.0.0"
         },
         "requestId": {
           "type": "string",
           "minLength": 1,
           "description": "HTTP request correlation ID."
+        },
+        "service": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Emitting application identifier (e.g. backoffice)."
         },
         "properties": {
           "type": "object"
@@ -167,7 +188,7 @@
                 "created_by": { "$ref": "#/definitions/opaqueUserId" },
                 "restricted_access": {
                   "type": "boolean",
-                  "description": "Must be true when reason is theft. Events with restricted_access true require role-gated storage (Operations Director and CTO only)."
+                  "description": "Must be true when reason is theft (forward-compatible; theft is not currently emittable by the API). Events with restricted_access true require role-gated storage (Operations Director and CTO only)."
                 }
               }
             }
@@ -315,7 +336,7 @@
                 "attempt_count": {
                   "type": "integer",
                   "minimum": 1,
-                  "description": "Aggregated failure count within the 60-second burst window."
+                  "description": "Client-side aggregated failure count within the 60-second burst window (TelemetryService)."
                 }
               }
             }
@@ -363,6 +384,43 @@
                 "location_id": { "$ref": "#/definitions/locationId" },
                 "form_session_id": { "type": "string", "minLength": 1 },
                 "ingredient_id": { "type": "integer" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ingredient_list_viewed": {
+      "allOf": [
+        { "$ref": "#/definitions/eventEnvelope" },
+        {
+          "properties": {
+            "event_type": { "const": "ingredient_list_viewed" },
+            "properties": {
+              "type": "object",
+              "required": ["location_id", "item_count"],
+              "additionalProperties": false,
+              "properties": {
+                "location_id": { "$ref": "#/definitions/locationId" },
+                "item_count": { "type": "integer", "minimum": 0 }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "user_login_succeeded": {
+      "allOf": [
+        { "$ref": "#/definitions/eventEnvelope" },
+        {
+          "properties": {
+            "event_type": { "const": "user_login_succeeded" },
+            "properties": {
+              "type": "object",
+              "required": ["location_id"],
+              "additionalProperties": false,
+              "properties": {
+                "location_id": { "$ref": "#/definitions/locationId" }
               }
             }
           }
