@@ -12,20 +12,34 @@ Phase 1 defines instrumentation for Brasaland's 14-location inventory backoffice
 
 **In scope:**
 
-- Event envelope and catalog for nine approved events
+- Event envelope and catalog for eleven approved events
 - Stream vs batch delivery decisions with business-urgency justification
 - Throttle and debounce rules for high-volume signals
 - JSON Schema property allowlists (`event-schemas.json`)
+- Capture specification for a frontend `TelemetryService` in `uis/backoffice` (design only — no implementation in this document)
 
 **Out of scope (non-goals):**
 
-- Instrumentation code in FastAPI or Next.js
+- Instrumentation **implementation** code in FastAPI or Next.js (capture behavior is specified here; building `TelemetryService` and wiring call sites is a separate engineering task)
 - Telemetry warehouse, ETL, or visualization
 - Direct stock-level edits (stock is always derived from orders)
 - Navigation analytics that do not survive the golden-rule test
 - Any personally identifiable information (names, emails, cleartext IP addresses)
 
 Canonical entity names used throughout: **Ingredient**, **SupplyOrder**, **ConsumptionOrder**.
+
+### Version history
+
+- **1.0.0** — Initial submitted design (W16D46): nine-event catalog, backend-oriented instrumentation map, envelope without `service`.
+- **2.0.0** — This amendment:
+  - Mandatory envelope field `service`
+  - `schemaVersion` bump to `2.0.0`
+  - Re-admission of `ingredient_list_viewed` and `user_login_succeeded`
+  - Capture layer moved to frontend `TelemetryService` in `uis/backoffice` (§3)
+  - `location_id` in event properties is a location slug string (not integer 1–14)
+  - `consumption_order_created.reason` aligned to API values `consumption` | `waste`
+  - Capture-layer metadata sourcing documented (§8): `location_id`, `sessionId`, `userId`, server-derived `level`
+  - Eleven approved catalog events (was nine)
 
 ---
 
@@ -38,7 +52,7 @@ Canonical entity names used throughout: **Ingredient**, **SupplyOrder**, **Consu
 | Aspect | Detail |
 | --- | --- |
 | **Data sources** | `consumption_order_created` — `ingredient_id`, `location_id`, `quantity`, `created_at`, `reason` |
-| **Generation point** | Post-commit hook on `POST /inventory/orders/outbound` success; nightly batch roll-up aggregates per `(ingredient_id, location_id, date)` |
+| **Generation point** | `TelemetryService.track('consumption_order_created', …)` on outbound form success in `uis/backoffice`; nightly batch roll-up aggregates per `(ingredient_id, location_id, date)` |
 | **Business decision** | Detect locations overconsuming relative to sales; adjust supplier orders and portion controls |
 
 ### KPI 2 — Stock-out frequency
@@ -48,17 +62,19 @@ Canonical entity names used throughout: **Ingredient**, **SupplyOrder**, **Consu
 | Aspect | Detail |
 | --- | --- |
 | **Data sources** | `stock_threshold_triggered` — threshold crossings; `consumption_order_failed` — `failure_code = insufficient_stock` |
-| **Generation point** | Post-commit stock evaluation after any order that changes stock; stream alerts on threshold crossing |
+| **Generation point** | `TelemetryService.track('consumption_order_failed', …)` on outbound form catch for insufficient stock; `stock_threshold_triggered` is forward-looking server-side (see §3) |
 | **Business decision** | Identify chronically under-stocked ingredients; renegotiate supply contracts and safety-stock levels |
 
 ### KPI 3 — Waste and loss ratio
 
 **Definition:** Proportion of `ConsumptionOrder` volume where `reason ∈ {waste, spoilage, theft}` versus total consumption volume in a period.
 
+_Note (2.0.0):_ The implemented API emits `consumption` | `waste` only. KPI 3 uses `waste` from live events; `spoilage` and `theft` are forward-looking canonical values not yet emittable.
+
 | Aspect | Detail |
 | --- | --- |
 | **Data sources** | `consumption_order_created` — `reason`, `quantity`, `location_id` |
-| **Generation point** | Post-commit hook on outbound order success; weekly batch aggregation by location |
+| **Generation point** | `TelemetryService.track('consumption_order_created', …)` on outbound form success; weekly batch aggregation by location |
 | **Business decision** | Flag locations with abnormal waste patterns; trigger operational investigation |
 
 ```mermaid
@@ -83,45 +99,47 @@ flowchart LR
 
 ## 3. Instrumentation map (Phase 1)
 
-Phase 1 covers the authenticated flow from backoffice login through order completion. Hooks below are **planned instrumentation points** — not yet implemented in code.
+Phase 1 capture is client-side via a single `TelemetryService` in `uis/backoffice` exposing `track(eventType, properties)`. All implemented events are emitted from UI call sites; the v1.0.0 backend capture model is superseded by frontend `TelemetryService` capture (storage and report phases are separate). Hooks below are **planned instrumentation points** — not yet implemented in code.
 
 ```mermaid
 sequenceDiagram
   participant UI as BackofficeUI
-  participant Auth as services_auth
-  participant Inv as services_inventory
+  participant TS as TelemetryService
+  participant API as InventoryAndAuthAPIs
 
-  UI->>Auth: POST /auth/login
-  Note over Auth: user_login_failed
-  Auth-->>UI: JWT access_token
-  UI->>Inv: GET /inventory/products
-  UI->>Inv: POST /inventory/orders/inbound
-  Note over Inv: supply_order_created / supply_order_failed
-  UI->>Inv: POST /inventory/orders/outbound
-  Note over Inv: consumption_order_created / consumption_order_failed
-  Note over Inv: stock_threshold_triggered
-  Note over Inv: direct_stock_edit_rejected
-  Note over UI: order_form_abandoned
-  Note over Auth: session_expired
+  UI->>API: POST /auth/login
+  UI->>TS: track user_login_succeeded or user_login_failed
+  API-->>UI: JWT access_token
+  UI->>API: GET /inventory/products
+  UI->>TS: track ingredient_list_viewed
+  UI->>API: POST /inventory/orders/inbound
+  UI->>TS: track supply_order_created or supply_order_failed
+  UI->>API: POST /inventory/orders/outbound
+  UI->>TS: track consumption_order_created or consumption_order_failed
+  Note over UI,TS: order_form_abandoned debounced on forms
+  Note over UI,TS: session_expired on token-expiry detection
+  Note over API: stock_threshold_triggered direct_stock_edit_rejected forward-looking server-only
 ```
 
 ### Instrumentation points
 
 | # | Event | Layer | Trigger |
 | --- | --- | --- | --- |
-| 1 | `user_login_failed` | `services/auth` — `auth_login` 401; `uis/backoffice` login page | Failed login (wrong credentials or locked account); expired sessions → `session_expired` |
-| 2 | `session_expired` | `services/auth` — `POST /auth/refresh` 401; `InventoryAuthGuard` redirect | Invalid refresh token or missing access token |
-| 3 | `supply_order_created` | `services/inventory` — `create_inbound_order` after commit | Successful inbound `SupplyOrder` |
-| 4 | `supply_order_failed` | Same route — ingredient 404 or validation error | Rejected inbound order |
-| 5 | `consumption_order_created` | `services/inventory` — `create_outbound_order` after commit | Successful outbound `ConsumptionOrder` |
-| 6 | `consumption_order_failed` | Same route — invalid `reason` (422) or insufficient stock (400) | Rejected outbound order |
-| 7 | `stock_threshold_triggered` | Post-commit hook (planned) — compare location stock to `min_stock_threshold` | Stock crosses from above to at or below threshold |
-| 8 | `direct_stock_edit_rejected` | API boundary (planned) — reject non-order stock mutation | Any attempt to PATCH/PUT stock directly |
-| 9 | `order_form_abandoned` | `uis/backoffice` inbound/outbound form pages | User leaves form without submit (30s debounce) |
+| 1 | `user_login_succeeded` | `uis/backoffice` — `TelemetryService.track` — login page success | Successful login after location selected |
+| 2 | `user_login_failed` | Same — login page catch | Failed login (wrong credentials or locked account) |
+| 3 | `session_expired` | Same — token-expiry detection / guard | JWT expired or missing; user redirected to login |
+| 4 | `ingredient_list_viewed` | Same — products list mount | `getProducts()` resolves on products page or `ProductSelect` |
+| 5 | `supply_order_created` | Same — inbound form success | `createInbound()` resolves |
+| 6 | `supply_order_failed` | Same — inbound form catch | `createInbound()` rejects |
+| 7 | `consumption_order_created` | Same — outbound form success | `createOutbound()` resolves |
+| 8 | `consumption_order_failed` | Same — outbound form catch | `createOutbound()` rejects |
+| 9 | `order_form_abandoned` | Same — inbound/outbound forms | User leaves form without submit (30s debounce, §6) |
+| 10 | `stock_threshold_triggered` | `services/inventory` — **forward-looking / not implemented** | Post-commit threshold crossing when per-location stock exists |
+| 11 | `direct_stock_edit_rejected` | `services/inventory` — **forward-looking / not implemented** | API rejects non-order stock mutation |
 
-**Inventory instrumentation (6 points):** `supply_order_created`, `supply_order_failed`, `consumption_order_created`, `consumption_order_failed`, `stock_threshold_triggered`, `direct_stock_edit_rejected`.
+**Frontend instrumentation (9 points):** `user_login_succeeded`, `user_login_failed`, `session_expired`, `ingredient_list_viewed`, `supply_order_created`, `supply_order_failed`, `consumption_order_created`, `consumption_order_failed`, `order_form_abandoned`.
 
-**Backoffice instrumentation (3 points):** `user_login_failed`, `session_expired`, `order_form_abandoned`.
+**Forward-looking server instrumentation (2 points):** `stock_threshold_triggered`, `direct_stock_edit_rejected` — the only future server-side emitters in v2.0.0.
 
 ---
 
@@ -134,19 +152,20 @@ Every telemetry event shares a common envelope. Field-level validation is define
 | `eventId` | UUID v4 | Unique per emission; generated at capture time |
 | `timestamp` | ISO 8601 UTC | e.g. `2026-07-08T04:21:00Z` |
 | `sessionId` | string | Browser or app session correlation ID |
-| `userId` | string | Opaque TinyDB user UUID — never name or email |
+| `userId` | string | Opaque stringified numeric TinyDB user id (JWT `sub`); never name or email |
 | `event_type` | string | `entity_action` taxonomy in snake_case |
-| `schemaVersion` | string | `"1.0.0"` for Phase 1 |
+| `schemaVersion` | string | `"2.0.0"` for Phase 1 v2 |
 | `requestId` | string | HTTP request correlation (UUID or trace ID) |
+| `service` | string | Emitting application identifier (e.g. `"backoffice"`) |
 | `properties` | object | Event-specific payload; keys restricted by per-event JSON Schema allowlist |
 
-The envelope `userId` identifies who triggered the action. Event-specific `created_by` inside `properties` records the order author when it differs from the session actor.
+The envelope `userId` identifies who triggered the action. Event-specific `created_by` inside `properties` records the order author when it differs from the session actor; both are opaque stringified numeric TinyDB user ids.
 
 ---
 
 ## 5. Event catalog
 
-Nine events survive the golden-rule test. Each entry includes trigger, golden-rule justification, property allowlist, sensitivity flags, and delivery mode.
+Eleven events survive the golden-rule test. Each entry includes trigger, golden-rule justification, property allowlist, sensitivity flags, and delivery mode.
 
 **Delivery legend:** STREAM = near-real-time for operational response; BATCH = tolerates hourly or daily lag for aggregation.
 
@@ -168,10 +187,10 @@ Nine events survive the golden-rule test. Each entry includes trigger, golden-ru
 | `ingredient_id` | integer | yes | |
 | `quantity` | number | yes | Units in ingredient's measure |
 | `supplier_id` | integer | yes | Supplier directory reference |
-| `location_id` | integer (1–14) | yes | Receiving location |
-| `created_by` | string (UUID) | yes | Opaque user identifier |
+| `location_id` | string (location slug) | yes | Numeric form value translated to slug by TelemetryService at capture |
+| `created_by` | string | yes | Opaque stringified numeric TinyDB user id |
 
-**PII / sensitivity:** `created_by` is opaque UUID only. No supplier contact data.
+**PII / sensitivity:** `created_by` is opaque id only. No supplier contact data.
 
 ---
 
@@ -190,7 +209,7 @@ Nine events survive the golden-rule test. Each entry includes trigger, golden-ru
 | `ingredient_id` | integer | yes | |
 | `quantity` | number | yes | Attempted quantity |
 | `supplier_id` | integer | no | Present when supplier was selected |
-| `location_id` | integer (1–14) | yes | |
+| `location_id` | string (location slug) | yes | Numeric form value translated to slug by TelemetryService at capture |
 | `failure_code` | string | yes | e.g. `ingredient_not_found`, `validation_error` |
 | `failure_message` | string | yes | API error detail (no PII) |
 
@@ -213,12 +232,12 @@ Nine events survive the golden-rule test. Each entry includes trigger, golden-ru
 | `consumption_order_id` | integer | yes | |
 | `ingredient_id` | integer | yes | |
 | `quantity` | number | yes | |
-| `reason` | enum | yes | `kitchen_use`, `waste`, `spoilage`, `theft` |
-| `location_id` | integer (1–14) | yes | |
-| `created_by` | string (UUID) | yes | Opaque user identifier |
-| `restricted_access` | boolean | yes | Must be `true` when `reason = theft` |
+| `reason` | enum | yes | `consumption`, `waste` (API-emitted values) |
+| `location_id` | string (location slug) | yes | Numeric form value translated to slug by TelemetryService at capture |
+| `created_by` | string | yes | Opaque stringified numeric TinyDB user id |
+| `restricted_access` | boolean | yes | Must be `true` when `reason = theft` (forward-compatible; `theft` is not currently emittable by the API) |
 
-**PII / sensitivity:** `reason = theft` requires `restricted_access: true`. Access limited to Operations Director and CTO.
+**PII / sensitivity:** `reason = theft` (forward-compatible) requires `restricted_access: true`. Access limited to Operations Director and CTO.
 
 ---
 
@@ -237,7 +256,7 @@ Nine events survive the golden-rule test. Each entry includes trigger, golden-ru
 | `ingredient_id` | integer | yes | |
 | `quantity` | number | yes | Requested quantity |
 | `reason` | string | no | Attempted reason as submitted; plain string (not the consumption enum) so invalid values that caused validation failure are captured |
-| `location_id` | integer (1–14) | yes | |
+| `location_id` | string (location slug) | yes | Numeric form value translated to slug by TelemetryService at capture |
 | `failure_code` | string | yes | e.g. `insufficient_stock`, `invalid_reason` |
 | `available_stock` | number | no | Present when `failure_code = insufficient_stock` |
 
@@ -258,7 +277,7 @@ Nine events survive the golden-rule test. Each entry includes trigger, golden-ru
 | Property | Type | Required | Notes |
 | --- | --- | --- | --- |
 | `ingredient_id` | integer | yes | |
-| `location_id` | integer (1–14) | yes | |
+| `location_id` | string (location slug) | yes | Numeric form value translated to slug by TelemetryService at capture |
 | `current_stock` | number | yes | Stock after triggering order |
 | `min_stock_threshold` | number | yes | Configured threshold |
 | `currency` | enum | yes | `COP` or `USD` — valuation context for threshold review |
@@ -280,7 +299,7 @@ Nine events survive the golden-rule test. Each entry includes trigger, golden-ru
 | Property | Type | Required | Notes |
 | --- | --- | --- | --- |
 | `ingredient_id` | integer | yes | |
-| `location_id` | integer (1–14) | yes | |
+| `location_id` | string (location slug) | yes | Numeric form value translated to slug by TelemetryService at capture |
 | `attempted_action` | string | yes | e.g. `patch_stock`, `put_stock` |
 | `rejection_reason` | string | yes | e.g. `stock_read_only` |
 
@@ -304,7 +323,7 @@ Nine events survive the golden-rule test. Each entry includes trigger, golden-ru
 | `source` | string | yes | e.g. `backoffice` |
 | `attempt_count` | integer | yes | Aggregated count within burst window |
 
-**PII / sensitivity:** No email, username, or cleartext IP. Burst key uses hashed IP server-side only — hash is not emitted in the event.
+**PII / sensitivity:** No email, username, or cleartext IP. Pre-authentication event — no `location_id` in properties (location context comes from paired `user_login_succeeded` events at report time).
 
 ---
 
@@ -312,7 +331,7 @@ Nine events survive the golden-rule test. Each entry includes trigger, golden-ru
 
 | Aspect | Detail |
 | --- | --- |
-| **Trigger** | User session timed out and was invalidated (refresh token rejected or guard redirect) |
+| **Trigger** | User session timed out and was invalidated (JWT expired or guard redirect) |
 | **Golden rule** | We capture `session_expired` because we need to know how often operators lose active sessions mid-shift, which allows us to make the decision to adjust session TTL and reduce form-abandonment friction. |
 | **Delivery** | **BATCH** — UX and session analytics; low operational urgency |
 
@@ -323,7 +342,7 @@ Nine events survive the golden-rule test. Each entry includes trigger, golden-ru
 | `idle_duration_ms` | integer | yes | Time since last authenticated activity |
 | `source` | string | yes | e.g. `backoffice` |
 
-**PII / sensitivity:** None. Session identity is carried in the envelope `sessionId` field only.
+**PII / sensitivity:** None. Session identity is carried in the envelope `sessionId` field only. No `location_id` — session-scoped.
 
 ---
 
@@ -340,9 +359,46 @@ Nine events survive the golden-rule test. Each entry includes trigger, golden-ru
 | Property | Type | Required | Notes |
 | --- | --- | --- | --- |
 | `order_type` | enum | yes | `supply`, `consumption` |
-| `location_id` | integer (1–14) | yes | Selected location |
+| `location_id` | string (location slug) | yes | Numeric form value translated to slug by TelemetryService at capture |
 | `form_session_id` | string | yes | Unique per form open |
 | `ingredient_id` | integer | no | Present only if ingredient was selected |
+
+**PII / sensitivity:** None.
+
+---
+
+### 5.10 `ingredient_list_viewed`
+
+| Aspect | Detail |
+| --- | --- |
+| **Trigger** | Products list mounts successfully in `uis/backoffice` (`app/inventory/products/page.tsx` or `ProductSelect` load) |
+| **Golden rule** | We capture `ingredient_list_viewed` because we need to know whether managers consult stock levels before placing orders and how often per location, which allows us to decide where to focus operator training and whether stock visibility is driving ordering decisions. |
+| **Delivery** | **BATCH** |
+
+**Property allowlist:**
+
+| Property | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `location_id` | string (location slug) | yes | From login location selector (sessionStorage) |
+| `item_count` | integer | yes | Count of ingredients returned |
+
+**PII / sensitivity:** None.
+
+---
+
+### 5.11 `user_login_succeeded`
+
+| Aspect | Detail |
+| --- | --- |
+| **Trigger** | Successful login on `uis/backoffice` login page |
+| **Golden rule** | We capture `user_login_succeeded` because we need to know total daily login attempts per location as the denominator for the login failure rate, which allows us to decide which locations need credential-management intervention. |
+| **Delivery** | **BATCH** |
+
+**Property allowlist:**
+
+| Property | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `location_id` | string (location slug) | yes | From login location selector (sessionStorage) |
 
 **PII / sensitivity:** None.
 
@@ -352,7 +408,7 @@ Nine events survive the golden-rule test. Each entry includes trigger, golden-ru
 
 | Event | Strategy |
 | --- | --- |
-| `user_login_failed` | Burst aggregation: emit at most one event per `(source, client_ip_hash)` per 60-second window. Subsequent failures within the window increment `attempt_count` on the same emission rather than creating duplicate events. |
+| `user_login_failed` | Client-side burst aggregation in `TelemetryService`: emit at most one event per `source` per 60-second window. Subsequent failures within the window increment `attempt_count` on the same emission rather than creating duplicate events. |
 | `order_form_abandoned` | 30-second debounce after last field interaction. Emit once per `form_session_id`. Reset debounce timer on each keystroke or selection change. |
 | `stock_threshold_triggered` | Fire once per `(ingredient_id, location_id)` threshold **crossing** — when stock transitions from above `min_stock_threshold` to at or below it. Suppress repeat events while stock remains at or below threshold. Re-arm only after stock is replenished above threshold via a `SupplyOrder`. |
 
@@ -364,9 +420,9 @@ Nine events survive the golden-rule test. Each entry includes trigger, golden-ru
 
 | Candidate event | Reason excluded |
 | --- | --- |
-| `ingredient_list_viewed` | Fails golden rule — observability only; no operational decision attached. Listing ingredients does not indicate consumption, waste, or stock risk. |
 | `location_filter_applied` | Fails golden rule — navigation noise. KPI segmentation already requires `location_id` on order and threshold events. |
-| `user_login_succeeded` | Fails golden rule — no decision attached. Successful login is implicit in downstream order events that carry `created_by`. |
+
+`ingredient_list_viewed` and `user_login_succeeded` were re-admitted in **2.0.0** because the report phase assigned each a concrete operational decision (stock-visibility training focus; login-failure-rate denominator).
 
 ### Dual-currency constraint
 
@@ -374,15 +430,15 @@ Colombian locations value ingredients in **COP**; Florida locations in **USD**. 
 
 ### Multi-location constraint
 
-Any event originating from a specific restaurant location must include `location_id` (integer 1–14). This applies to all six inventory events and `order_form_abandoned`. Auth events (`user_login_failed`, `session_expired`) are session-scoped and do not require `location_id`.
+Any event originating from a specific restaurant location must include `location_id` as a location slug in `properties`. This applies to all six inventory events, `order_form_abandoned`, `ingredient_list_viewed`, and `user_login_succeeded`. Pre-authentication auth events (`user_login_failed`, `session_expired`) do not carry `location_id`.
 
 ### Theft sensitivity
 
-`ConsumptionOrder` events with `reason = theft` must set `restricted_access: true` in `consumption_order_created`. Downstream storage and dashboards must enforce role-based access limited to the Operations Director and CTO.
+`ConsumptionOrder` events with `reason = theft` must set `restricted_access: true` in `consumption_order_created`. Downstream storage and dashboards must enforce role-based access limited to the Operations Director and CTO. `theft` is not an emittable `reason` value in the current inventory API (`consumption` | `waste` only); the JSON Schema conditional on `reason = theft` is retained for forward compatibility.
 
 ### No-PII rule
 
-- `userId` and `created_by` are opaque TinyDB UUID strings — never names or email addresses.
+- `userId` and `created_by` are opaque stringified numeric TinyDB user ids — never names or email addresses.
 - `user_login_failed` must not include email, username, or cleartext IP in `properties`.
 - API error messages in failure events must not echo user-supplied credentials.
 
@@ -390,7 +446,7 @@ Any event originating from a specific restaurant location must include `location
 
 ## 8. Mapping to current implementation
 
-This section maps canonical telemetry entities to the existing `services/inventory/` and `services/auth/` codebases. No service changes are proposed in Phase 1.
+This section maps canonical telemetry entities to the existing `services/inventory/` and `services/auth/` codebases and specifies how the frontend `TelemetryService` sources capture metadata. No application code changes are proposed in this document.
 
 ### Entity mapping
 
@@ -400,7 +456,7 @@ This section maps canonical telemetry entities to the existing `services/invento
 | `SupplyOrder` | `IngredientEntry` | `POST /inventory/orders/inbound` |
 | `ConsumptionOrder` | `IngredientExit` | `POST /inventory/orders/outbound` |
 
-Auth instrumentation maps to `services/auth/app.py` (`auth_login`, `auth_refresh`) and `uis/backoffice` (`login/page.tsx`, `InventoryAuthGuard`).
+Capture instrumentation maps to `uis/backoffice` — a single `TelemetryService.track(eventType, properties)` called from login, products list, and inbound/outbound form success/catch paths. `stock_threshold_triggered` and `direct_stock_edit_rejected` remain forward-looking server-side emitters (exception to frontend capture).
 
 ### Fields CONTEXT requires that the current schema lacks
 
@@ -410,13 +466,42 @@ Auth instrumentation maps to `services/auth/app.py` (`auth_login`, `auth_refresh
 | `min_stock_threshold` | `Ingredient` | Missing — no threshold column or alert logic |
 | `currency` | `Ingredient` | Missing — model has `country` (`CO`/`US`) instead of `COP`/`USD` |
 | `supplier_id` | `SupplyOrder` | Missing — `IngredientEntry` uses `supplier_name` (string) |
-| `reason` (full enum) | `ConsumptionOrder` | Partial — API accepts only `consumption` or `waste` (`VALID_EXIT_REASONS`); CONTEXT expects `kitchen_use`, `waste`, `spoilage`, `theft` |
+| `reason` (canonical enum) | `ConsumptionOrder` | Implemented API emits `consumption` \| `waste` only (`VALID_EXIT_REASONS` in `services/inventory/routers/inventory.py`); canonical `kitchen_use` maps to `consumption`; `spoilage` and `theft` are forward-looking |
+
+### Capture-layer metadata sourcing
+
+- **`location_id`:** `properties.location_id` is always a location slug string (see map below). Order events (`supply_*`, `consumption_*`, `order_form_abandoned`) read the numeric form field (1–14) on inbound/outbound pages; `TelemetryService` translates it to the slug before `track()`. Non-form events (`ingredient_list_viewed`, `user_login_succeeded`) use the slug from the login-page location selector persisted in `sessionStorage`.
+- **`sessionId`:** UUID v4 generated at login, stored in `sessionStorage`. `TelemetryService` generates one lazily if absent before first `track()`.
+- **`userId`:** Opaque stringified numeric TinyDB user id from JWT `sub` (not a UUID). Sourced client-side by decoding the JWT payload in `TelemetryService` (no server round-trip).
+- **`level`:** Not an envelope field. Derived server-side at storage: `event_type` ending in `_failed` or `_rejected` → `"warning"`; all other events → `"info"`.
+- **`service`:** Set by `TelemetryService` to `"backoffice"` for all v2.0.0 capture emissions.
+
+#### Integer form value → location slug (canonical map)
+
+| Form value | Slug | Country |
+| --- | --- | --- |
+| 1 | `medellin_centro` | Colombia |
+| 2 | `medellin_poblado` | Colombia |
+| 3 | `medellin_laureles` | Colombia |
+| 4 | `bogota_zona_rosa` | Colombia |
+| 5 | `bogota_chapinero` | Colombia |
+| 6 | `bogota_usaquen` | Colombia |
+| 7 | `bogota_norte` | Colombia |
+| 8 | `cali_san_fernando` | Colombia |
+| 9 | `cali_granada` | Colombia |
+| 10 | `cali_ciudad_jardin` | Colombia |
+| 11 | `miami_brickell` | USA |
+| 12 | `miami_wynwood` | USA |
+| 13 | `miami_coral_gables` | USA |
+| 14 | `miami_kendall` | USA |
+
+Incident-analysis branch codes (`COL-01` … `COL-10`, `FLA-01` … `FLA-04`) are a separate domain vocabulary; telemetry location slugs are not joined to them.
 
 **Additional notes:**
 
 - CONTEXT `created_by` maps to `user_uuid` on `IngredientEntry` and `IngredientExit`. Auth JWT exposes numeric `user_id` via `get_current_user_uuid` in `dependencies.py`; telemetry treats these as opaque string identifiers.
-- `direct_stock_edit_rejected` has no route today — stock mutation outside orders is prevented by API design (no PATCH/PUT on stock).
-- `stock_threshold_triggered` requires `min_stock_threshold` and per-location stock, neither of which exists yet — instrumentation is forward-looking at the post-commit hook.
+- `direct_stock_edit_rejected` has no route today — stock mutation outside orders is prevented by API design (no PATCH/PUT on stock). Future server-side emitter only.
+- `stock_threshold_triggered` requires `min_stock_threshold` and per-location stock, neither of which exists yet — forward-looking server-side instrumentation.
 
 ---
 
