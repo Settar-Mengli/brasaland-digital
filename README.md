@@ -154,7 +154,7 @@ The backoffice and incident-manager UIs proxy API calls through Next.js rewrites
 
 ### Database security (RLS)
 
-All four brasaland-m5 public tables (`ingredient`, `ingrediententry`, `ingredientexit`, `incident`) have **Row-Level Security enabled with zero policies** — a deny-by-default posture on the PostgREST/anon Data API path, which nothing in this repo uses.
+All five brasaland-m5 public tables (`ingredient`, `ingrediententry`, `ingredientexit`, `incident`, `telemetry_events`) have **Row-Level Security enabled with zero policies** — a deny-by-default posture on the PostgREST/anon Data API path, which nothing in this repo uses.
 
 The FastAPI services (`services/inventory`, `services/incident-manager`) connect via `DATABASE_URL` as the table owner and bypass RLS. **FORCE ROW LEVEL SECURITY** is deliberately not set.
 
@@ -166,7 +166,7 @@ uv run --python 3.13 python ../../scripts/enable_rls.py
 uv run --python 3.13 python ../../scripts/enable_rls.py --dry-run
 ```
 
-**Future-table caveat:** `SQLModel.metadata.create_all` creates new tables with RLS **disabled**. Re-run `scripts/enable_rls.py` after adding any table.
+**Future-table caveat:** `SQLModel.metadata.create_all` creates new tables with RLS **disabled**. Re-run `scripts/enable_rls.py` after adding any table. For `telemetry_events`, run `scripts/setup_telemetry_table.py` after the table exists to create production indexes (including GIN on `tags`).
 
 ## Engineering decisions
 

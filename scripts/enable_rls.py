@@ -1,7 +1,7 @@
 """Enable Row-Level Security on brasaland-m5 public tables (no policies, no FORCE).
 
 What: Runs ALTER TABLE ... ENABLE ROW LEVEL SECURITY on ingredient, ingrediententry,
-ingredientexit, and incident. Does not create policies and does not set FORCE ROW LEVEL
+ingredientexit, incident, and telemetry_events. Does not create policies and does not set FORCE ROW LEVEL
 SECURITY.
 
 Why: Closes PostgREST/anon Data API exposure (deny-by-default when RLS is on with zero
@@ -33,6 +33,7 @@ TABLES: tuple[str, ...] = (
     "ingrediententry",
     "ingredientexit",
     "incident",
+    "telemetry_events",
 )
 
 
