@@ -21,6 +21,7 @@ os.environ["DATABASE_URL"] = "sqlite://"
 
 import database
 import db_models  # noqa: F401
+import cache
 
 _test_engine = create_engine(
     "sqlite://",
@@ -44,12 +45,44 @@ def isolated_db() -> Generator[None, None, None]:
     allowlists = pytest.importorskip("allowlists")
     allowlists.load_allowlists.cache_clear()
     allowlists.load_allowed_property_keys.cache_clear()
+    cache.clear_cache()
 
     database._schema_ready = False
-    SQLModel.metadata.create_all(database.engine)
+    database.ensure_schema()
     yield
     SQLModel.metadata.drop_all(database.engine)
     database._schema_ready = False
+    cache.clear_cache()
+
+
+def seed_row(
+    event_type: str,
+    timestamp: datetime,
+    tags: dict[str, object],
+    *,
+    event_id: str | None = None,
+) -> None:
+    from level import derive_level
+    from repository import bulk_insert_events
+
+    bulk_insert_events(
+        [
+            {
+                "event_id": event_id or str(uuid4()),
+                "event_type": event_type,
+                "timestamp": timestamp,
+                "service": "backoffice",
+                "level": derive_level(event_type),
+                "tags": tags,
+                "context": {
+                    "sessionId": "session-seed",
+                    "userId": "42",
+                    "requestId": str(uuid4()),
+                    "schemaVersion": "2.0.0",
+                },
+            }
+        ]
+    )
 
 
 def sample_event(**overrides: object) -> dict[str, Any]:

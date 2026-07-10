@@ -17,7 +17,11 @@ services/telemetry/
 ├── repository.py         # bulk INSERT ... ON CONFLICT DO NOTHING
 ├── row_builder.py        # envelope → row dict
 ├── models.py             # TelemetryEvent envelope + ingest response (unchanged envelope)
-├── routers/telemetry.py  # POST /telemetry/events
+├── analysis.py           # report metrics (Pandas)
+├── cache.py              # 60s in-memory report cache
+├── report_pipeline.py    # metric orchestrator
+├── report_service.py     # period resolution + cache wiring
+├── routers/telemetry.py  # POST /telemetry/events, GET /telemetry/report
 ├── allowlists/event-schemas.json
 └── tests/
 ```
@@ -85,6 +89,37 @@ Open **http://127.0.0.1:8013/docs**
 
 `received == stored + rejected` always. Duplicate `eventId` values count toward `rejected` (`ON CONFLICT DO NOTHING`). Wrong top-level shape returns **422**.
 
+### Report
+
+| Method | Path | Query params | Success |
+| --- | --- | --- | --- |
+| `GET` | `/telemetry/report` | Optional `start_date`, `end_date` (ISO 8601 UTC) | **200** report JSON |
+
+Default period when both params are omitted: last **7 days** UTC (`start = now - 7d`, `end = now`). Provide **both** params or **neither** — supplying only one returns **422**.
+
+Response shape:
+
+```json
+{
+  "period": {"from": "...", "to": "..."},
+  "metrics": {
+    "consumption_by_location_per_day": [...],
+    "order_failure_rate_per_day": [...],
+    "auth_failure_rate_per_day": [...]
+  }
+}
+```
+
+**Cache:** in-memory, 60s TTL. Explicit date ranges cache by `(start_iso, end_iso)`. Default-period requests cache under sentinel key `("__default__",)` so repeated default calls hit cache even as `now` moves; the cached payload includes its `period` envelope. Default-period responses may lag up to 60s behind live data.
+
+| Metric | Plan KPI | Notes |
+| --- | --- | --- |
+| `consumption_by_location_per_day` | KPI 1 (partial) | Count of `consumption_order_created` per `(date, location_id)` — not quantity/ingredient sum |
+| `order_failure_rate_per_day` | KPI 2 (proxy) | Daily order failure ratio; true stock-out KPI needs `stock_threshold_triggered` (forward-looking) |
+| `auth_failure_rate_per_day` | — | Daily login failure rate; **per-day only** — `user_login_failed` has no `location_id` (plan §7) |
+
+**Waste-loss ratio (KPI 3):** not implemented. Live API emits `reason` values `consumption` \| `waste` only; canonical spoilage/theft ratio is forward-looking (plan §8 gap).
+
 ## Database indexes (production)
 
 After the table exists (first service start runs `ensure_schema()`):
@@ -105,4 +140,4 @@ After creating `telemetry_events`, re-run `scripts/enable_rls.py` (adds `telemet
 uv run pytest
 ```
 
-SQLite in-memory tests cover ingest, allowlists, and level derivation. GIN index creation is not tested on SQLite.
+SQLite in-memory tests cover ingest, allowlists, level derivation, analysis metrics, and report caching. GIN index creation is not tested on SQLite.
