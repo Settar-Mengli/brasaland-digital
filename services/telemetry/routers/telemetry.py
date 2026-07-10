@@ -1,18 +1,34 @@
 from __future__ import annotations
 
 import logging
+import time
+from datetime import UTC, datetime
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from pydantic import ValidationError
 
 from allowlists import validate_event_properties
 from models import EventsIngestBody, IngestResponse, TelemetryEvent
+from report_service import get_report_payload
 from repository import bulk_insert_events
 from row_builder import build_event_row
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/telemetry")
+
+
+@router.get("/report")
+def get_report(
+    start_date: str | None = Query(default=None),
+    end_date: str | None = Query(default=None),
+) -> dict[str, object]:
+    return get_report_payload(
+        start_date,
+        end_date,
+        now_fn=lambda: datetime.now(UTC),
+        monotonic_fn=time.monotonic,
+    )
 
 
 @router.post("/events", response_model=IngestResponse)

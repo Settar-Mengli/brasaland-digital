@@ -9,6 +9,7 @@ dependencies = [
     "python-dotenv==1.0.1",
     "sqlmodel",
     "psycopg2-binary",
+    "pandas",
 ]
 
 [dependency-groups]

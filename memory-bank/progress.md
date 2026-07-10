@@ -504,3 +504,5 @@ Created the backend architecture proposal document and recorded the planning and
 **Telemetry Phase B — backoffice capture** — `uis/backoffice/lib/telemetry.ts` (`track()` queue/flush/beacon), `lib/locations.ts`, nine instrumentation call sites (login, guard, products, inbound/outbound + form abandonment), Next rewrite `/api/telemetry/*` → :8013, Vitest lib tests, README telemetry section.
 
 **Telemetry storage phase** — `services/telemetry` persists to `telemetry_events` (8-column SQLModel table on brasaland-m5), stage-1 envelope + strict stage-2 allowlist validation, server-derived `level`, single `INSERT ... ON CONFLICT DO NOTHING` bulk write, `scripts/setup_telemetry_table.py` indexes, `enable_rls.py` table list updated.
+
+**Telemetry report phase** — `GET /telemetry/report` with Pandas analysis (`analysis.py`), three metrics (consumption/order-failure/auth failure rates), 60s cache with default-period sentinel key, pytest coverage on SQLite.
