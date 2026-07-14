@@ -27,6 +27,7 @@ router = APIRouter(prefix="/inventory")
 INSUFFICIENT_STOCK_MESSAGE = (
     "Insufficient stock for ingredient '{name}'. Available: {available}, requested: {requested}."
 )
+INGREDIENT_NOT_FOUND_MESSAGE = "Ingredient not found"
 VALID_EXIT_REASONS = frozenset({"consumption", "waste"})
 
 
@@ -103,7 +104,7 @@ def _get_ingredient_with_stock_or_404(
     if not rows:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ingredient not found",
+            detail=INGREDIENT_NOT_FOUND_MESSAGE,
         )
     return rows[0]
 
@@ -133,7 +134,7 @@ def get_product(
     if not rows:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ingredient not found",
+            detail=INGREDIENT_NOT_FOUND_MESSAGE,
         )
     ingredient, stock = rows[0]
     return _to_response(ingredient, stock)
@@ -178,6 +179,16 @@ def create_outbound_order(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail='reason must be "consumption" or "waste"',
+        )
+    locked = session.exec(
+        select(Ingredient)
+        .where(Ingredient.id == payload.ingredient_id)
+        .with_for_update()
+    ).first()
+    if locked is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=INGREDIENT_NOT_FOUND_MESSAGE,
         )
     ingredient, available = _get_ingredient_with_stock_or_404(
         session, payload.ingredient_id

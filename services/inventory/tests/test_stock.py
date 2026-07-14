@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from fastapi.testclient import TestClient
+from sqlalchemy import select
+from sqlalchemy.dialects import postgresql
 from sqlmodel import Session
 
 from conftest import make_access_token
@@ -18,6 +20,17 @@ BEEF_PAYLOAD = {
 
 def _auth_header(user_id: int) -> dict[str, str]:
     return {"Authorization": f"Bearer {make_access_token(user_id)}"}
+
+
+def test_ingredient_for_update_compiles_to_postgres_sql() -> None:
+    """Outbound lock statement must emit FOR UPDATE on PostgreSQL."""
+    stmt = (
+        select(Ingredient)
+        .where(Ingredient.id == 1)
+        .with_for_update()
+    )
+    compiled = str(stmt.compile(dialect=postgresql.dialect()))
+    assert "FOR UPDATE" in compiled.upper()
 
 
 def _seed_beef_with_stock(session: Session) -> Ingredient:

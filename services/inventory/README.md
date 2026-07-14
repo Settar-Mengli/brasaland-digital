@@ -27,6 +27,12 @@ services/inventory/
 
 **Dual database:** `services/auth` remains on TinyDB for users and tokens. This service uses **Supabase PostgreSQL** (via `DATABASE_URL`) for inventory tables only.
 
+## Concurrency
+
+Outbound stock checks (`POST /inventory/orders/outbound`) serialize on an **`Ingredient` row lock** (`SELECT … FOR UPDATE`) in the same session before the computed stock guard and exit insert. That closes the TOCTOU window between availability read and exit write under PostgreSQL.
+
+SQLite test runs do **not** exercise real row locking (`with_for_update()` is a no-op on SQLite). Lock behavior is verified against live Postgres (brasaland-m5).
+
 ## Setup
 
 Run every command from **`services/inventory/`**.
