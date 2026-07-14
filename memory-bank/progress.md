@@ -506,3 +506,32 @@ Created the backend architecture proposal document and recorded the planning and
 **Telemetry storage phase** — `services/telemetry` persists to `telemetry_events` (8-column SQLModel table on brasaland-m5), stage-1 envelope + strict stage-2 allowlist validation, server-derived `level`, single `INSERT ... ON CONFLICT DO NOTHING` bulk write, `scripts/setup_telemetry_table.py` indexes, `enable_rls.py` table list updated.
 
 **Telemetry report phase** — `GET /telemetry/report` with Pandas analysis (`analysis.py`), three metrics (consumption/order-failure/auth failure rates), 60s cache with default-period sentinel key, pytest coverage on SQLite.
+
+## Standards-docs split — Progress
+
+**Status:** In progress on branch `docs/standards-split` (docs-only; not yet committed at time of this note).
+
+**Scope:** Consolidate scattered agent/coding/architecture/project standards into `docs/standards/`, convert always-loaded agent files into thin routers, and fix five flagged documentation contradictions.
+
+**Created:**
+
+- `docs/standards/agent-workflow.md` — memory-bank read-first, pre-commit, commits/attribution, review-chunk + amendment audit, git/branch discipline, PowerShell, ops scripts, two-lane schema policy
+- `docs/standards/coding.md` — TypeScript (absorbed `.agents/rules/typescript-conventions.md` + a11y + date formatting) and Python (uv) sections
+- `docs/standards/architecture.md` — service layout, frontend-consumes-backend, Path A, secrets playbook, Supabase pointer to agent-workflow
+- `docs/standards/project-context.md` — thin index (brand, CONTEXT links, ports, live URLs)
+
+**Routers:**
+
+- Root `AGENTS.md` — essentials retained; protected paths add `uis/website/` and `uis/backoffice/`; conventions section replaced with pointer table
+- `.agents/rules/typescript-conventions.md` — `<!-- BEGIN:always-active -->` preserved; body points at `docs/standards/coding.md#typescript`
+- Root `CLAUDE.md` and per-workspace `AGENTS.md` unchanged
+
+**Contradiction fixes:**
+
+1. `services/auth/README.md` setup → `uv sync` / `uv run pytest`; version line **Python 3.13 via uv**
+2. Root `README.md` — workspace count wording; structure tree adds inventory, telemetry, incident-manager UI; incident-manager storage labeled PostgreSQL/SQLModel
+3. `docs/brand-tokens.md` L5 — CSS-first `@theme` (no `tailwind.config.ts`)
+4. `docs/ARCHITECTURE_PROPOSAL.md` — STATUS banner (historical; superseded by `services/*`)
+5. `AGENTS.md` protected paths (covered under routers)
+
+**Docs closeout:** this progress entry; root README `docs/standards/` tree line and Conventions pointer.

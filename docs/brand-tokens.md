@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document is the single source of truth for Brasaland's visual identity. All brand color, typography, spacing, and tone decisions defined here are consumed by `@brasaland/public-website` (via an inline Tailwind CDN configuration) and `@brasaland/talent-pipeline-tracker` (via `tailwind.config.ts`). Changes to any token should be reflected in both workspaces.
+This document is the single source of truth for Brasaland's visual identity. All brand color, typography, spacing, and tone decisions defined here are consumed by `@brasaland/public-website` (via an inline Tailwind CDN configuration) and `@brasaland/talent-pipeline-tracker` (via Tailwind v4 CSS-first `@theme` in `app/globals.css`). Changes to any token should be reflected across the brand-consuming workspaces.
 
 ---
 

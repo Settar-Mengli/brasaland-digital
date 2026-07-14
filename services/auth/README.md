@@ -32,13 +32,12 @@ services/auth/
 └── README.md
 ```
 
-## Setup (Windows + venv)
+## Setup (uv)
 
 ```powershell
 cd services/auth
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+uv sync
+uv run pytest
 ```
 
 Copy the example environment file and set a real secret:
@@ -47,7 +46,7 @@ Copy the example environment file and set a real secret:
 copy .env.example .env
 ```
 
-Requires **Python 3.11+**.
+Requires **Python 3.13 via uv**.
 
 ### Environment variables
 

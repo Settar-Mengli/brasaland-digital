@@ -1,5 +1,7 @@
 # Brasaland Backend Architecture Proposal
 
+> **STATUS:** Historical proposal (interim assignment). Superseded by the implemented `services/*` layout. For current architecture standards, see [docs/standards/architecture.md](standards/architecture.md). Document body below is unchanged.
+
 ## 1. Executive Summary
 
 This document defines a backend architecture proposal for Brasaland that aligns with the current monorepo, existing frontend consumers, and the operational realities of a multi-city restaurant chain. It presents a domain-centered FastAPI design, a migration path from fixture-driven backoffice data to API-driven data, and the governance decisions needed to keep architecture work structured and low risk.
