@@ -4,7 +4,7 @@
 
 The digital platform for Brasaland, a 14-location grilled-food restaurant chain across Colombia and the United States.
 
-Brasaland Digital is primarily a TypeScript monorepo, now extended with Python backend services under `services/`, containing five independent workspaces: a public marketing site, an operations utility library, an internal talent pipeline tracker, a Next.js rebuild of the public website, and an internal operations dashboard. Each workspace is a separately deployable unit, structured to reflect a real product-team architecture — shared tooling and conventions without shared runtime dependencies.
+Brasaland Digital is an npm + Python monorepo: five npm workspaces under `apps/` and `uis/` (public marketing site, operations toolkit, talent pipeline tracker, Next.js website rebuild, and operations backoffice), plus Python packages under `packages/` and FastAPI services under `services/` (auth, inventory, incident-manager, supplier-directory, incident-analysis, telemetry) and an additional Next.js UI (`uis/incident-manager`). Shared tooling and conventions without forcing shared runtime dependencies.
 
 ## Live demos
 
@@ -54,18 +54,22 @@ brasaland-digital/
 │   └── talent-pipeline-tracker/ # M3 — Next.js HR app (live)
 ├── uis/
 │   ├── website/                 # M4 — Next.js rebuild of public website (port 3002)
-│   └── backoffice/              # M4 — Operations dashboard with M2 integration (port 3003)
+│   ├── backoffice/              # M4 — Operations dashboard with M2 integration (port 3003)
+│   └── incident-manager/        # Incident manager UI (port 3004)
 ├── packages/
 │   ├── shared/                  # Shared Python core (brasaland_shared — validation, lifecycle)
 │   └── auth-verify/             # Verify-only RS256 JWT package (brasaland_auth_verify)
 ├── services/
-│   ├── incident-analysis/       # Python incident-analysis utility (CLI, FastAPI, web UI)
-│   ├── incident-manager/        # Centralized incident manager (FastAPI, TinyDB, web UI)
+│   ├── auth/                    # Python JWT authentication service (FastAPI, TinyDB)
 │   ├── supplier-directory/      # Python supplier directory (FastAPI, TinyDB, web UI)
-│   └── auth/                    # Python JWT authentication service (FastAPI, TinyDB)
+│   ├── incident-analysis/       # Python incident-analysis utility (CLI, FastAPI, web UI)
+│   ├── incident-manager/        # Centralized incident manager (FastAPI, PostgreSQL/SQLModel)
+│   ├── inventory/               # Ingredient inventory API (FastAPI, PostgreSQL/SQLModel)
+│   └── telemetry/               # Telemetry ingest + report API (FastAPI, PostgreSQL/SQLModel)
 ├── memory-bank/                 # Agent context files (projectbrief, techContext, progress)
 ├── .agents/                     # Agent rules and skills
 ├── docs/
+│   ├── standards/               # Agent, coding, architecture, and project-context standards
 │   ├── brand-tokens.md          # Shared visual identity — colors, typography, tokens
 │   ├── screenshots/             # Live demo screenshots
 │   └── telemetry/               # Phase 1 inventory telemetry plan + event schemas
@@ -189,6 +193,7 @@ works because all consuming workspaces use bundler-aware TypeScript resolution.
 
 ## Conventions
 
+- Full standards live in [`docs/standards/`](docs/standards/) — start with [agent-workflow.md](docs/standards/agent-workflow.md) and [coding.md](docs/standards/coding.md)
 - Commits follow the Conventional Commits specification with workspace scopes (e.g., `feat(public-website): ...`)
 - Linear `main` history; no long-lived branches
 - Code style enforced by Prettier (`printWidth: 100`, single quotes, semi)

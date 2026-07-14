@@ -17,6 +17,8 @@ You must complete all four steps before every commit:
 ## Protected Paths — Do Not Modify Without Explicit Developer Confirmation
 - apps/public-website/ (live Vercel deployment — M1)
 - apps/talent-pipeline-tracker/ (live Vercel deployment — M3)
+- uis/website/ (live Vercel deployment — M4)
+- uis/backoffice/ (live Vercel deployment — M4)
 - package-lock.json (modify only when explicitly told to run npm install)
 - .env.local (never touch)
 - Any file not within the scope of the current task
@@ -27,9 +29,16 @@ You must complete all four steps before every commit:
 - No AI tool credited anywhere in code, docs, READMEs, or commit messages
 - Sole author: Settar Mengli <settar.mengli@gmail.com>
 
-## Workspace Conventions
-- TypeScript strict mode everywhere in uis/*
-- No any, no ! non-null assertions
-- Server Components by default; 'use client' only when required
-- All new workspaces follow the CLAUDE.md → @AGENTS.md redirect pattern
+## Standards documents
+
+Read the matching doc before non-trivial work:
+
+| Task type | Read |
+| --- | --- |
+| Agent process, commits, schema/RLS, ops scripts, PowerShell | [docs/standards/agent-workflow.md](docs/standards/agent-workflow.md) |
+| TypeScript or Python style, tests, env discipline | [docs/standards/coding.md](docs/standards/coding.md) |
+| Service layout, UI↔API pattern, secrets, Path A, Supabase pointer | [docs/standards/architecture.md](docs/standards/architecture.md) |
+| Brand, CONTEXT files, ports, live URLs | [docs/standards/project-context.md](docs/standards/project-context.md) |
+
+New workspaces still use the CLAUDE.md → @AGENTS.md redirect pattern.
 <!-- END:monorepo-agent-rules -->

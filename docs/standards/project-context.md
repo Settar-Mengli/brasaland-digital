@@ -1,0 +1,41 @@
+# Project context index
+
+Thin index only. Domain narrative and token definitions live in the linked documents — do not duplicate them here.
+
+## Brand
+
+- [docs/brand-tokens.md](../brand-tokens.md) — colors, typography, spacing, tone
+
+## Domain CONTEXT files
+
+- [services/incident-manager/CONTEXT-brasaland.md](../../services/incident-manager/CONTEXT-brasaland.md)
+- [services/inventory/CONTEXT-brasaland.md](../../services/inventory/CONTEXT-brasaland.md)
+- [services/supplier-directory/CONTEXT-brasaland.md](../../services/supplier-directory/CONTEXT-brasaland.md)
+- [services/incident-analysis/CONTEXT-brasaland.md](../../services/incident-analysis/CONTEXT-brasaland.md)
+
+## Port assignments
+
+Authoritative local port table for this monorepo:
+
+| Surface | Port |
+| --- | ---: |
+| Auth API | 8002 |
+| Supplier directory | 8001 |
+| Incident analysis | 8000 |
+| Incident manager API | 8011 |
+| Inventory API | 8012 |
+| Telemetry API | 8013 |
+| Public website (M1 http-server) | 3000 |
+| Talent pipeline tracker | 3001 |
+| Website (Next.js) | 3002 |
+| Backoffice (Next.js) | 3003 |
+| Incident manager UI (Next.js) | 3004 |
+
+## Live deployments
+
+| Surface | URL |
+| --- | --- |
+| M1 — Public website | https://brasaland-public-website.vercel.app |
+| M3 — Talent Pipeline Tracker | https://brasaland-talent-pipeline.vercel.app |
+| M4 — Website (Next.js rebuild) | https://brasaland-website.vercel.app |
+| M4 — Backoffice | https://brasaland-backoffice.vercel.app |
