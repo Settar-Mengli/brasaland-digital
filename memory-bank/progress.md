@@ -535,3 +535,19 @@ Created the backend architecture proposal document and recorded the planning and
 5. `AGENTS.md` protected paths (covered under routers)
 
 **Docs closeout:** this progress entry; root README `docs/standards/` tree line and Conventions pointer.
+
+## C1 — Outbound stock TOCTOU fix — Progress
+
+**Status:** Implemented (unstaged); operator live smoke pending.
+
+**Scope:** Serialize `create_outbound_order` in `services/inventory` by locking the `Ingredient` row (`SELECT … FOR UPDATE`) on the same session before the existing aggregate availability check and exit insert. No inbound / product-create / `get_db` / models / aggregate-helper changes.
+
+**Changes:**
+
+| Path | Change |
+| --- | --- |
+| `services/inventory/routers/inventory.py` | `INGREDIENT_NOT_FOUND_MESSAGE` shared by lock 404 and `_get_ingredient_with_stock_or_404`; FOR UPDATE before stock guard |
+| `services/inventory/tests/test_stock.py` | Postgres-dialect compilation test asserting `FOR UPDATE` (handler-shaped `select`) |
+| `services/inventory/README.md` | Concurrency note |
+
+**Verification (agent):** `uv run pytest` in `services/inventory/` → 28 passed (27 unchanged + 1 new). Live smoke on :8012 left to operator.
