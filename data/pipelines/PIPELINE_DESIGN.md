@@ -264,12 +264,21 @@ For each `supply_order_created` in the target ISO week that has a numeric `tags.
 
 ---
 
-## Future run commands (Part 2)
+## Run command and schedule (Part 2)
 
-Documented intent — not implemented in this PR:
+Implemented entrypoint:
 
 ```text
 uv run --directory data python pipelines/pipeline.py
+```
+
+Defaults to the most recent complete ISO week (Monday 00:00 UTC of the week that has fully ended). Optional programmatic override: `weekly_location_performance_flow(week_start=...)`.
+
+**Intended weekly schedule:** Mondays after **00:15 UTC**, targeting the prior complete ISO week (so Monday-morning freshness for Mariana/Felipe without racing midnight writes).
+
+Part 3 will add:
+
+```text
 uv run --directory data pytest tests/pipelines/test_pipeline.py
 ```
 

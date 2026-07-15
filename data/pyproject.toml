@@ -1,0 +1,23 @@
+[project]
+name = "brasaland-data"
+version = "0.1.0"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+    "prefect>=3",
+    "pandas",
+    "sqlmodel",
+    "psycopg2-binary",
+    "python-dotenv",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

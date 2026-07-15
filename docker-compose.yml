@@ -70,6 +70,25 @@ services:
     networks:
       - brasaland-dev
 
+  reporting:
+    build:
+      context: .
+      dockerfile: services/reporting/Dockerfile
+    command: uv run uvicorn app:app --host 0.0.0.0 --port 8014 --reload
+    ports:
+      - '8014:8014'
+    environment:
+      WATCHFILES_FORCE_POLLING: 'true'
+      DATABASE_URL: ${DATABASE_URL}
+      PYTHONPATH: /app/data
+    volumes:
+      - ./services/reporting:/app/services/reporting
+      - ./data:/app/data
+      - reporting_venv:/app/services/reporting/.venv
+    restart: unless-stopped
+    networks:
+      - brasaland-dev
+
   incident-manager:
     build:
       context: .
@@ -168,6 +187,7 @@ volumes:
   auth_venv:
   inventory_venv:
   telemetry_venv:
+  reporting_venv:
   incident-manager_venv:
   incident-analysis_venv:
   supplier-directory_venv:
