@@ -70,16 +70,18 @@ def _row_to_record(row: Any) -> dict[str, Any]:
 
 
 def transform_cache_key_fn(context: Any, parameters: dict[str, Any]) -> str:
-    """Cache key = week_start + records_extracted + sha256 of sorted event_ids.
+    """Cache key = week_start + record count + sha256 of sorted event_ids.
 
     Validity window: cache_expiration=1 hour — same extract snapshot reuses the
     KPI transform within an hour; after that stale transforms are recomputed.
+    Key uses '-' separators only (Windows-safe; no ':', '/', or '\\').
     """
     week_start = parameters["week_start"]
     records = parameters["records"]
     event_ids = sorted(str(r.get("event_id", "")) for r in records)
     digest = hashlib.sha256("|".join(event_ids).encode("utf-8")).hexdigest()[:16]
-    return f"transform_kpis:{week_start}:n={len(records)}:{digest}"
+    # Windows-safe: no ':', '/', or '\' — Prefect persists cache keys as path segments.
+    return f"transform_kpis-{week_start}-n={len(records)}-{digest}"
 
 
 # Retries=3 / delay=10s: extract talks to Postgres; transient network blips and
@@ -311,9 +313,33 @@ def notify_run_summary(summary: dict[str, Any]) -> None:
     )
 
 
+@flow(name="extract_weekly_telemetry")
+def extract_weekly_telemetry(week_start: date) -> list[dict[str, Any]]:
+    """Subflow: read telemetry_events for the target week plus supply lookback."""
+    return extract_week(week_start)
+
+
+@flow(name="compute_weekly_kpis")
+def compute_weekly_kpis(
+    week_start: date,
+    records: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Subflow: aggregate five CONTEXT KPIs into location-week rows."""
+    return transform_kpis(week_start, records)
+
+
+@flow(name="load_weekly_performance_report")
+def load_weekly_performance_report(
+    week_start: date,
+    payload: dict[str, Any],
+) -> int:
+    """Subflow: upsert KPI rows into reporting.weekly_location_performance."""
+    return load_weekly_performance(week_start, payload)
+
+
 @flow(name="weekly_location_performance_flow")
 def weekly_location_performance_flow(week_start: date | None = None) -> dict[str, Any]:
-    """Extract → transform → load weekly KPIs; record pipeline_runs metadata."""
+    """Extract → transform → load weekly KPIs via domain subflows; record pipeline_runs."""
     target_week = week_start or most_recent_complete_iso_week()
     run_id = write_pipeline_run_start(target_week)
     records_extracted = 0
@@ -323,11 +349,11 @@ def weekly_location_performance_flow(week_start: date | None = None) -> dict[str
     error_detail: str | None = None
 
     try:
-        records = extract_week(target_week)
+        records = extract_weekly_telemetry(target_week)
         records_extracted = len(records)
-        transform_payload = transform_kpis(target_week, records)
+        transform_payload = compute_weekly_kpis(target_week, records)
         missing_cost = int(transform_payload["missing_cost_events_count"])
-        records_loaded = load_weekly_performance(target_week, transform_payload)
+        records_loaded = load_weekly_performance_report(target_week, transform_payload)
         write_pipeline_run_finish(
             run_id,
             status="Completed",

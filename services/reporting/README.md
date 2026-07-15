@@ -40,7 +40,7 @@ imported `pipelines` modules resolve third-party deps inside this service’s ve
 | Method | Path | Behavior |
 | --- | --- | --- |
 | `GET` | `/reporting/weekly-location-performance` | Optional `week_start`; default = latest computed week; CONTEXT §6 JSON |
-| `GET` | `/reporting/pipeline-runs/latest` | Metadata of the most recent `pipeline_runs` row |
+| `GET` | `/reporting/pipeline-runs/latest` | Metadata of the most recent `pipeline_runs` row (structured null object when none exist — never a bare null body) |
 | `POST` | `/reporting/pipeline-runs` | Triggers a run **synchronously** and returns completed run metadata |
 
 ### Sync POST note
@@ -84,8 +84,10 @@ Open **http://127.0.0.1:8014/docs**
 CLI ETL (same project DATABASE_URL):
 
 ```powershell
-uv run --directory data python pipelines/pipeline.py
+uv run --directory data python -m pipelines.pipeline
 ```
+
+Use the module form (`-m`); `python pipelines/pipeline.py` raises `ModuleNotFoundError` for the `pipelines` package.
 
 ## Environment
 

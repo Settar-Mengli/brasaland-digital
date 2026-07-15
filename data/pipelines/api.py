@@ -75,15 +75,30 @@ def _run_to_dict(run: PipelineRun) -> dict[str, Any]:
     }
 
 
-def query_latest_pipeline_run() -> dict[str, Any] | None:
-    """Return metadata for the most recently started pipeline run, or None."""
+def query_latest_pipeline_run() -> dict[str, Any]:
+    """Return metadata for the most recently started pipeline run.
+
+    When no runs exist, returns a structured empty object (all nulls) — never a
+    bare null body — so clients can rely on a stable JSON shape.
+    """
+    empty: dict[str, Any] = {
+        "run_id": None,
+        "started_at": None,
+        "finished_at": None,
+        "status": None,
+        "week_start": None,
+        "records_extracted": None,
+        "records_loaded": None,
+        "missing_cost_events_count": None,
+        "error_detail": None,
+    }
     engine = get_engine()
     with Session(engine) as session:
         run = session.exec(
             select(PipelineRun).order_by(col(PipelineRun.started_at).desc()).limit(1)
         ).first()
     if run is None:
-        return None
+        return empty
     return _run_to_dict(run)
 
 

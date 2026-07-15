@@ -678,3 +678,32 @@ feat: add business performance pipeline design document
 ```text
 feat: implement resilient business performance pipeline
 ```
+
+## M6 Part 3 — Subflows, unit tests, reporting dashboard
+
+**Status:** Implemented on branch `feat/pipeline-subflows-dashboard` (staged; operator re-verify **PENDING**).
+
+**Delivered:**
+
+| Area | Detail |
+| --- | --- |
+| Subflows | `extract_weekly_telemetry`, `compute_weekly_kpis`, `load_weekly_performance_report` under main flow |
+| Root tests | `tests/pipelines/test_pipeline.py` — **5** pure KPI unit tests |
+| Reporting pytest | **6** (smoke + upsert) |
+| Backoffice Vitest | **30** (28 prior + 2 `lib/reporting` tests) |
+| Dashboard | `uis/backoffice/app/reporting/page.tsx` — five CONTEXT §2 KPI columns |
+| Carry-ins | `-m pipelines.pipeline` run command; Windows-safe cache key; structured empty latest-run |
+
+**Operator re-verify (PENDING):**
+
+1. `uv run --directory data python -m pipelines.pipeline`
+2. Confirm Windows cache persist no longer OSErrors
+3. Endpoint smoke on :8014 (weekly + latest structured empty/row + optional POST)
+4. Backoffice `/reporting` via rewrite shows five KPIs + currency
+5. Double-run same week → identical KPIs + second `pipeline_runs` row
+
+**Mandated commit message (user types):**
+
+```text
+feat: refactor business performance pipeline into subflows, add unit tests, and add reporting dashboard
+```

@@ -31,11 +31,9 @@ def get_weekly_location_performance(
     return WeeklyLocationPerformanceResponse.model_validate(payload)
 
 
-@router.get("/pipeline-runs/latest")
-def get_latest_pipeline_run() -> PipelineRunResponse | None:
+@router.get("/pipeline-runs/latest", response_model=PipelineRunResponse)
+def get_latest_pipeline_run() -> PipelineRunResponse:
     payload = query_latest_pipeline_run()
-    if payload is None:
-        return None
     return PipelineRunResponse.model_validate(payload)
 
 
