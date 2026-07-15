@@ -641,3 +641,40 @@ Then restart/deploy inventory; optional smoke POST inbound with/without `unit_co
 ```text
 feat: add business performance pipeline design document
 ```
+
+## M6 Part 2 — Resilient business performance pipeline
+
+**Status:** Implemented on branch `feat/business-performance-pipeline` (staged; operator rollout **PENDING**).
+
+**Files:**
+
+| Path | Change |
+| --- | --- |
+| `data/pyproject.toml`, `data/uv.lock` | Prefect 3 uv project |
+| `data/pipelines/{locations,db_models,transform,pipeline,api}.py` | ETL core + service API helpers |
+| `data/.env.example` | DATABASE_URL placeholder |
+| `data/pipelines/PIPELINE_DESIGN.md` | Run command + Monday 00:15 UTC schedule |
+| `scripts/setup_reporting_schema.py` | Lane-2 CREATE SCHEMA + RLS (pre-table safe) |
+| `services/reporting/` | FastAPI port 8014 (imports `pipelines.api` only) |
+| `services/reporting/Dockerfile` | Copies `data/` + reporting service |
+| `docker-compose.yml` | `reporting` service on 8014 |
+| `memory-bank/progress.md` | This section |
+
+**Tests:** `services/reporting/tests/` — **6** pytest (router shape stubs + SQLite upsert idempotency). Run: `cd services/reporting; uv run --python 3.13 pytest`.
+
+**Operator rollout (PENDING — amended 8-step sequence):**
+
+1. `scripts/setup_reporting_schema.py --dry-run`
+2. Script real (schema created; RLS skipped if tables absent)
+3. Deploy reporting or one-shot `ensure_schema` against m5 (tables created)
+4. Script real again (RLS enabled on both tables)
+5. Verify `rowsecurity = true` on both (read-only query)
+6. `uv run --directory data python pipelines/pipeline.py` (first live ETL)
+7. Endpoint smoke: GET weekly-location-performance, GET pipeline-runs/latest, POST pipeline-runs (sync)
+8. Idempotency: same week twice → identical KPI rows + second `pipeline_runs` history row
+
+**Mandated commit message (user types):**
+
+```text
+feat: implement resilient business performance pipeline
+```
