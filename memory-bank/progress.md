@@ -614,3 +614,30 @@ Then restart/deploy inventory; optional smoke POST inbound with/without `unit_co
 **Atomicity:** Both schema copies and the backoffice emitter are in one PR so allowlist validation and emission never diverge.
 
 **Rollout:** Prefer deploy **telemetry then backoffice** if sequential (old UI never sends `unit_cost`; new UI needs the new allowlist). Simultaneous deploy is fine. Optional keys make reverse order safer than a required-key bump, but still prefer telemetry first.
+
+## M6 Part 1 — Pipeline design
+
+**Status:** Docs-only (scaffolded + design committed on this branch; no application code).
+
+**Files:**
+
+| Path | Change |
+| --- | --- |
+| `data/raw/.gitkeep` | Scaffold |
+| `data/process/.gitkeep` | Scaffold |
+| `data/pipelines/.gitkeep` | Scaffold |
+| `data/eval/.gitkeep` | Scaffold |
+| `data/pipelines/CONTEXT-brasaland-pipeline.md` | Pipeline CONTEXT (graded source of truth) |
+| `data/pipelines/PIPELINE_DESIGN.md` | Full design: §§1–12, 18 graded tasks |
+| `docs/standards/project-context.md` | CONTEXT index + Reporting API port 8014 |
+| `memory-bank/progress.md` | This section |
+
+**Reconciliations:** See `data/pipelines/PIPELINE_DESIGN.md` **§12 Discrepancy Register** (destination table, event translation, derived price alerts, waste valuation, underscore slugs, cost PRs #34/#35).
+
+**Next step (Part 2):** Implement `services/reporting/` (port 8014), Prefect ETL under `data/pipelines/`, and Lane-2 scripts for `reporting` schema / unique constraints / RLS (extend beyond public-only `enable_rls.py`).
+
+**Mandated commit message (user types):**
+
+```text
+feat: add business performance pipeline design document
+```

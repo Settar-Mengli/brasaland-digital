@@ -12,6 +12,7 @@ Thin index only. Domain narrative and token definitions live in the linked docum
 - [services/inventory/CONTEXT-brasaland.md](../../services/inventory/CONTEXT-brasaland.md)
 - [services/supplier-directory/CONTEXT-brasaland.md](../../services/supplier-directory/CONTEXT-brasaland.md)
 - [services/incident-analysis/CONTEXT-brasaland.md](../../services/incident-analysis/CONTEXT-brasaland.md)
+- [data/pipelines/CONTEXT-brasaland-pipeline.md](../../data/pipelines/CONTEXT-brasaland-pipeline.md)
 
 ## Port assignments
 
@@ -25,11 +26,14 @@ Authoritative local port table for this monorepo:
 | Incident manager API | 8011 |
 | Inventory API | 8012 |
 | Telemetry API | 8013 |
+| Reporting API | 8014 |
 | Public website (M1 http-server) | 3000 |
 | Talent pipeline tracker | 3001 |
 | Website (Next.js) | 3002 |
 | Backoffice (Next.js) | 3003 |
 | Incident manager UI (Next.js) | 3004 |
+
+Reporting API (8014) is reserved in M6 Part 1 design; `services/reporting/` ships in Part 2.
 
 ## Live deployments
 
