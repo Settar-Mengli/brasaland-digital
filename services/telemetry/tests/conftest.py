@@ -78,7 +78,7 @@ def seed_row(
                     "sessionId": "session-seed",
                     "userId": "42",
                     "requestId": str(uuid4()),
-                    "schemaVersion": "2.0.0",
+                    "schemaVersion": "2.1.0",
                 },
             }
         ]
@@ -92,7 +92,7 @@ def sample_event(**overrides: object) -> dict[str, Any]:
         "sessionId": "session-abc",
         "userId": "42",
         "event_type": "ingredient_list_viewed",
-        "schemaVersion": "2.0.0",
+        "schemaVersion": "2.1.0",
         "requestId": str(uuid4()),
         "service": "backoffice",
         "properties": {"location_id": "medellin_centro", "item_count": 3},

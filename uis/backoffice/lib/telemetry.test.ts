@@ -74,7 +74,7 @@ describe('telemetry service', () => {
       sessionId: 'session-1',
       userId: '42',
       event_type: 'ingredient_list_viewed',
-      schemaVersion: '2.0.0',
+      schemaVersion: '2.1.0',
       requestId: 'test-uuid',
       service: 'backoffice',
       properties: { location_id: 'medellin_centro', item_count: 3 },

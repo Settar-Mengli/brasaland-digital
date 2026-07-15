@@ -4,7 +4,7 @@ import {
   resetLoginFailureState,
 } from './login-failure-aggregation';
 
-export const TELEMETRY_SCHEMA_VERSION = '2.0.0';
+export const TELEMETRY_SCHEMA_VERSION = '2.1.0';
 export const TELEMETRY_SERVICE = 'backoffice';
 
 export const SESSION_ID_KEY = 'brasaland_telemetry_session_id';
