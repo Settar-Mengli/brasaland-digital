@@ -108,6 +108,29 @@ async def test_get_latest_pipeline_run_shape(asgi_client: httpx.AsyncClient) -> 
         assert field in body
     assert body["status"] == "Completed"
 
+    empty_payload = {
+        "run_id": None,
+        "started_at": None,
+        "finished_at": None,
+        "status": None,
+        "week_start": None,
+        "records_extracted": None,
+        "records_loaded": None,
+        "missing_cost_events_count": None,
+        "error_detail": None,
+    }
+    with patch(
+        "routers.reporting.query_latest_pipeline_run",
+        return_value=empty_payload,
+    ):
+        empty_response = await asgi_client.get("/reporting/pipeline-runs/latest")
+
+    assert empty_response.status_code == 200
+    empty_body = empty_response.json()
+    assert empty_body["run_id"] is None
+    assert empty_body["status"] is None
+    assert isinstance(empty_body, dict)
+
 
 @pytest.mark.anyio
 async def test_post_pipeline_runs_returns_completed_metadata(

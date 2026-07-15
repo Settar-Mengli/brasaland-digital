@@ -187,7 +187,7 @@ Justification theme: every field answers an ops question Mariana/Felipe will not
 | **States** | Prefect 3: `Running` while work proceeds; terminal `Completed` / `Failed` mirrored into `pipeline_runs.status` |
 | **Retries** | Retry (e.g. 3× exponential backoff) on tasks that touch Postgres (extract, load, run-log writes). Pure transform is deterministic given the extract snapshot and need not retry for I/O |
 | **Blocks** | Prefect Secret / connection block holding Supabase `DATABASE_URL` (same brasaland-m5 project as inventory/telemetry). Never hard-code secrets in `data/pipelines/` |
-| **Package layout (Part 2)** | `data/pyproject.toml` own uv project; run with `uv run --directory data python pipelines/pipeline.py` and `uv run --directory data pytest …` |
+| **Package layout (Part 2)** | `data/pyproject.toml` own uv project; run with `uv run --directory data python -m pipelines.pipeline` (module form — direct `python pipelines/pipeline.py` fails with `ModuleNotFoundError` for `pipelines`) and `uv run --directory data pytest …` |
 
 ETL logic lives under `data/pipelines/`. `services/reporting/` imports those callables; the reverse import is forbidden.
 
@@ -231,6 +231,8 @@ Response field names and nesting must match CONTEXT §6 (except `location_id` va
 
 Two runs for the **same** `week_start` concurrently can race on upserts (last writer wins) and create two `pipeline_runs` rows — acceptable if last Completed row reflects a full recompute. Part 2 should add a short advisory lock or “one Running row per `week_start`” check on `POST` / flow start to avoid concurrent transforms stomping each other needlessly. Different weeks may run in parallel safely (disjoint conflict keys).
 
+**Part 3 — Additional activity (spec enhancement from this §10 answer):** We shipped the **one-Running-row-per-`week_start`** guard in `write_pipeline_run_start` (Part 2). A second concurrent start for the same week raises before extract/transform. **Design question answered:** Concurrent runs. **Why prioritized:** Same-week stomps were the highest-risk race (overlapping upserts + confused ops history); rejecting a second Running row is cheaper and clearer than inventing a separate advisory-lock layer.
+
 ---
 
 ## §11 Event translation table
@@ -269,8 +271,10 @@ For each `supply_order_created` in the target ISO week that has a numeric `tags.
 Implemented entrypoint:
 
 ```text
-uv run --directory data python pipelines/pipeline.py
+uv run --directory data python -m pipelines.pipeline
 ```
+
+Use the **module** form (`-m pipelines.pipeline`). Running `python pipelines/pipeline.py` directly fails with `ModuleNotFoundError: No module named 'pipelines'` because the file is not executed as a package.
 
 Defaults to the most recent complete ISO week (Monday 00:00 UTC of the week that has fully ended). Optional programmatic override: `weekly_location_performance_flow(week_start=...)`.
 

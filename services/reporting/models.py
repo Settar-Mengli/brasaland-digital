@@ -25,14 +25,14 @@ class WeeklyLocationPerformanceResponse(BaseModel):
 
 
 class PipelineRunResponse(BaseModel):
-    run_id: str
+    run_id: Optional[str] = None
     started_at: Optional[str] = None
     finished_at: Optional[str] = None
-    status: str
+    status: Optional[str] = None
     week_start: Optional[str] = None
-    records_extracted: int
-    records_loaded: int
-    missing_cost_events_count: int
+    records_extracted: Optional[int] = None
+    records_loaded: Optional[int] = None
+    missing_cost_events_count: Optional[int] = None
     error_detail: Optional[str] = None
 
 

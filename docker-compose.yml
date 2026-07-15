@@ -161,9 +161,11 @@ services:
       INVENTORY_API_ORIGIN: http://inventory:8012
       AUTH_API_ORIGIN: http://auth:8002
       INCIDENTS_API_ORIGIN: http://incident-manager:8011
+      REPORTING_API_ORIGIN: http://reporting:8014
       NEXT_PUBLIC_INVENTORY_API_URL: http://localhost:3003/api/inventory
       NEXT_PUBLIC_AUTH_API_URL: http://localhost:3003/api/auth
       NEXT_PUBLIC_INCIDENTS_API_URL: http://localhost:3004/api/incidents
+      NEXT_PUBLIC_REPORTING_API_URL: http://localhost:3003/api/reporting
     volumes:
       - ./uis:/app/uis
       - ./apps/operations-toolkit:/app/apps/operations-toolkit
@@ -173,6 +175,7 @@ services:
       - auth
       - inventory
       - incident-manager
+      - reporting
     restart: unless-stopped
     networks:
       - brasaland-dev

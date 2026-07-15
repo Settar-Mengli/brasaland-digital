@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
     const inventoryOrigin = rewriteOrigin('INVENTORY_API_ORIGIN', 'http://localhost:8012');
     const authOrigin = rewriteOrigin('AUTH_API_ORIGIN', 'http://localhost:8002');
     const telemetryOrigin = rewriteOrigin('TELEMETRY_API_ORIGIN', 'http://localhost:8013');
+    const reportingOrigin = rewriteOrigin('REPORTING_API_ORIGIN', 'http://localhost:8014');
 
     return [
       {
@@ -22,6 +23,10 @@ const nextConfig: NextConfig = {
       {
         source: '/api/telemetry/:path*',
         destination: `${telemetryOrigin}/telemetry/:path*`,
+      },
+      {
+        source: '/api/reporting/:path*',
+        destination: `${reportingOrigin}/reporting/:path*`,
       },
     ];
   },

@@ -8,6 +8,7 @@ const LINKS = [
   { href: '/locations', label: 'Locations' },
   { href: '/inventory/products', label: 'Inventory' },
   { href: '/inventory/orders', label: 'Orders' },
+  { href: '/reporting', label: 'Reporting' },
 ] as const;
 
 function isActive(pathname: string, href: string): boolean {
