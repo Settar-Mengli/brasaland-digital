@@ -60,6 +60,61 @@ def test_inbound_creates_entry_with_user_uuid_from_token(
     assert body["quantity"] == 25.0
 
 
+def test_inbound_with_unit_cost_persists_and_lists_non_null_value(
+    session: Session, client: TestClient
+) -> None:
+    beef = _seed_beef(session)
+    assert beef.id is not None
+    unit_cost = 32000.0
+    payload = {
+        **INBOUND_PAYLOAD,
+        "ingredient_id": beef.id,
+        "unit_cost": unit_cost,
+    }
+
+    response = client.post(
+        "/inventory/orders/inbound",
+        json=payload,
+        headers=_auth_header(42),
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["unit_cost"] == unit_cost
+    entry_id = body["id"]
+
+    orders = client.get("/inventory/orders")
+    assert orders.status_code == 200
+    listed = next(entry for entry in orders.json()["entries"] if entry["id"] == entry_id)
+    assert "unit_cost" in listed
+    assert listed["unit_cost"] == unit_cost
+    assert listed["unit_cost"] is not None
+
+
+def test_inbound_without_unit_cost_lists_null(
+    session: Session, client: TestClient
+) -> None:
+    beef = _seed_beef(session)
+    assert beef.id is not None
+    payload = {**INBOUND_PAYLOAD, "ingredient_id": beef.id}
+
+    response = client.post(
+        "/inventory/orders/inbound",
+        json=payload,
+        headers=_auth_header(42),
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert "unit_cost" in body
+    assert body["unit_cost"] is None
+    entry_id = body["id"]
+
+    orders = client.get("/inventory/orders")
+    assert orders.status_code == 200
+    listed = next(entry for entry in orders.json()["entries"] if entry["id"] == entry_id)
+    assert "unit_cost" in listed
+    assert listed["unit_cost"] is None
+
+
 def test_inbound_returns_404_for_missing_ingredient(client: TestClient) -> None:
     response = client.post(
         "/inventory/orders/inbound",

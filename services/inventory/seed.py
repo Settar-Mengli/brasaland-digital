@@ -21,6 +21,7 @@ EntrySeed = TypedDict(
     {
         "sku": str,
         "quantity": float,
+        "unit_cost": float,
         "supplier_name": str,
         "location_id": int,
     },
@@ -80,24 +81,28 @@ ENTRIES: list[EntrySeed] = [
     {
         "sku": "BRS-BEEF-001",
         "quantity": 50.0,
+        "unit_cost": 32000.0,
         "supplier_name": "Carnes del Valle S.A.",
         "location_id": 1,
     },
     {
         "sku": "BRS-BEEF-001",
         "quantity": 30.0,
+        "unit_cost": 34500.0,
         "supplier_name": "Carnes del Valle S.A.",
         "location_id": 1,
     },
     {
         "sku": "BRS-PORK-001",
         "quantity": 40.0,
+        "unit_cost": 11.5,
         "supplier_name": "MiamiMeat Co.",
         "location_id": 5,
     },
     {
         "sku": "BRS-SAUCE-001",
         "quantity": 20.0,
+        "unit_cost": 12000.0,
         "supplier_name": "Salsas Artesanales Ltda.",
         "location_id": 2,
     },
@@ -204,6 +209,7 @@ def seed_database() -> tuple[dict[str, int], dict[str, int]]:
                 IngredientEntry(
                     ingredient_id=ingredient_id,
                     quantity=entry_data["quantity"],
+                    unit_cost=entry_data["unit_cost"],
                     supplier_name=entry_data["supplier_name"],
                     location_id=entry_data["location_id"],
                     user_uuid=SEED_USER_UUID,

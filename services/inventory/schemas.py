@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class IngredientCreate(BaseModel):
@@ -28,6 +28,7 @@ class IngredientResponse(BaseModel):
 class IngredientEntryCreate(BaseModel):
     ingredient_id: int
     quantity: float
+    unit_cost: float | None = Field(default=None, ge=0)
     supplier_name: str
     location_id: int
 
@@ -38,6 +39,7 @@ class IngredientEntryResponse(BaseModel):
     id: int
     ingredient_id: int
     quantity: float
+    unit_cost: float | None = None
     supplier_name: str
     location_id: int
     created_at: datetime
@@ -80,6 +82,7 @@ class IngredientEntryWithIngredientResponse(BaseModel):
     id: int
     ingredient_id: int
     quantity: float
+    unit_cost: float | None = None
     supplier_name: str
     location_id: int
     created_at: datetime
