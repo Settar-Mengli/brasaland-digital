@@ -583,3 +583,34 @@ uv run --python 3.13 python ../../scripts/add_inventory_cost_column.py
 ```
 
 Then restart/deploy inventory; optional smoke POST inbound with/without `unit_cost`.
+
+## M6 A2 — Telemetry unit_cost v2.1.0 — Progress
+
+**Status:** Implemented (staged).
+
+**Protected path:** Developer explicitly authorized `uis/backoffice/` edits for this PR, limited to inbound form + `lib/telemetry.ts` / inventory types + Vitest files listed below.
+
+**Scope:** Telemetry contract **2.1.0** — optional `unit_cost` on `supply_order_created` only (not required; not on `consumption_order_created`). Schema copies + emitter ship atomically. Untouched: `telemetry_events` DDL, `analysis.py`, GET `/telemetry/report`, all `services/telemetry/*.py` outside tests.
+
+**Changes:**
+
+| Path | Change |
+| --- | --- |
+| `docs/telemetry/event-schemas.json` | v2.1.0; optional `unit_cost` on supply |
+| `services/telemetry/allowlists/event-schemas.json` | Byte-identical to docs copy |
+| `docs/telemetry/telemetry-plan.md` | 2.1.0 history + §5.1 property |
+| `services/telemetry/README.md` | Envelope v2.1.0 |
+| `uis/backoffice/lib/telemetry.ts` | `TELEMETRY_SCHEMA_VERSION = '2.1.0'` |
+| `uis/backoffice/lib/telemetry.test.ts` | Expect 2.1.0 |
+| `uis/backoffice/lib/inventory-types.ts` | Optional inbound `unit_cost` |
+| `uis/backoffice/lib/inventory.test.ts` | Body with/without `unit_cost` |
+| `uis/backoffice/app/inventory/orders/inbound/page.tsx` | Optional form field; track from response only |
+| `services/telemetry/tests/conftest.py` | Fixture `schemaVersion` 2.1.0 |
+| `services/telemetry/tests/test_allowlists.py` | Optional supply / reject on consumption |
+| `memory-bank/progress.md` | This section |
+
+**Verification (agent):** Vitest in `uis/backoffice` → **28 passed**; `uv run pytest` in `services/telemetry` → **33 passed** (drift-guard green).
+
+**Atomicity:** Both schema copies and the backoffice emitter are in one PR so allowlist validation and emission never diverge.
+
+**Rollout:** Prefer deploy **telemetry then backoffice** if sequential (old UI never sends `unit_cost`; new UI needs the new allowlist). Simultaneous deploy is fine. Optional keys make reverse order safer than a required-key bump, but still prefer telemetry first.

@@ -8,17 +8,23 @@ export type Ingredient = {
   current_stock: number;
 };
 
+/** Request body for `POST /inventory/orders/inbound`. */
 export type IngredientEntryCreate = {
   ingredient_id: number;
   quantity: number;
+  /** Optional purchase cost per unit; omit when unknown. */
+  unit_cost?: number;
   supplier_name: string;
   location_id: number;
 };
 
+/** Persisted inbound order returned by the inventory API. */
 export type IngredientEntryResponse = {
   id: number;
   ingredient_id: number;
   quantity: number;
+  /** Purchase cost per unit when recorded; null for historical rows. */
+  unit_cost?: number | null;
   supplier_name: string;
   location_id: number;
   created_at: string;
@@ -51,10 +57,13 @@ export type IngredientInfo = {
   country: string;
 };
 
+/** Inbound order row nested with ingredient details from `GET /inventory/orders`. */
 export type IngredientEntryWithIngredient = {
   id: number;
   ingredient_id: number;
   quantity: number;
+  /** Purchase cost per unit when recorded; null for historical rows. */
+  unit_cost?: number | null;
   supplier_name: string;
   location_id: number;
   created_at: string;

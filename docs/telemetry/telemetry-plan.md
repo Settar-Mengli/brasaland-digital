@@ -40,6 +40,7 @@ Canonical entity names used throughout: **Ingredient**, **SupplyOrder**, **Consu
   - `consumption_order_created.reason` aligned to API values `consumption` | `waste`
   - Capture-layer metadata sourcing documented (§8): `location_id`, `sessionId`, `userId`, server-derived `level`
   - Eleven approved catalog events (was nine)
+- **2.1.0** — Optional `unit_cost` on `supply_order_created` only (not required; `consumption_order_created` not extended). Requires inventory A1 (`IngredientEntry.unit_cost`). `schemaVersion` bump to `2.1.0`. Waste cost stays out of the consumption event; the M6 pipeline values waste at the ingredient's latest supply `unit_cost`.
 
 ---
 
@@ -154,7 +155,7 @@ Every telemetry event shares a common envelope. Field-level validation is define
 | `sessionId` | string | Browser or app session correlation ID |
 | `userId` | string | Opaque stringified numeric TinyDB user id (JWT `sub`); never name or email |
 | `event_type` | string | `entity_action` taxonomy in snake_case |
-| `schemaVersion` | string | `"2.0.0"` for Phase 1 v2 |
+| `schemaVersion` | string | `"2.1.0"` for Phase 1 v2.1 |
 | `requestId` | string | HTTP request correlation (UUID or trace ID) |
 | `service` | string | Emitting application identifier (e.g. `"backoffice"`) |
 | `properties` | object | Event-specific payload; keys restricted by per-event JSON Schema allowlist |
@@ -186,9 +187,12 @@ Eleven events survive the golden-rule test. Each entry includes trigger, golden-
 | `supply_order_id` | integer | yes | Registered order ID |
 | `ingredient_id` | integer | yes | |
 | `quantity` | number | yes | Units in ingredient's measure |
+| `unit_cost` | number | no | Optional purchase cost per unit (≥ 0). We capture it because purchase and waste cost KPIs need delivered cost at the supply event so operations can decide reorder economics and waste valuation (M6). Emitted only when the inventory API returns a numeric `unit_cost`. |
 | `supplier_id` | integer | yes | Supplier directory reference |
 | `location_id` | string (location slug) | yes | Numeric form value translated to slug by TelemetryService at capture |
 | `created_by` | string | yes | Opaque stringified numeric TinyDB user id |
+
+`consumption_order_created` omits cost. The M6 pipeline values waste at the ingredient's latest supply `unit_cost`.
 
 **PII / sensitivity:** `created_by` is opaque id only. No supplier contact data.
 

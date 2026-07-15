@@ -63,6 +63,80 @@ describe('inventory client', () => {
     );
   });
 
+  it('createInbound includes unit_cost in the request body when provided', async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          id: 1,
+          ingredient_id: 1,
+          quantity: 10,
+          unit_cost: 12.5,
+          supplier_name: 'Carnes del Valle S.A.',
+          location_id: 1,
+          created_at: '2026-07-15T00:00:00Z',
+          user_uuid: '1',
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const { createInbound } = await import('./inventory');
+    await createInbound({
+      ingredient_id: 1,
+      quantity: 10,
+      unit_cost: 12.5,
+      supplier_name: 'Carnes del Valle S.A.',
+      location_id: 1,
+    });
+
+    const [, init] = fetchMock.mock.calls[0]!;
+    expect(JSON.parse(String(init?.body))).toEqual({
+      ingredient_id: 1,
+      quantity: 10,
+      unit_cost: 12.5,
+      supplier_name: 'Carnes del Valle S.A.',
+      location_id: 1,
+    });
+  });
+
+  it('createInbound omits unit_cost from the request body when not provided', async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          id: 1,
+          ingredient_id: 1,
+          quantity: 10,
+          unit_cost: null,
+          supplier_name: 'Carnes del Valle S.A.',
+          location_id: 1,
+          created_at: '2026-07-15T00:00:00Z',
+          user_uuid: '1',
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const { createInbound } = await import('./inventory');
+    await createInbound({
+      ingredient_id: 1,
+      quantity: 10,
+      supplier_name: 'Carnes del Valle S.A.',
+      location_id: 1,
+    });
+
+    const [, init] = fetchMock.mock.calls[0]!;
+    const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    expect(body).toEqual({
+      ingredient_id: 1,
+      quantity: 10,
+      supplier_name: 'Carnes del Valle S.A.',
+      location_id: 1,
+    });
+    expect('unit_cost' in body).toBe(false);
+  });
+
   it('propagates API error messages from parseApiError', async () => {
     const fetchMock = vi.mocked(fetch);
     fetchMock.mockResolvedValueOnce(

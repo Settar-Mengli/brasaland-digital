@@ -29,6 +29,7 @@ function InboundForm() {
     parsePreselectedIngredientId(searchParams.get('ingredientId')),
   );
   const [quantity, setQuantity] = useState('');
+  const [unitCost, setUnitCost] = useState('');
   const [supplierName, setSupplierName] = useState('');
   const [locationId, setLocationId] = useState('1');
   const [formError, setFormError] = useState<string | null>(null);
@@ -46,6 +47,7 @@ function InboundForm() {
   function resetForm() {
     setIngredientId('');
     setQuantity('');
+    setUnitCost('');
     setSupplierName('');
     setLocationId('1');
   }
@@ -60,15 +62,26 @@ function InboundForm() {
       return;
     }
 
+    const trimmedUnitCost = unitCost.trim();
+    let parsedUnitCost: number | undefined;
+    if (trimmedUnitCost !== '') {
+      parsedUnitCost = Number(trimmedUnitCost);
+      if (!Number.isFinite(parsedUnitCost) || parsedUnitCost < 0) {
+        setFormError('unit_cost must be a number greater than or equal to 0.');
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
       const response = await createInbound({
         ingredient_id: ingredientId,
         quantity: Number(quantity),
+        ...(parsedUnitCost !== undefined ? { unit_cost: parsedUnitCost } : {}),
         supplier_name: supplierName.trim(),
         location_id: Number(locationId),
       });
-      track('supply_order_created', {
+      const supplyProperties: Record<string, unknown> = {
         supply_order_id: response.id,
         ingredient_id: response.ingredient_id,
         quantity: response.quantity,
@@ -76,7 +89,11 @@ function InboundForm() {
         supplier_id: 0,
         location_id: locationSlug(locationId),
         created_by: response.user_uuid,
-      });
+      };
+      if (typeof response.unit_cost === 'number') {
+        supplyProperties.unit_cost = response.unit_cost;
+      }
+      track('supply_order_created', supplyProperties);
       setSubmitted(true);
       setSuccessMessage('Ingredient entry logged successfully.');
       resetForm();
@@ -159,6 +176,28 @@ function InboundForm() {
             }}
             className={INPUT_CLASS}
           />
+        </div>
+
+        <div>
+          <label htmlFor="unit_cost" className="block text-sm font-medium mb-1">
+            unit_cost
+          </label>
+          <input
+            id="unit_cost"
+            name="unit_cost"
+            type="number"
+            min={0}
+            step="any"
+            value={unitCost}
+            onChange={(event) => {
+              onFieldChange();
+              setUnitCost(event.target.value);
+            }}
+            className={INPUT_CLASS}
+          />
+          <p className="text-xs text-brasaland-charcoal/40 mt-1">
+            Optional purchase cost per unit. Leave blank when unknown.
+          </p>
         </div>
 
         <div>

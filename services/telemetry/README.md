@@ -1,6 +1,6 @@
 # Brasaland Telemetry API
 
-Ingestion service for Brasaland inventory telemetry (v2.0.0 envelope). Accepts batched events from the backoffice `TelemetryService`, validates each envelope and property allowlist, derives `level` server-side, and persists rows to Supabase (`telemetry_events` on brasaland-m5).
+Ingestion service for Brasaland inventory telemetry (v2.1.0 envelope). Accepts batched events from the backoffice `TelemetryService`, validates each envelope and property allowlist, derives `level` server-side, and persists rows to Supabase (`telemetry_events` on brasaland-m5).
 
 Contract: [docs/telemetry/telemetry-plan.md](../../docs/telemetry/telemetry-plan.md) and [docs/telemetry/event-schemas.json](../../docs/telemetry/event-schemas.json). Property allowlists are bundled at `allowlists/event-schemas.json` (keep in sync with docs).
 

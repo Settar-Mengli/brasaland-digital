@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://brasaland.digital/schemas/telemetry/2.0.0",
+  "$id": "https://brasaland.digital/schemas/telemetry/2.1.0",
   "title": "Brasaland Telemetry Event Schemas",
-  "description": "Phase 1 inventory telemetry event schemas (v2.0.0). Validate against #/definitions/<event_type>.",
+  "description": "Phase 1 inventory telemetry event schemas (v2.1.0). Validate against #/definitions/<event_type>.",
   "definitions": {
     "currency": {
       "type": "string",
@@ -78,7 +78,7 @@
         },
         "schemaVersion": {
           "type": "string",
-          "const": "2.0.0"
+          "const": "2.1.0"
         },
         "requestId": {
           "type": "string",
@@ -116,6 +116,7 @@
                 "supply_order_id": { "type": "integer" },
                 "ingredient_id": { "type": "integer" },
                 "quantity": { "type": "number", "exclusiveMinimum": 0 },
+                "unit_cost": { "type": "number", "minimum": 0 },
                 "supplier_id": { "type": "integer" },
                 "location_id": { "$ref": "#/definitions/locationId" },
                 "created_by": { "$ref": "#/definitions/opaqueUserId" }
