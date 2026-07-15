@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+import pytest
+from pydantic import ValidationError
+
 from schemas import (
     IngredientCreate,
     IngredientEntryCreate,
@@ -49,6 +52,42 @@ def test_entry_request_excludes_user_uuid() -> None:
     parsed = IngredientEntryCreate.model_validate(payload)
     assert parsed.supplier_name == "Carnes del Valle S.A."
     assert "user_uuid" not in IngredientEntryCreate.model_fields
+
+
+def test_entry_create_omits_unit_cost_defaults_to_none() -> None:
+    payload = {
+        "ingredient_id": 1,
+        "quantity": 50.0,
+        "supplier_name": "Carnes del Valle S.A.",
+        "location_id": 3,
+    }
+    parsed = IngredientEntryCreate.model_validate(payload)
+    assert parsed.unit_cost is None
+
+
+def test_entry_create_accepts_unit_cost() -> None:
+    payload = {
+        "ingredient_id": 1,
+        "quantity": 50.0,
+        "unit_cost": 32000.0,
+        "supplier_name": "Carnes del Valle S.A.",
+        "location_id": 3,
+    }
+    parsed = IngredientEntryCreate.model_validate(payload)
+    assert parsed.unit_cost == 32000.0
+    assert "user_uuid" not in IngredientEntryCreate.model_fields
+
+
+def test_entry_create_rejects_negative_unit_cost() -> None:
+    payload = {
+        "ingredient_id": 1,
+        "quantity": 50.0,
+        "unit_cost": -1.0,
+        "supplier_name": "Carnes del Valle S.A.",
+        "location_id": 3,
+    }
+    with pytest.raises(ValidationError):
+        IngredientEntryCreate.model_validate(payload)
 
 
 def test_entry_response_includes_user_uuid() -> None:

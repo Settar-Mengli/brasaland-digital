@@ -551,3 +551,35 @@ Created the backend architecture proposal document and recorded the planning and
 | `services/inventory/README.md` | Concurrency note |
 
 **Verification (agent):** `uv run pytest` in `services/inventory/` → 28 passed (27 unchanged + 1 new). Live smoke on :8012 left to operator.
+
+## M6 A1 — Inventory unit_cost — Progress
+
+**Status:** Implemented (staged); operator ALTER pending **before** inventory deploy/restart.
+
+**Scope:** Add nullable inbound-only `unit_cost` on `IngredientEntry`. `IngredientExit` untouched. No telemetry or backoffice changes. Live Supabase column via Lane-2 script (not `create_all`).
+
+**Changes:**
+
+| Path | Change |
+| --- | --- |
+| `services/inventory/models.py` | `unit_cost: float \| None` on `IngredientEntry` |
+| `services/inventory/schemas.py` | Optional create `unit_cost` (`ge=0`); expose on entry response/list types |
+| `services/inventory/routers/inventory.py` | Persist via inbound `model_validate`; pass `unit_cost` in `list_orders` constructor |
+| `services/inventory/seed.py` | COP/USD-scale seed costs by ingredient country |
+| `services/inventory/tests/test_schemas.py` | Omit / accept / reject-negative cases |
+| `services/inventory/tests/test_orders.py` | Inbound with/without cost + GET `/orders` list assertions |
+| `scripts/add_inventory_cost_column.py` | Idempotent `ADD COLUMN IF NOT EXISTS unit_cost DOUBLE PRECISION` |
+| `services/inventory/README.md` | Field docs, float/NUMERIC tradeoff, rollout order, test count 33 |
+| `services/inventory/CONTEXT-brasaland.md` | `unit_cost` field + waste valuation note |
+
+**Verification (agent):** `uv run pytest` in `services/inventory/` → **33 passed**.
+
+**Operator (after merge, before inventory restart/deploy):**
+
+```powershell
+cd services/inventory
+uv run --python 3.13 python ../../scripts/add_inventory_cost_column.py --dry-run
+uv run --python 3.13 python ../../scripts/add_inventory_cost_column.py
+```
+
+Then restart/deploy inventory; optional smoke POST inbound with/without `unit_cost`.

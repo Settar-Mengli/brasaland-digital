@@ -42,10 +42,13 @@ An ingredient delivery received from a supplier.
 | `id`            | `int` (PK)              | Auto-increment                                                             |
 | `ingredient_id` | `int` (FK → Ingredient) |                                                                            |
 | `quantity`      | `float`                 | Amount received in the ingredient's unit                                   |
+| `unit_cost`     | `float` \| `null`       | Optional purchase cost per unit for this delivery; null on historical rows |
 | `supplier_name` | `str`                   | Name of the supplier for this delivery                                     |
 | `location_id`   | `int`                   | Receiving location (1–14). Not a FK — location data is managed separately. |
 | `created_at`    | `datetime`              | Auto-set on creation                                                       |
 | `user_uuid`     | `str`                   | UUID of the operations supervisor who logged the delivery (from TinyDB)    |
+
+`IngredientExit` carries no cost. The M6 pipeline values waste using the ingredient's latest supply `unit_cost`.
 
 ### `IngredientExit` (maps to README's `OutboundOrder`)
 

@@ -22,6 +22,7 @@ class IngredientEntry(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     ingredient_id: int = Field(foreign_key="ingredient.id")
     quantity: float
+    unit_cost: float | None = None
     supplier_name: str
     location_id: int
     created_at: datetime = Field(default_factory=_utc_now)

@@ -79,6 +79,9 @@ Expected first-run totals: **6** ingredients, **4** entries, **3** exits.
 ## Business rules
 
 - **`current_stock`** is computed as `SUM(IngredientEntry.quantity) − SUM(IngredientExit.quantity)` per ingredient. It appears on product responses only — not in the database.
+- **`unit_cost` (optional, inbound only)** — `POST /inventory/orders/inbound` accepts an optional non-negative `unit_cost` on `IngredientEntry`. Omitted or null is valid (historical rows). `IngredientExit` has no cost field; waste monetary valuation is deferred to the M6 pipeline, which values waste at the ingredient's latest supply `unit_cost`.
+- **Float convention for `unit_cost`:** floats are not exact for monetary values; this field follows the service's existing float convention, while the M6 pipeline's destination table uses NUMERIC per the pipeline CONTEXT and aggregation happens in pandas — precision is enforced at the reporting destination, convention preserved at the source.
+- **Live column rollout** — `SQLModel.metadata.create_all` does not add columns to existing tables. On brasaland-m5, operators add `ingrediententry.unit_cost` with `scripts/add_inventory_cost_column.py` (dry-run first) **after merge and before** restarting/deploying inventory with the new model.
 - **Negative stock guard** — outbound orders that would drop stock below zero return **HTTP 400** with: `Insufficient stock for ingredient '{name}'. Available: {available}, requested: {requested}.`
 - **`reason`** on outbound orders must be exactly `"consumption"` or `"waste"` (otherwise **HTTP 422**).
 - **Locations** are numeric ids `1`–`14`; not foreign keys in this milestone.
@@ -92,7 +95,7 @@ All routes are under `/inventory`.
 | `GET` | `/inventory/products` | No | List all ingredients with `current_stock` |
 | `POST` | `/inventory/products` | Bearer | Create a new ingredient (`current_stock` starts at 0) |
 | `GET` | `/inventory/products/{id}` | No | Get one ingredient with `current_stock` |
-| `POST` | `/inventory/orders/inbound` | Bearer | Log a supplier delivery (`IngredientEntry`) |
+| `POST` | `/inventory/orders/inbound` | Bearer | Log a supplier delivery (`IngredientEntry`; optional `unit_cost`) |
 | `POST` | `/inventory/orders/outbound` | Bearer | Log consumption or waste (`IngredientExit`) |
 | `GET` | `/inventory/orders` | No | List all entries and exits with nested ingredient data |
 
@@ -105,6 +108,6 @@ cd services/inventory
 uv run pytest
 ```
 
-Expect **27** passed (SQLite in-memory; no Supabase required for tests).
+Expect **33** passed (SQLite in-memory; no Supabase required for tests).
 
 CI runs this suite via the `uv-tests` matrix row `services/inventory` in `.github/workflows/ci.yml`.

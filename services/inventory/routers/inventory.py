@@ -231,6 +231,7 @@ def list_orders(
                 id=entry.id,
                 ingredient_id=entry.ingredient_id,
                 quantity=entry.quantity,
+                unit_cost=entry.unit_cost,
                 supplier_name=entry.supplier_name,
                 location_id=entry.location_id,
                 created_at=entry.created_at,
