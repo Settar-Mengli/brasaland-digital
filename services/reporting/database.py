@@ -54,5 +54,22 @@ def ensure_schema() -> None:
     _schema_ready = True
 
 
+_dead_letters_ready = False
+
+
+def ensure_task_dead_letters_schema() -> None:
+    """Create reporting.task_dead_letters only (scoped Lane-1 safety net)."""
+    global _dead_letters_ready
+
+    if _dead_letters_ready:
+        return
+
+    import config  # noqa: F401 — ensures data/ is on sys.path
+    from pipelines.db_models import TaskDeadLetter
+
+    SQLModel.metadata.create_all(get_engine(), tables=[TaskDeadLetter.__table__])
+    _dead_letters_ready = True
+
+
 def get_session() -> Session:
     return Session(get_engine())

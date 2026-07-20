@@ -5,17 +5,19 @@ from __future__ import annotations
 from datetime import date
 
 from fastapi import APIRouter, Query
+from fastapi.responses import JSONResponse
 
 from models import (
     PipelineRunResponse,
+    TaskAcceptedResponse,
     TriggerPipelineRunBody,
     WeeklyLocationPerformanceResponse,
 )
 from pipelines.api import (
     query_latest_pipeline_run,
     query_weekly_location_performance,
-    trigger_pipeline_run,
 )
+from tasks import run_pipeline_task
 
 router = APIRouter(prefix="/reporting")
 
@@ -37,8 +39,16 @@ def get_latest_pipeline_run() -> PipelineRunResponse:
     return PipelineRunResponse.model_validate(payload)
 
 
-@router.post("/pipeline-runs", response_model=PipelineRunResponse)
-def post_pipeline_run(body: TriggerPipelineRunBody | None = None) -> PipelineRunResponse:
+@router.post(
+    "/pipeline-runs",
+    response_model=TaskAcceptedResponse,
+    status_code=202,
+)
+def post_pipeline_run(body: TriggerPipelineRunBody | None = None) -> JSONResponse:
     week_start = body.week_start if body is not None else None
-    payload = trigger_pipeline_run(week_start=week_start)
-    return PipelineRunResponse.model_validate(payload)
+    week_arg = week_start.isoformat() if week_start is not None else None
+    async_result = run_pipeline_task.delay(week_arg)
+    return JSONResponse(
+        status_code=202,
+        content={"task_id": async_result.id},
+    )

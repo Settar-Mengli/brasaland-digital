@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -38,3 +38,13 @@ class PipelineRunResponse(BaseModel):
 
 class TriggerPipelineRunBody(BaseModel):
     week_start: Optional[date] = None
+
+
+class TaskAcceptedResponse(BaseModel):
+    task_id: str
+
+
+class TaskStatusResponse(BaseModel):
+    task_id: str
+    status: str
+    result: Any | None = None

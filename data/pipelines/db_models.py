@@ -108,3 +108,22 @@ class JobRun(SQLModel, table=True):
     created_at: datetime = Field(
         sa_column=Column(DateTime(timezone=True), nullable=False),
     )
+
+
+class TaskDeadLetter(SQLModel, table=True):
+    """Celery task failures after retry exhaustion (DEV-55 DLQ)."""
+
+    __tablename__ = "task_dead_letters"
+    __table_args__ = ({"schema": "reporting"},)
+
+    id: int | None = Field(default=None, primary_key=True)
+    task_id: str = Field(sa_column=Column(Text, nullable=False))
+    task_name: str = Field(sa_column=Column(Text, nullable=False))
+    attempt_count: int = Field(nullable=False)
+    error_message: Optional[str] = Field(
+        default=None,
+        sa_column=Column(Text, nullable=True),
+    )
+    created_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
