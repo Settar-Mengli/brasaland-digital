@@ -7,7 +7,7 @@ from decimal import Decimal
 from typing import Optional
 from uuid import UUID, uuid4
 
-from sqlalchemy import Column, DateTime, Numeric, Text, UniqueConstraint
+from sqlalchemy import CheckConstraint, Column, DateTime, Numeric, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlmodel import Field, SQLModel
 
@@ -74,4 +74,37 @@ class PipelineRun(SQLModel, table=True):
     error_detail: Optional[str] = Field(
         default=None,
         sa_column=Column(Text, nullable=True),
+    )
+
+
+class JobRun(SQLModel, table=True):
+    """Nightly orchestration state for one (job_name, target_date)."""
+
+    __tablename__ = "job_runs"
+    __table_args__ = (
+        UniqueConstraint("job_name", "target_date", name="uq_job_runs_job_date"),
+        CheckConstraint(
+            "status IN ('pending', 'processing', 'completed', 'failed')",
+            name="ck_job_runs_status",
+        ),
+        {"schema": "reporting"},
+    )
+
+    id: int | None = Field(default=None, primary_key=True)
+    job_name: str = Field(sa_column=Column(Text, nullable=False))
+    target_date: date = Field(nullable=False)
+    status: str = Field(sa_column=Column(Text, nullable=False))
+    started_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
+    finished_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True),
+    )
+    error_message: Optional[str] = Field(
+        default=None,
+        sa_column=Column(Text, nullable=True),
+    )
+    created_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False),
     )

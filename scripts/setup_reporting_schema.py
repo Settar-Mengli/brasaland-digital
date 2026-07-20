@@ -33,6 +33,7 @@ SCHEMA = "reporting"
 TABLES: tuple[str, ...] = (
     "weekly_location_performance",
     "pipeline_runs",
+    "job_runs",
 )
 CREATE_SCHEMA_SQL = f"CREATE SCHEMA IF NOT EXISTS {SCHEMA}"
 
