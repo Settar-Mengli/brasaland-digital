@@ -11,6 +11,7 @@ dependencies = [
     "psycopg2-binary",
     "pandas",
     "prefect>=3",
+    "celery[redis]",
 ]
 
 [dependency-groups]

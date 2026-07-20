@@ -24,6 +24,8 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 os.environ.setdefault("DATABASE_URL", "sqlite://")
+# Dummy broker URL for Celery import safety — tests never connect to Redis.
+os.environ.setdefault("REDIS_URL", "redis://127.0.0.1:6379/0")
 
 import config  # noqa: F401 — data/ on sys.path
 import database
@@ -47,12 +49,14 @@ def _set_sqlite_pragma(dbapi_connection: Any, connection_record: Any) -> None:
 def _patch_engines() -> None:
     database._engine = _test_engine
     database._schema_ready = False
+    database._dead_letters_ready = False
     pipeline_module._engine = _test_engine
 
 
 def _sqlite_ready_models() -> None:
     pipeline_db_models.WeeklyLocationPerformance.__table__.schema = None
     pipeline_db_models.PipelineRun.__table__.schema = None
+    pipeline_db_models.TaskDeadLetter.__table__.schema = None
     for table in (
         pipeline_db_models.WeeklyLocationPerformance.__table__,
         pipeline_db_models.PipelineRun.__table__,
@@ -73,9 +77,11 @@ def sqlite_db() -> Generator[None, None, None]:
         tables=[
             pipeline_db_models.WeeklyLocationPerformance.__table__,
             pipeline_db_models.PipelineRun.__table__,
+            pipeline_db_models.TaskDeadLetter.__table__,
         ],
     )
     database._schema_ready = True
+    database._dead_letters_ready = True
     table_names = inspect(_test_engine).get_table_names()
     assert "weekly_location_performance" in table_names
     yield
@@ -84,11 +90,14 @@ def sqlite_db() -> Generator[None, None, None]:
         tables=[
             pipeline_db_models.WeeklyLocationPerformance.__table__,
             pipeline_db_models.PipelineRun.__table__,
+            pipeline_db_models.TaskDeadLetter.__table__,
         ],
     )
     database._schema_ready = False
+    database._dead_letters_ready = False
     pipeline_db_models.WeeklyLocationPerformance.__table__.schema = "reporting"
     pipeline_db_models.PipelineRun.__table__.schema = "reporting"
+    pipeline_db_models.TaskDeadLetter.__table__.schema = "reporting"
 
 
 @pytest.fixture

@@ -742,3 +742,19 @@ feat: refactor business performance pipeline into subflows, add unit tests, and 
 ```text
 feat(data): add nightly telemetry export job with run state control
 ```
+
+## DEV-55 — Async pipeline trigger (Celery + Redis + DLQ)
+
+**Status:** Implemented on branch `feat/async-task-queue` (staged; operator compose smoke **PENDING**).
+
+**Scope:** `POST /reporting/pipeline-runs` enqueues Celery `run_pipeline_task` and returns **202** `{"task_id"}`; `GET /tasks/{task_id}` maps Celery states; Redis broker/backend + Flower + `reporting-worker` in Compose; retries with exponential backoff; non-retryable concurrent Running guard; `reporting.task_dead_letters` DLQ after exhaustion. H3 auth not addressed (worsened by queue — parked).
+
+**Files:** `celery_app.py`, `tasks.py`, `routers/tasks.py`, `TaskDeadLetter` ORM, compose redis/flower/reporting-worker, tests, READMEs.
+
+**Tests (agent):** `services/reporting` pytest (rewritten POST + new task/status/DLQ suites); toolkit **115** unchanged. No live Redis/DB in unit tests. No production mutation.
+
+**Mandated commit message (user types):**
+
+```text
+feat(reporting): async pipeline trigger via Celery with Redis broker and DLQ
+```

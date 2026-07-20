@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -40,6 +41,13 @@ def get_engine() -> Engine:
     return _engine
 
 
+def _ensure_pipelines_importable() -> None:
+    """Put repo ``data/`` on sys.path (same rule as config.py; no ``import config``)."""
+    data_root = str((Path(__file__).resolve().parents[2] / "data").resolve())
+    if data_root not in sys.path:
+        sys.path.insert(0, data_root)
+
+
 def ensure_schema() -> None:
     """Create reporting.* tables from data/pipelines/db_models (Lane-1 source of truth)."""
     global _schema_ready
@@ -47,11 +55,28 @@ def ensure_schema() -> None:
     if _schema_ready:
         return
 
-    import config  # noqa: F401 — ensures data/ is on sys.path
+    _ensure_pipelines_importable()
     import pipelines.db_models  # noqa: F401 — register SQLModel tables on metadata
 
     SQLModel.metadata.create_all(get_engine())
     _schema_ready = True
+
+
+_dead_letters_ready = False
+
+
+def ensure_task_dead_letters_schema() -> None:
+    """Create reporting.task_dead_letters only (scoped Lane-1 safety net)."""
+    global _dead_letters_ready
+
+    if _dead_letters_ready:
+        return
+
+    _ensure_pipelines_importable()
+    from pipelines.db_models import TaskDeadLetter
+
+    SQLModel.metadata.create_all(get_engine(), tables=[TaskDeadLetter.__table__])
+    _dead_letters_ready = True
 
 
 def get_session() -> Session:

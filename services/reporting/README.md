@@ -12,10 +12,13 @@ and [`data/pipelines/PIPELINE_DESIGN.md`](../../data/pipelines/PIPELINE_DESIGN.m
 ```
 services/reporting/
 ├── app.py                 # FastAPI + lifespan ensure_schema (tolerant if no DATABASE_URL)
+├── celery_app.py          # Celery app (Redis broker + result backend)
+├── tasks.py               # run_pipeline_task + DLQ writer
 ├── config.py              # .env + sys.path bootstrap for data/pipelines
 ├── database.py            # lazy engine + ensure_schema (imports pipelines.db_models)
 ├── models.py              # API request/response schemas only (CONTEXT §6)
-├── routers/reporting.py   # three /reporting/* endpoints → pipelines.api only
+├── routers/reporting.py   # /reporting/* endpoints
+├── routers/tasks.py       # GET /tasks/{task_id}
 └── Dockerfile             # copies data/ + this service (not the generic services/Dockerfile)
 ```
 
@@ -32,8 +35,9 @@ package. **Chosen mechanism:** `config.py` inserts the repo `data/` directory on
 `data/pipelines/` without forcing `data/` to become a published package or duplicating models
 inside `services/reporting/`.
 
-Reporting’s `pyproject.toml` lists `prefect`, `sqlmodel`, `pandas`, and `psycopg2-binary` so the
-imported `pipelines` modules resolve third-party deps inside this service’s venv.
+Reporting’s `pyproject.toml` lists `prefect`, `sqlmodel`, `pandas`, `psycopg2-binary`, and
+`celery[redis]` so the imported `pipelines` modules and the worker resolve third-party deps
+inside this service’s venv.
 
 ## Endpoints
 
@@ -41,14 +45,29 @@ imported `pipelines` modules resolve third-party deps inside this service’s ve
 | --- | --- | --- |
 | `GET` | `/reporting/weekly-location-performance` | Optional `week_start`; default = latest computed week; CONTEXT §6 JSON |
 | `GET` | `/reporting/pipeline-runs/latest` | Metadata of the most recent `pipeline_runs` row (structured null object when none exist — never a bare null body) |
-| `POST` | `/reporting/pipeline-runs` | Triggers a run **synchronously** and returns completed run metadata |
+| `POST` | `/reporting/pipeline-runs` | Enqueues Celery `run_pipeline_task`; returns **202** `{"task_id": "..."}` immediately |
+| `GET` | `/tasks/{task_id}` | Celery `AsyncResult` status: `pending` \| `started` \| `success` \| `failure` (+ `result` when terminal) |
 
-### Sync POST note
+### Async POST + poll
 
-`POST /reporting/pipeline-runs` runs the Prefect flow **in-process** and blocks the HTTP request
-until the run finishes (Completed or Failed metadata). Long weeks can exceed typical HTTP
-timeouts. An async/queued trigger is a **deliberate follow-up** and is **not** implemented in
-this milestone (no `BackgroundTasks`, no job queue).
+```powershell
+# Enqueue
+curl -s -X POST http://127.0.0.1:8014/reporting/pipeline-runs -H "Content-Type: application/json" -d "{}"
+# → {"task_id":"<uuid>"}
+
+# Poll until success|failure
+curl -s http://127.0.0.1:8014/tasks/<uuid>
+```
+
+Optional body: `{"week_start": "YYYY-MM-DD"}` (ISO Monday preferred; same semantics as before).
+
+## Celery retries, guard, and DLQ
+
+- **Job-level (Celery):** `max_retries=3`, backoff `countdown = 2 ** retries` (1s, 2s, 4s).
+- **Non-retryable:** `RuntimeError` whose message starts with `Concurrent run already Running` (same-week Running guard in `pipelines.pipeline.write_pipeline_run_start`) fails immediately — no Celery retry and **no** DLQ row.
+- **DLQ:** after retry exhaustion only, a row is written to `reporting.task_dead_letters` (`task_id`, `task_name`, `attempt_count`, bounded `error_message`, `created_at`).
+- **Prefect step-level retries** (`@task(retries=3)` inside the flow) are a **separate** layer and are not disabled by Celery.
+- **`task_acks_late=True`** means a worker crash mid-run redelivers the task; the re-run is safe because the pipeline's same-week Running guard blocks concurrent duplicates and completed weeks re-upsert idempotently.
 
 ## Setup
 
@@ -59,7 +78,7 @@ cd services/reporting
 uv sync --python 3.13
 ```
 
-Requires **Python 3.11–3.13** (`requires-python = ">=3.11,<3.14"`). Copy `.env.example` to `.env` and set `DATABASE_URL` (same
+Requires **Python 3.11–3.13** (`requires-python = ">=3.11,<3.14"`). Copy `.env.example` to `.env` and set `DATABASE_URL` and `REDIS_URL` (same
 brasaland-m5 project as inventory/telemetry). Create the `reporting` schema first via
 `scripts/setup_reporting_schema.py` (operator; see design operator rollout).
 
@@ -68,12 +87,37 @@ When no week has been computed yet, `GET /reporting/weekly-location-performance`
 ### Docker Compose
 
 ```powershell
-docker compose up reporting
+docker compose up --build redis flower reporting reporting-worker
 ```
 
-Compose passes `DATABASE_URL: ${DATABASE_URL}` and mounts `./services/reporting` plus `./data`.
+| Service | Role |
+| --- | --- |
+| `redis` | Broker + result backend (`noeviction`) |
+| `reporting` | FastAPI API (`:8014`) |
+| `reporting-worker` | Celery worker (same reporting image; own `reporting_worker_venv`) |
+| `flower` | Task monitor at http://localhost:5555 (`CELERY_BROKER_URL` ← `REDIS_URL`) |
 
-## Run (local)
+**Start / stop worker:**
+
+```powershell
+docker compose up -d reporting-worker
+docker compose stop reporting-worker
+```
+
+Compose passes `DATABASE_URL` and `REDIS_URL`, mounts `./services/reporting` plus `./data`.
+
+### Optional Windows host worker
+
+If running the worker on the Windows host (not Compose), Celery’s prefork pool is unsupported — use solo:
+
+```powershell
+cd services/reporting
+uv run --python 3.13 celery -A celery_app.celery_app worker --loglevel=INFO --pool=solo
+```
+
+Prefer the Linux Compose worker for day-to-day work.
+
+## Run (local API)
 
 ```powershell
 uv run --python 3.13 uvicorn app:app --port 8014
@@ -81,7 +125,7 @@ uv run --python 3.13 uvicorn app:app --port 8014
 
 Open **http://127.0.0.1:8014/docs**
 
-CLI ETL (same project DATABASE_URL):
+CLI ETL (same project DATABASE_URL; bypasses the HTTP/Celery path):
 
 ```powershell
 uv run --directory data python -m pipelines.pipeline
@@ -94,9 +138,12 @@ Use the module form (`-m`); `python pipelines/pipeline.py` raises `ModuleNotFoun
 | Variable | Purpose |
 | --- | --- |
 | `DATABASE_URL` | Supabase Postgres connection string (required at runtime) |
+| `REDIS_URL` | Celery broker + result backend (API enqueue, worker, Flower) |
 
 ## Lane-1 / Lane-2
 
 - **Lane 1:** `database.ensure_schema()` → `SQLModel.metadata.create_all` using
-  `pipelines.db_models` (`schema="reporting"`).
-- **Lane 2:** `scripts/setup_reporting_schema.py` — `CREATE SCHEMA` + RLS (operator-only).
+  `pipelines.db_models` (`schema="reporting"`). Scoped `ensure_task_dead_letters_schema()` creates
+  `task_dead_letters` only.
+- **Lane 2:** `scripts/setup_reporting_schema.py` — `CREATE SCHEMA` + RLS (operator-only), including
+  `task_dead_letters`.

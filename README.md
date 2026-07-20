@@ -132,7 +132,7 @@ npm run dev --workspace @brasaland/backoffice
    cp .env.example .env
    ```
 
-2. Build and start all seven backend containers:
+2. Build and start backend containers (APIs, Redis, Celery worker, Flower, UI):
 
    ```bash
    docker compose up --build
@@ -148,9 +148,21 @@ npm run dev --workspace @brasaland/backoffice
 | Incident manager API | http://localhost:8011 |
 | Inventory API | http://localhost:8012 |
 | Telemetry API | http://localhost:8013 |
+| Reporting API | http://localhost:8014 |
+| Redis (Celery broker) | localhost:6379 |
+| Flower (Celery monitor) | http://localhost:5555 |
 | Website (Next.js) | http://localhost:3002 |
 | Backoffice (Next.js) | http://localhost:3003 |
 | Incident manager UI (Next.js) | http://localhost:3004 |
+
+**Reporting Celery worker:** Compose service `reporting-worker` runs `celery -A celery_app.celery_app worker` using the reporting image. Start/stop independently:
+
+```bash
+docker compose up -d reporting-worker
+docker compose stop reporting-worker
+```
+
+Set `REDIS_URL` in the root `.env` (see `.env.example`). Inside Compose use `redis://redis:6379/0`; on the host use `redis://localhost:6379/0`. Flower reads the same URL via `CELERY_BROKER_URL`.
 
 The backoffice and incident-manager UIs proxy API calls through Next.js rewrites to backend service names inside the `ui` container; `NEXT_PUBLIC_*` URLs still point at same-origin localhost UI ports.
 

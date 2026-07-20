@@ -133,21 +133,39 @@ async def test_get_latest_pipeline_run_shape(asgi_client: httpx.AsyncClient) -> 
 
 
 @pytest.mark.anyio
-async def test_post_pipeline_runs_returns_completed_metadata(
+async def test_post_pipeline_runs_returns_202_task_id(
     asgi_client: httpx.AsyncClient,
 ) -> None:
+    mock_async = type("R", (), {"id": "celery-task-abc"})()
     with patch(
-        "routers.reporting.trigger_pipeline_run",
-        return_value=SAMPLE_RUN_PAYLOAD,
-    ) as mock_trigger:
+        "routers.reporting.run_pipeline_task.delay",
+        return_value=mock_async,
+    ) as mock_delay:
         response = await asgi_client.post("/reporting/pipeline-runs")
 
-    assert response.status_code == 200
-    mock_trigger.assert_called_once_with(week_start=None)
+    assert response.status_code == 202
+    mock_delay.assert_called_once_with(None)
     body = response.json()
-    assert body["run_id"] == SAMPLE_RUN_PAYLOAD["run_id"]
-    assert body["status"] == "Completed"
-    assert body["records_loaded"] == 14
+    assert body == {"task_id": "celery-task-abc"}
+
+
+@pytest.mark.anyio
+async def test_post_pipeline_runs_passes_week_start_iso(
+    asgi_client: httpx.AsyncClient,
+) -> None:
+    mock_async = type("R", (), {"id": "celery-task-xyz"})()
+    with patch(
+        "routers.reporting.run_pipeline_task.delay",
+        return_value=mock_async,
+    ) as mock_delay:
+        response = await asgi_client.post(
+            "/reporting/pipeline-runs",
+            json={"week_start": "2026-07-07"},
+        )
+
+    assert response.status_code == 202
+    mock_delay.assert_called_once_with("2026-07-07")
+    assert response.json()["task_id"] == "celery-task-xyz"
 
 
 @pytest.mark.anyio

@@ -80,11 +80,54 @@ services:
     environment:
       WATCHFILES_FORCE_POLLING: 'true'
       DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
       PYTHONPATH: /app/data
     volumes:
       - ./services/reporting:/app/services/reporting
       - ./data:/app/data
       - reporting_venv:/app/services/reporting/.venv
+    restart: unless-stopped
+    networks:
+      - brasaland-dev
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --maxmemory-policy noeviction
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - brasaland-dev
+
+  flower:
+    image: mher/flower:2.0
+    environment:
+      CELERY_BROKER_URL: ${REDIS_URL}
+    ports:
+      - '5555:5555'
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - brasaland-dev
+
+  reporting-worker:
+    build:
+      context: .
+      dockerfile: services/reporting/Dockerfile
+    command: uv run celery -A celery_app.celery_app worker --loglevel=INFO
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      PYTHONPATH: /app/data
+    volumes:
+      - ./services/reporting:/app/services/reporting
+      - ./data:/app/data
+      - reporting_worker_venv:/app/services/reporting/.venv
+    depends_on:
+      - redis
     restart: unless-stopped
     networks:
       - brasaland-dev
@@ -191,6 +234,8 @@ volumes:
   inventory_venv:
   telemetry_venv:
   reporting_venv:
+  reporting_worker_venv:
+  redis_data:
   incident-manager_venv:
   incident-analysis_venv:
   supplier-directory_venv:
