@@ -707,3 +707,38 @@ feat: implement resilient business performance pipeline
 ```text
 feat: refactor business performance pipeline into subflows, add unit tests, and add reporting dashboard
 ```
+
+## DEV-53 — Nightly telemetry export job
+
+**Status:** Implemented on branch `feat/nightly-export-job` (staged; operator RLS rollout **PENDING**).
+
+**Scope:** Standalone `scripts/nightly_export.py` exports the previous UTC day of `telemetry_events` to an ignored audit CSV, coordinates via `reporting.job_runs` (atomic claim / stale-lock takeover), and triggers the weekly M6 pipeline through `pipelines.run_weekly` as a subprocess. Status control lives in `data/pipelines/job_runner.py` (data uv env owner). No FastAPI scheduler; host cron + Windows Task Scheduler documented.
+
+**Files:**
+
+| Path | Change |
+| --- | --- |
+| `data/pipelines/db_models.py` | `JobRun` ORM (`reporting.job_runs`) |
+| `data/pipelines/job_runner.py` | Atomic claim, ensure_schema (JobRun only), terminal helpers |
+| `data/pipelines/run_weekly.py` | `--week-start` Monday CLI for M6 flow |
+| `scripts/nightly_export.py` | Export + subprocess orchestration |
+| `scripts/setup_reporting_schema.py` | `job_runs` added to TABLES |
+| `tests/pipelines/*` | SQLite fixtures + job_runner / run_weekly / nightly_export tests |
+| `.gitignore` | `data/raw/*.csv` |
+| `README.md` | DEV-53 ops section |
+
+**Tests (agent):**
+
+- `uv run --directory data --python 3.13 pytest ../tests/pipelines/test_pipeline.py ../tests/pipelines/test_job_runner.py ../tests/pipelines/test_run_weekly.py ../tests/pipelines/test_nightly_export.py` — existing **5** transform tests unchanged; new tests additive.
+- `uv run --python 3.13 pytest` in `services/reporting/` — **6** unchanged.
+- `npm run test --workspace @brasaland/operations-toolkit` — **115** unchanged.
+
+**Cron decision:** `15 0 * * *` with `CRON_TZ=UTC`; no Compose scheduler service (no repo precedent).
+
+**Operator (after merge):** run `scripts/setup_reporting_schema.py` dry-run/real, ensure `job_runs` exists (reporting or job_runner `ensure_schema`), setup again for RLS, verify three reporting tables. No production mutation performed by the agent.
+
+**Mandated commit message (user types):**
+
+```text
+feat(data): add nightly telemetry export job with run state control
+```

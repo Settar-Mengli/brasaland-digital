@@ -43,3 +43,6 @@ venv/
 *.pem
 keys_for_env.txt
 fmt_keys.py
+
+# Nightly telemetry audit exports (keep data/raw/.gitkeep)
+data/raw/*.csv

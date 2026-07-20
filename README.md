@@ -172,6 +172,89 @@ uv run --python 3.13 python ../../scripts/enable_rls.py --dry-run
 
 **Future-table caveat:** `SQLModel.metadata.create_all` creates new tables with RLS **disabled**. Re-run `scripts/enable_rls.py` after adding any table. For `telemetry_events`, run `scripts/setup_telemetry_table.py` after the table exists to create production indexes (including GIN on `tags`).
 
+## Nightly telemetry export (DEV-53)
+
+Standalone script that exports the previous UTC day of `public.telemetry_events` to an ignored audit CSV, records orchestration state in `reporting.job_runs`, and triggers the weekly M6 KPI pipeline as a subprocess.
+
+### Invocation
+
+Authoritative form (from the repo root; uses the `data/` uv project):
+
+```powershell
+uv run --directory data --python 3.13 python ../scripts/nightly_export.py
+```
+
+`--directory data` shifts the working directory to `data/`, so `../scripts/nightly_export.py` resolves to the repo-root script.
+
+Direct execution also works (the script bootstraps `data/` onto `sys.path`):
+
+```powershell
+python scripts/nightly_export.py
+```
+
+### Environment
+
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` | Shared brasaland-m5 Postgres URL (also loaded from `data/.env` then `services/inventory/.env`) |
+| `TARGET_DATE` | Optional `YYYY-MM-DD` UTC day to export; default = previous UTC day |
+| `STALE_LOCK_HOURS` | Hours before a `processing` `job_runs` row is treated as orphaned (default `6`) |
+
+### Two-layer run state
+
+| Table | Role |
+| --- | --- |
+| `reporting.job_runs` | Nightly wrapper: one row per `(job_name, target_date)` with atomic claim, skip-duplicate, and stale-lock takeover |
+| `reporting.pipeline_runs` | M6 internal weekly ETL history: one new row per child pipeline invocation |
+
+The CSV under `data/raw/telemetry_YYYY-MM-DD.csv` is an **audit snapshot only**. The M6 pipeline always rereads PostgreSQL; it is not wired to the CSV.
+
+### Daily target → weekly pipeline
+
+Each run maps `target_date` to its containing ISO Monday (`week_start`) and invokes:
+
+```text
+uv run --directory data --python 3.13 python -m pipelines.run_weekly --week-start <monday>
+```
+
+Tuesday–Sunday re-runs for the same week are safe: KPI rows upsert on `(location_id, week_start)`; each child run appends a new `pipeline_runs` history row.
+
+### Reporting schema RLS rollout (operator)
+
+1. `uv run --python 3.13 python scripts/setup_reporting_schema.py --dry-run` then real (creates `reporting` schema; RLS skipped until tables exist).
+2. Create tables via reporting `ensure_schema` and/or the first `job_runner.ensure_schema()` call (lazy safety net for cron-only hosts).
+3. Setup dry-run then real again so RLS is enabled on `weekly_location_performance`, `pipeline_runs`, and `job_runs`.
+4. Verify all three reporting tables have RLS enabled with zero policies.
+
+### Schedule
+
+UTC cron (preferred over a Compose scheduler container — this repo has no deployed scheduler pattern):
+
+```cron
+CRON_TZ=UTC
+15 0 * * * cd /absolute/path/to/brasaland-digital && /absolute/path/to/uv run --directory data --python 3.13 python ../scripts/nightly_export.py
+```
+
+### Windows Task Scheduler (local dev)
+
+1. Create a daily task for 00:15 **UTC** (convert to local time on the host, or run the host clock in UTC).
+2. Action: start the **absolute** `uv.exe` path (same requirement as the script’s `shutil.which("uv")` check — a bare `uv` on PATH is not enough for a reliable scheduled action).
+3. Arguments: `run --directory data --python 3.13 python ../scripts/nightly_export.py`
+4. Start in: absolute path to the repo root.
+5. Ensure `DATABASE_URL` is available to the task (system/user env or a wrapper that loads `data/.env`).
+
+### Recovery runbook
+
+| Situation | Behavior |
+| --- | --- |
+| Duplicate (`status=completed`) | INFO skip; exit 0; no CSV rewrite; no subprocess |
+| Fresh `processing` lock | INFO skip; exit 0 |
+| Stale `processing` (> `STALE_LOCK_HOURS`) | Mark failed (`stale lock takeover`), reclaim, continue |
+| Prior `failed` | Guarded retry transition to `processing` |
+| `uv` missing on PATH | ERROR; mark job failed; non-zero exit |
+| Child pipeline non-zero | Mark failed with stderr tail; non-zero exit |
+| Inspect state | Query `reporting.job_runs` for `job_name='nightly_export'` |
+
 ## Engineering decisions
 
 **M2 is a standalone library, not inline code.** Business logic (filtering, ranking, financial
