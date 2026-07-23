@@ -19,5 +19,5 @@ dev = [
 package = false
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["../tests/pipelines"]
 pythonpath = ["."]
