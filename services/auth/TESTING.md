@@ -161,4 +161,4 @@ No auth business-logic bugs were found during this testing project. Tests docume
 
 ## CI
 
-Continuous integration (GitHub Actions) is **out of scope** for this project and deferred to a follow-up branch.
+CI runs this suite via the `uv-tests` matrix row `services/auth` in `.github/workflows/ci.yml`. See the root `README.md` for overall CI coverage.

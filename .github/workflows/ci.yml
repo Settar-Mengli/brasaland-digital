@@ -12,12 +12,55 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dir: [services/auth, packages/auth-verify, packages/shared, services/supplier-directory, services/incident-analysis, services/incident-manager, services/inventory, services/telemetry]
+        dir:
+          [
+            services/auth,
+            packages/auth-verify,
+            packages/shared,
+            services/supplier-directory,
+            services/incident-analysis,
+            services/incident-manager,
+            services/inventory,
+            services/telemetry,
+            services/reporting,
+          ]
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
         with:
-          python-version: '3.13'
+          python-version: "3.13"
       - name: Run tests
         run: uv run pytest
         working-directory: ${{ matrix.dir }}
+
+  pipelines-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+      - name: Run pipeline tests
+        run: uv run --directory data --python 3.13 pytest
+
+  node-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace:
+          [
+            "@brasaland/operations-toolkit",
+            "@brasaland/backoffice",
+            "@brasaland/incident-manager",
+          ]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Run tests
+        run: npm run test --workspace ${{ matrix.workspace }}
