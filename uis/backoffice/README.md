@@ -45,6 +45,12 @@ Open **http://127.0.0.1:3003**
 | `/inventory/orders/outbound` | Yes | Log IngredientExit (consumption or waste) |
 | `/inventory/orders` | Yes | Read-only order history |
 
+## Screenshots
+
+Locations table (`/locations`) with M2 fixture data:
+
+<img src="../../docs/screenshots/m4-backoffice-locations.png" alt="Brasaland backoffice locations table with summary cards and M2 fixture data" width="800">
+
 ## Manual test flow
 
 1. Start auth: `cd services/auth && uv run uvicorn app:app --port 8002`
