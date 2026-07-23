@@ -23,7 +23,7 @@ copy .env.example .env.local
 | `NEXT_PUBLIC_INVENTORY_API_URL` | Same-origin proxy base → `http://localhost:3003/api/inventory` |
 | `NEXT_PUBLIC_AUTH_API_URL` | Same-origin proxy base → `http://localhost:3003/api/auth` |
 
-Rewrites in `next.config.ts` forward `/api/inventory/*` to inventory **:8012** and `/api/auth/*` to auth **:8002**.
+Rewrites in `next.config.ts` forward `/api/inventory/*` to `services/inventory` and `/api/auth/*` to `services/auth`. Canonical ports: [../../docs/standards/project-context.md](../../docs/standards/project-context.md#port-assignments).
 
 ### Dev server
 
@@ -32,8 +32,6 @@ npm run dev
 ```
 
 Open **http://127.0.0.1:3003**
-
-Port **3003** (`next dev -p 3003`).
 
 ## Routes
 
@@ -66,7 +64,7 @@ All inventory HTTP calls go through **`lib/inventory.ts`**. Auth token helpers l
 
 ## Telemetry
 
-All telemetry HTTP calls go through **`lib/telemetry.ts`** via `track(eventType, properties)`. Set `NEXT_PUBLIC_TELEMETRY_ENDPOINT` in `.env.local` (see `.env.example`); the Next.js rewrite forwards `/api/telemetry/*` to the telemetry service on **:8013**.
+All telemetry HTTP calls go through **`lib/telemetry.ts`** via `track(eventType, properties)`. Set `NEXT_PUBLIC_TELEMETRY_ENDPOINT` in `.env.local` (see `.env.example`); the Next.js rewrite forwards `/api/telemetry/*` to `services/telemetry`. Canonical ports: [../../docs/standards/project-context.md](../../docs/standards/project-context.md#port-assignments).
 
 Copy `.env.example` to `.env.local` before running locally:
 

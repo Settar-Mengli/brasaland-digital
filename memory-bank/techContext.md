@@ -7,14 +7,8 @@
 - Windows/OneDrive — be aware of EPERM file-lock issues on .next cache
 
 ## Workspace Inventory
-| Workspace | Path | Stack | Port | Status |
-|---|---|---|---|---|
-| @brasaland/public-website | apps/public-website | HTML5, Tailwind CDN, vanilla JS | 3000 (http-server) | Live on Vercel |
-| @brasaland/operations-toolkit | apps/operations-toolkit | TypeScript strict, Vitest | n/a | Complete |
-| @brasaland/talent-pipeline-tracker | apps/talent-pipeline-tracker | Next.js 16.2.6, React 19, Tailwind v4 | 3001 | Live on Vercel |
-| @brasaland/website | uis/website | Next.js + TypeScript (M4) | 3002 | Live on Vercel |
-| @brasaland/backoffice | uis/backoffice | Next.js + TypeScript (M4) | 3003 | Live on Vercel |
-| @brasaland/incident-manager | uis/incident-manager | Next.js + TypeScript (M4) | 3004 | Complete |
+
+Canonical workspace list: [../README.md](../README.md#workspaces). Canonical ports: [../docs/standards/project-context.md](../docs/standards/project-context.md#port-assignments). Canonical live URLs: [../docs/standards/project-context.md](../docs/standards/project-context.md#live-deployments).
 
 ## Key Technical Constraints
 - TypeScript: strict mode, no any, no ! assertions, snake_case API types, import type for type-only imports
@@ -37,5 +31,5 @@
 ## Verification Baseline (must pass on every commit)
 1. npx prettier --check <workspace>/
 2. npm run build --workspace <workspace>
-3. npm run test --workspace @brasaland/operations-toolkit — must show 115 passing
+3. Canonical toolkit tests: [../apps/operations-toolkit/README.md](../apps/operations-toolkit/README.md).
 4. git diff --stat — no out-of-scope paths, no .env.local

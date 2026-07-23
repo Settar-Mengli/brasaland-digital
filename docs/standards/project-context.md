@@ -32,6 +32,8 @@ Authoritative local port table for this monorepo:
 | Website (Next.js) | 3002 |
 | Backoffice (Next.js) | 3003 |
 | Incident manager UI (Next.js) | 3004 |
+| Redis (Celery broker) | 6379 |
+| Flower (Celery monitor) | 5555 |
 
 Reporting API (8014) ships in `services/reporting/` (FastAPI + Celery worker + Compose); backoffice exposes /reporting.
 

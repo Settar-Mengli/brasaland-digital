@@ -43,7 +43,7 @@ Produce a complete backend architecture proposal document that defines the recom
 
 1. Run `npx prettier --check` on modified markdown files.
 2. Skip build verification because no workspace code is changed.
-3. Run `npm run test --workspace @brasaland/operations-toolkit` and confirm 115 passing.
+3. Run `npm run test --workspace @brasaland/operations-toolkit` and confirm toolkit tests pass — Canonical toolkit tests: [../apps/operations-toolkit/README.md](../apps/operations-toolkit/README.md).
 4. Run `git diff --stat` and verify only in-scope files changed.
 
 ## 8. Risks and Mitigations

@@ -199,7 +199,7 @@ cd packages/shared
 uv run pytest
 ```
 
-Expect **33** passed.
+Canonical shared tests: [../../packages/shared/README.md](../../packages/shared/README.md).
 
 ```powershell
 cd services/incident-manager
@@ -214,7 +214,7 @@ From the monorepo root, M2 must stay green:
 npm run test --workspace @brasaland/operations-toolkit
 ```
 
-Expect **115** passed.
+Canonical toolkit tests: [../../apps/operations-toolkit/README.md](../../apps/operations-toolkit/README.md).
 
 ## Screenshots
 

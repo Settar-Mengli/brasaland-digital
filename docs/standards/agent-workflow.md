@@ -14,7 +14,7 @@ Complete all four steps before every commit:
 
 1. Run `npx prettier --check` on every file you modified.
 2. Run `npm run build --workspace <affected-workspace>` and confirm zero errors (skip when no workspace application code changed).
-3. Run `npm run test --workspace @brasaland/operations-toolkit` and confirm **115** passing.
+3. Run `npm run test --workspace @brasaland/operations-toolkit` and confirm toolkit tests pass — Canonical toolkit tests: [../../apps/operations-toolkit/README.md](../../apps/operations-toolkit/README.md).
 4. Run `git diff --stat` and confirm no out-of-scope paths and no `.env.local`.
 
 ## Commits and attribution
