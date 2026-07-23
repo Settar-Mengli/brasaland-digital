@@ -67,6 +67,8 @@ uv run python -m uvicorn app:app --port 8001
 
 Open **http://127.0.0.1:8001/** — filter suppliers, register new ones, update rates, and change status without leaving the page.
 
+![Supplier Directory web UI with filters, supplier list, and register form](../../docs/screenshots/supplier-directory-web.png)
+
 ## API endpoints
 
 | Method | Path | Success | Error responses | Description |

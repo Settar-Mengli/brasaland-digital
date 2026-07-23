@@ -10,27 +10,9 @@ Brasaland Digital is an npm + Python monorepo: six npm workspaces under `apps/` 
 
 Canonical live URLs: [docs/standards/project-context.md](docs/standards/project-context.md#live-deployments).
 
-### M1 — Brasaland public website
-
-<img src="docs/screenshots/m1-landing.png" alt="Brasaland public website landing page" width="800">
-
----
-
-### M3 — Talent Pipeline Tracker
-
-<img src="docs/screenshots/m3-list.png" alt="Talent Pipeline Tracker candidate list" width="800">
-
----
-
-### M4 — Website (Next.js rebuild)
-
-<img src="docs/screenshots/m4-website.png" alt="Brasaland website rebuild landing page" width="800">
-
----
-
-### M4 — Backoffice (Operations Dashboard)
-
 <img src="docs/screenshots/m4-backoffice.png" alt="Brasaland backoffice operations dashboard" width="800">
+
+Additional product surfaces are shown in each workspace README under `apps/` and `uis/`.
 
 ## Workspaces
 
