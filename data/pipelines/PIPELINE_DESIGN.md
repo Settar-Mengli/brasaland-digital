@@ -283,7 +283,7 @@ Defaults to the most recent complete ISO week (Monday 00:00 UTC of the week that
 Part 3 will add:
 
 ```text
-uv run --directory data pytest tests/pipelines/test_pipeline.py
+uv run --directory data pytest ../tests/pipelines/test_pipeline.py
 ```
 
 ---

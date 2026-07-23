@@ -33,7 +33,7 @@ Authoritative local port table for this monorepo:
 | Backoffice (Next.js) | 3003 |
 | Incident manager UI (Next.js) | 3004 |
 
-Reporting API (8014) is reserved in M6 Part 1 design; `services/reporting/` ships in Part 2.
+Reporting API (8014) ships in `services/reporting/` (FastAPI + Celery worker + Compose); backoffice exposes /reporting.
 
 ## Live deployments
 

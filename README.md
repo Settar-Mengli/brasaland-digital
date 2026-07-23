@@ -4,7 +4,7 @@
 
 The digital platform for Brasaland, a 14-location grilled-food restaurant chain across Colombia and the United States.
 
-Brasaland Digital is an npm + Python monorepo: five npm workspaces under `apps/` and `uis/` (public marketing site, operations toolkit, talent pipeline tracker, Next.js website rebuild, and operations backoffice), plus Python packages under `packages/` and FastAPI services under `services/` (auth, inventory, incident-manager, supplier-directory, incident-analysis, telemetry) and an additional Next.js UI (`uis/incident-manager`). Shared tooling and conventions without forcing shared runtime dependencies.
+Brasaland Digital is an npm + Python monorepo: six npm workspaces under `apps/` and `uis/` (public marketing site, operations toolkit, talent pipeline tracker, Next.js website rebuild, operations backoffice, and incident-manager UI), plus Python packages under `packages/` and FastAPI services under `services/` (auth, inventory, incident-manager, supplier-directory, incident-analysis, telemetry, reporting). Shared tooling and conventions without forcing shared runtime dependencies.
 
 ## Live demos
 
@@ -43,6 +43,7 @@ Brasaland Digital is an npm + Python monorepo: five npm workspaces under `apps/`
 | `@brasaland/talent-pipeline-tracker` | Internal HR app for managing candidate pipelines | Next.js (App Router), React, Tailwind CSS | Complete |
 | `@brasaland/website` | Next.js rebuild of the public website | Next.js 16, React 19, Tailwind v4, TypeScript | Live |
 | `@brasaland/backoffice` | Internal operations dashboard with M2 integration | Next.js 16, React 19, Tailwind v4, TypeScript | Live |
+| `@brasaland/incident-manager` | Centralized incident manager UI for Brasaland Operations | Next.js 16, React 19, Tailwind v4, TypeScript | Complete |
 
 ## Repository structure
 
@@ -65,7 +66,8 @@ brasaland-digital/
 │   ├── incident-analysis/       # Python incident-analysis utility (CLI, FastAPI, web UI)
 │   ├── incident-manager/        # Centralized incident manager (FastAPI, PostgreSQL/SQLModel)
 │   ├── inventory/               # Ingredient inventory API (FastAPI, PostgreSQL/SQLModel)
-│   └── telemetry/               # Telemetry ingest + report API (FastAPI, PostgreSQL/SQLModel)
+│   ├── telemetry/               # Telemetry ingest + report API (FastAPI, PostgreSQL/SQLModel)
+│   └── reporting/               # Reporting API + Celery worker (FastAPI, PostgreSQL/SQLModel, Redis)
 ├── memory-bank/                 # Agent context files (projectbrief, techContext, progress)
 ├── .agents/                     # Agent rules and skills
 ├── docs/
@@ -85,6 +87,8 @@ brasaland-digital/
 - **Operations toolkit (M2):** Pure TypeScript, Vitest for testing
 - **Talent tracker (M3, live):** Next.js (App Router), React, Tailwind CSS
 - **Website rebuild + Backoffice (M4):** Next.js 16 (App Router), React 19, Tailwind v4 (CSS-first), TypeScript strict
+- **Incident manager UI:** Next.js 16 (App Router), React 19, Tailwind v4, TypeScript
+- **Python services:** FastAPI under `services/` — auth, supplier-directory, incident-analysis, incident-manager, inventory, telemetry, reporting (Celery + Redis worker)
 - **Tooling:** npm workspaces, Prettier, EditorConfig
 - **Deployment:** Vercel (separate projects per workspace)
 
@@ -109,6 +113,8 @@ Serves at `http://localhost:3000`.
 ```bash
 npm run test --workspace @brasaland/operations-toolkit
 ```
+
+GitHub Actions runs pytest across eight service and package directories (see `.github/workflows/ci.yml`).
 
 **Run the M4 website rebuild locally (port 3002):**
 
@@ -235,8 +241,8 @@ Tuesday–Sunday re-runs for the same week are safe: KPI rows upsert on `(locati
 
 1. `uv run --python 3.13 python scripts/setup_reporting_schema.py --dry-run` then real (creates `reporting` schema; RLS skipped until tables exist).
 2. Create tables via reporting `ensure_schema` and/or the first `job_runner.ensure_schema()` call (lazy safety net for cron-only hosts).
-3. Setup dry-run then real again so RLS is enabled on `weekly_location_performance`, `pipeline_runs`, and `job_runs`.
-4. Verify all three reporting tables have RLS enabled with zero policies.
+3. Setup dry-run then real again so RLS is enabled on `weekly_location_performance`, `pipeline_runs`, `job_runs`, and `task_dead_letters`.
+4. Verify all four reporting tables have RLS enabled with zero policies.
 
 ### Schedule
 
