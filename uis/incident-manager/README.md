@@ -21,7 +21,7 @@ copy .env.example .env.local
 | --- | --- |
 | `NEXT_PUBLIC_INCIDENTS_API_URL` | Same-origin proxy base → `http://localhost:3004/api/incidents` |
 
-Rewrites in `next.config.ts` forward `/api/incidents/*` to incident-manager **:8011**.
+Rewrites in `next.config.ts` forward `/api/incidents/*` to `services/incident-manager`. Canonical ports: [../../docs/standards/project-context.md](../../docs/standards/project-context.md#port-assignments).
 
 ### Dev server
 
@@ -30,8 +30,6 @@ npm run dev
 ```
 
 Open **http://127.0.0.1:3004**
-
-Port **3004** (`next dev -p 3004`).
 
 ## Routes
 

@@ -1,7 +1,7 @@
 # Brasaland Reporting API
 
 Exposes the **Weekly Location Cost & Waste Report** produced by the Prefect ETL under
-`data/pipelines/`. Port **8014**. No authentication on these routes (same convention as
+`data/pipelines/`. No authentication on these routes (same convention as
 inventory/telemetry GETs; H3 auth arc later).
 
 Contract: [`data/pipelines/CONTEXT-brasaland-pipeline.md`](../../data/pipelines/CONTEXT-brasaland-pipeline.md)
@@ -93,9 +93,9 @@ docker compose up --build redis flower reporting reporting-worker
 | Service | Role |
 | --- | --- |
 | `redis` | Broker + result backend (`noeviction`) |
-| `reporting` | FastAPI API (`:8014`) |
+| `reporting` | FastAPI API |
 | `reporting-worker` | Celery worker (same reporting image; own `reporting_worker_venv`) |
-| `flower` | Task monitor at http://localhost:5555 (`CELERY_BROKER_URL` ← `REDIS_URL`) |
+| `flower` | Task monitor. Canonical ports: [../../docs/standards/project-context.md](../../docs/standards/project-context.md#port-assignments). (`CELERY_BROKER_URL` ← `REDIS_URL`) |
 
 **Start / stop worker:**
 

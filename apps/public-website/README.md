@@ -8,7 +8,7 @@ This workspace is the public marketing site for Brasaland, a grilled-food restau
 
 ## Status
 
-Live at [brasaland-public-website.vercel.app](https://brasaland-public-website.vercel.app)
+Canonical live URLs: [../../docs/standards/project-context.md](../../docs/standards/project-context.md#live-deployments).
 
 <img src="../../docs/screenshots/m1-landing.png" alt="Brasaland public website landing page" width="800">
 

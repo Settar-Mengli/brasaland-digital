@@ -180,7 +180,7 @@ The reset token shown in the email URL is single-use and already consumed/expire
 
 ## Ops notes
 
-- **Port:** **8002** (incident-analysis uses 8000, supplier-directory uses 8001).
+- **Port / Ops:** Canonical ports: [../../docs/standards/project-context.md](../../docs/standards/project-context.md#port-assignments).
 - **Single worker:** TinyDB is a per-process singleton (`db.py`). Use one uvicorn worker unless every worker shares the same JSON path.
 - **`AUTH_DB_PATH`:** Override for the JSON file path — **tests and local tooling only**. Default is `data/users.json` (gitignored at runtime).
 - **Environment loading:** `auth/security.py` loads `services/auth/.env` via `python-dotenv` on import so JWT settings are available whether you start via uvicorn or import the core directly.

@@ -19,6 +19,14 @@ This package contains the domain types and utility functions that model Brasalan
 | `test`       | `vitest run`          | Run all tests once (CI mode)             |
 | `test:watch` | `vitest`              | Run tests in interactive watch mode      |
 
+From the monorepo root:
+
+```bash
+npm run test --workspace @brasaland/operations-toolkit
+```
+
+Expect **115** passed.
+
 ## Project Structure
 
 ```

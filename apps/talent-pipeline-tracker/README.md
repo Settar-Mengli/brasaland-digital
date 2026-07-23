@@ -8,7 +8,7 @@ This workspace is Brasaland's internal talent pipeline tracker. HR staff use it 
 
 ## Status
 
-**Live demo:** https://brasaland-talent-pipeline.vercel.app
+Canonical live URLs: [../../docs/standards/project-context.md](../../docs/standards/project-context.md#live-deployments).
 
 <img src="../../docs/screenshots/m3-list.png" alt="Talent Pipeline Tracker candidate list" width="800">
 

@@ -8,29 +8,27 @@ Brasaland Digital is an npm + Python monorepo: six npm workspaces under `apps/` 
 
 ## Live demos
 
+Canonical live URLs: [docs/standards/project-context.md](docs/standards/project-context.md#live-deployments).
+
 ### M1 — Brasaland public website
-**Live:** https://brasaland-public-website.vercel.app
 
 <img src="docs/screenshots/m1-landing.png" alt="Brasaland public website landing page" width="800">
 
 ---
 
 ### M3 — Talent Pipeline Tracker
-**Live:** https://brasaland-talent-pipeline.vercel.app
 
 <img src="docs/screenshots/m3-list.png" alt="Talent Pipeline Tracker candidate list" width="800">
 
 ---
 
 ### M4 — Website (Next.js rebuild)
-**Live:** https://brasaland-website.vercel.app
 
 <img src="docs/screenshots/m4-website.png" alt="Brasaland website rebuild landing page" width="800">
 
 ---
 
 ### M4 — Backoffice (Operations Dashboard)
-**Live:** https://brasaland-backoffice.vercel.app
 
 <img src="docs/screenshots/m4-backoffice.png" alt="Brasaland backoffice operations dashboard" width="800">
 
@@ -54,9 +52,9 @@ brasaland-digital/
 │   ├── operations-toolkit/      # M2 — pure TypeScript library (no UI)
 │   └── talent-pipeline-tracker/ # M3 — Next.js HR app (live)
 ├── uis/
-│   ├── website/                 # M4 — Next.js rebuild of public website (port 3002)
-│   ├── backoffice/              # M4 — Operations dashboard with M2 integration (port 3003)
-│   └── incident-manager/        # Incident manager UI (port 3004)
+│   ├── website/                 # M4 — Next.js rebuild of public website
+│   ├── backoffice/              # M4 — Operations dashboard with M2 integration
+│   └── incident-manager/        # Incident manager UI
 ├── packages/
 │   ├── shared/                  # Shared Python core (brasaland_shared — validation, lifecycle)
 │   └── auth-verify/             # Verify-only RS256 JWT package (brasaland_auth_verify)
@@ -144,22 +142,7 @@ npm run dev --workspace @brasaland/backoffice
    docker compose up --build
    ```
 
-   Services communicate over the named network `brasaland-dev` using Docker DNS names (`http://inventory:8012`, etc.). Your browser uses host-published ports on `localhost`.
-
-| Service | URL |
-| --- | --- |
-| Auth API | http://localhost:8002 |
-| Supplier directory | http://localhost:8001 |
-| Incident analysis | http://localhost:8000 |
-| Incident manager API | http://localhost:8011 |
-| Inventory API | http://localhost:8012 |
-| Telemetry API | http://localhost:8013 |
-| Reporting API | http://localhost:8014 |
-| Redis (Celery broker) | localhost:6379 |
-| Flower (Celery monitor) | http://localhost:5555 |
-| Website (Next.js) | http://localhost:3002 |
-| Backoffice (Next.js) | http://localhost:3003 |
-| Incident manager UI (Next.js) | http://localhost:3004 |
+   Services communicate over the named network `brasaland-dev` using Docker DNS names (service names on the compose network). Your browser uses host-published ports on `localhost`. Canonical ports: [docs/standards/project-context.md](docs/standards/project-context.md#port-assignments).
 
 **Reporting Celery worker:** Compose service `reporting-worker` runs `celery -A celery_app.celery_app worker` using the reporting image. Start/stop independently:
 
@@ -318,7 +301,7 @@ works because all consuming workspaces use bundler-aware TypeScript resolution.
 | M2 operations-toolkit | Performance scoring | Complete |
 | M2 operations-toolkit | Aggregation reports and country comparison | Complete |
 | M2 operations-toolkit | Entity validation layer | Complete |
-| M2 operations-toolkit | Test suite (115 tests, 4 test files) | Complete |
+| M2 operations-toolkit | Canonical toolkit tests: [apps/operations-toolkit/README.md](apps/operations-toolkit/README.md) | Complete |
 | M3 talent-pipeline-tracker | All components | Live |
 | M4 uis/website | Next.js scaffold + M1 content migration | Complete |
 | M4 uis/website | All 7 sections as React Server Components | Complete |
