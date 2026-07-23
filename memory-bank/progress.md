@@ -1,5 +1,7 @@
 # Brasaland Digital — M4 Progress
 
+**Convention:** Verification, Delivered, Scope, and Status blocks under completed sections are point-in-time records of the session that produced them. They are never retro-edited. Current repository state lives in `README.md` and `docs/standards/project-context.md`.
+
 ## Session Continuity
 If a session ends unexpectedly, read this file first. It contains the last known state, files changed, commands run, blockers, and the exact next step.
 
@@ -77,7 +79,7 @@ main
 - [x] Merge PR into main
 
 ## Last Completed Step
-Milestone 4 complete — both Vercel deployments live, PR merged, README updated.
+DEV-55 complete — async reporting pipeline (Celery + Redis + DLQ), PR #40 merged at 1a99035.
 
 ## Files Changed This Session
 | File | Action | Commit |

@@ -105,8 +105,9 @@ def query_latest_pipeline_run() -> dict[str, Any]:
 def trigger_pipeline_run(week_start: date | None = None) -> dict[str, Any]:
     """Run the Prefect flow synchronously and return completed pipeline_runs metadata.
 
-    Blocks until the flow finishes. Callers should treat long weeks as request-blocking;
-    an async/queued trigger is a deliberate follow-up, not implemented here.
+    Blocks until the flow finishes. Callers should treat long weeks as request-blocking.
+    For a non-blocking enqueue, use services/reporting POST /reporting/pipeline-runs
+    (Celery run_pipeline_task).
     """
     summary = weekly_location_performance_flow(week_start=week_start)
     run_id = summary.get("run_id")

@@ -24,7 +24,7 @@ Complete all four steps before every commit:
 - No Co-Authored-By trailers in any commit.
 - No "Generated with" or "Created by AI" comments in any file.
 - No AI tool credited anywhere in code, docs, READMEs, or commit messages.
-- Sole author: Settar Mengli <settar.mengli@gmail.com>.
+- Sole author: Settar Mengli <263843543+Settar-Mengli@users.noreply.github.com>.
 
 ## Review-chunk execution
 

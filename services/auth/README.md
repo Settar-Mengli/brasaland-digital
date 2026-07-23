@@ -135,7 +135,7 @@ Refresh tokens carry `type: "refresh"` and cannot be used as Bearer access token
 | `POST` | `/auth/refresh` | Public | `200` + new token pair | `401` invalid/expired/revoked refresh | Exchange refresh token for rotated access + refresh tokens |
 | `POST` | `/auth/logout` | Public | `204` empty body | `422` validation | Revoke refresh token (idempotent; unknown tokens still `204`) |
 | `GET` | `/auth/me` | Protected | `200` + user JSON | `401` missing/invalid/expired token | Current user profile (email always shown for self) |
-| `POST` | `/users` | Protected | `201` + user JSON | `400` duplicate email, `401`, `422` | Create another user (admin/ops path; public signup is `/auth/register`) |
+| `POST` | `/users` | Protected | `201` + user JSON | `400` duplicate email, `401`, `422` | Create another user (any authenticated caller; no admin check — public signup is `/auth/register`) |
 | `GET` | `/users` | Protected | `200` + list | `401` | List all users; email hidden unless requester is owner or admin |
 | `GET` | `/users/{id}` | Protected | `200` + user JSON | `401`, `404` | Get one user by id |
 | `PUT` | `/users/{id}` | Protected | `200` + user JSON | `400` duplicate email, `401`, `403` not owner/admin, `404` | Update email and/or password (only self or admin) |

@@ -12,8 +12,9 @@
 | @brasaland/public-website | apps/public-website | HTML5, Tailwind CDN, vanilla JS | 3000 (http-server) | Live on Vercel |
 | @brasaland/operations-toolkit | apps/operations-toolkit | TypeScript strict, Vitest | n/a | Complete |
 | @brasaland/talent-pipeline-tracker | apps/talent-pipeline-tracker | Next.js 16.2.6, React 19, Tailwind v4 | 3001 | Live on Vercel |
-| @brasaland/website | uis/website | Next.js + TypeScript (M4) | 3002 | In progress |
-| @brasaland/backoffice | uis/backoffice | Next.js + TypeScript (M4) | 3003 | In progress |
+| @brasaland/website | uis/website | Next.js + TypeScript (M4) | 3002 | Live on Vercel |
+| @brasaland/backoffice | uis/backoffice | Next.js + TypeScript (M4) | 3003 | Live on Vercel |
+| @brasaland/incident-manager | uis/incident-manager | Next.js + TypeScript (M4) | 3004 | Complete |
 
 ## Key Technical Constraints
 - TypeScript: strict mode, no any, no ! assertions, snake_case API types, import type for type-only imports
