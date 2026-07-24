@@ -133,6 +133,15 @@ uv run --directory data python -m pipelines.pipeline
 
 Use the module form (`-m`); `python pipelines/pipeline.py` raises `ModuleNotFoundError` for the `pipelines` package.
 
+## Testing
+
+```powershell
+cd services/reporting
+uv run --python 3.13 pytest
+```
+
+Expect **16** passed.
+
 ## Environment
 
 | Variable | Purpose |

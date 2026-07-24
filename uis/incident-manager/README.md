@@ -56,9 +56,13 @@ All incident HTTP calls go through **`lib/incidents.ts`**. Components must not c
 
 ## Testing
 
-```powershell
-npm run test
+From the monorepo root:
+
+```bash
+npm run test --workspace @brasaland/incident-manager
 ```
+
+Expect **24** passed.
 
 Vitest unit tests cover `lib/api-error.ts`, `lib/incidents.ts`, `lib/incident-status-control.ts`, `lib/validate-register-form.ts`, and related helpers.
 
