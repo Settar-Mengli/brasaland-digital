@@ -158,7 +158,7 @@ From `services/auth/`:
 uv run pytest
 ```
 
-**84 tests** cover password hashing, JWT round-trip and tamper/expiry rejection, refresh-token sessions (service + API), user service orchestration, email sender, password-reset service/API routes, and existing FastAPI routes via `TestClient`. Coverage gate **70%** on the `auth/` package. See [TESTING.md](TESTING.md) for the full architecture, isolation strategy, and per-file test catalog.
+Canonical auth tests: [TESTING.md](TESTING.md). Coverage gate **70%** on the `auth/` package.
 
 **Manual smoke check (auth):** register with **POST /auth/register** (`email` + `password` min 8 chars), copy `access_token` from the response, open **/docs**, click **Authorize**, paste the token, then call **GET /auth/me** — expect **200** with your email. Call **GET /auth/me** again without authorizing — expect **401**.
 

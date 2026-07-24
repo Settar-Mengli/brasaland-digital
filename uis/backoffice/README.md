@@ -99,9 +99,13 @@ Manual test: start telemetry with `cd services/telemetry && uv run uvicorn app:a
 
 ## Testing
 
-```powershell
-npm run test
+From the monorepo root:
+
+```bash
+npm run test --workspace @brasaland/backoffice
 ```
+
+Expect **30** passed.
 
 Vitest unit tests cover `lib/api-error.ts`, `lib/inventory.ts`, `lib/stock-level.ts`, `lib/telemetry.ts`, `lib/locations.ts`, and `lib/login-failure-aggregation.ts`.
 

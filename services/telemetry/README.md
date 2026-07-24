@@ -134,10 +134,13 @@ uv run --python 3.13 python ../../scripts/setup_telemetry_table.py
 
 After creating `telemetry_events`, re-run `scripts/enable_rls.py` (adds `telemetry_events` to the table list). FastAPI connects as table owner via `DATABASE_URL` and bypasses RLS without FORCE.
 
-## Tests
+## Testing
 
 ```powershell
+cd services/telemetry
 uv run pytest
 ```
+
+Expect **33** passed.
 
 SQLite in-memory tests cover ingest, allowlists, level derivation, analysis metrics, and report caching. GIN index creation is not tested on SQLite.
