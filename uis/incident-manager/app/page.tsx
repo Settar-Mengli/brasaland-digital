@@ -10,8 +10,8 @@ export default function HomePage() {
         Centralized Incident Manager
       </h1>
       <p className="text-brasaland-charcoal/80 max-w-2xl mb-8">
-        Register operational incidents, track status across locations, and review chain-wide
-        metrics from the live incident API.
+        Register operational incidents, track status across locations, and review chain-wide metrics
+        from the live incident API.
       </p>
 
       <div className="grid gap-4 sm:grid-cols-3 max-w-3xl">
@@ -36,7 +36,9 @@ export default function HomePage() {
           className="rounded-xl border border-brasaland-charcoal/10 bg-white p-5 shadow-sm hover:border-brasaland-ember/40 transition-colors"
         >
           <h2 className="font-semibold text-lg mb-1">Summary</h2>
-          <p className="text-sm text-brasaland-charcoal/60">Review totals by status and location.</p>
+          <p className="text-sm text-brasaland-charcoal/60">
+            Review totals by status and location.
+          </p>
         </Link>
       </div>
     </section>

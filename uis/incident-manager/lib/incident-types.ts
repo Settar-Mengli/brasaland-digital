@@ -33,7 +33,11 @@ export const INCIDENT_STATUSES = [
   'discarded',
 ] as const satisfies readonly IncidentStatus[];
 
-export const INCIDENT_ORIGINS = ['customer', 'branch', 'internal'] as const satisfies readonly IncidentOrigin[];
+export const INCIDENT_ORIGINS = [
+  'customer',
+  'branch',
+  'internal',
+] as const satisfies readonly IncidentOrigin[];
 
 export const INCIDENT_CATEGORIES = [
   'QUEJA_CLIENTE',

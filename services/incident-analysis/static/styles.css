@@ -16,7 +16,7 @@
 
 body {
   margin: 0;
-  font-family: "Inter", system-ui, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
   color: var(--charcoal);
   background: var(--ivory);
   line-height: 1.5;
@@ -38,7 +38,7 @@ body {
 
 .site-header h1 {
   margin: 0 0 0.75rem;
-  font-family: "Playfair Display", Georgia, serif;
+  font-family: 'Playfair Display', Georgia, serif;
   font-size: clamp(1.75rem, 4vw, 2.5rem);
   font-weight: 700;
 }
@@ -69,7 +69,7 @@ body {
 .panel h2,
 .panel h3 {
   margin-top: 0;
-  font-family: "Playfair Display", Georgia, serif;
+  font-family: 'Playfair Display', Georgia, serif;
   color: var(--charcoal);
 }
 
@@ -81,7 +81,9 @@ body {
   padding: 2rem 1rem;
   text-align: center;
   cursor: pointer;
-  transition: border-color 0.2s ease, background 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
 }
 
 .drop-zone:focus-visible {
@@ -94,7 +96,7 @@ body {
   background: rgba(194, 74, 43, 0.08);
 }
 
-.drop-zone input[type="file"] {
+.drop-zone input[type='file'] {
   position: absolute;
   inset: 0;
   opacity: 0;
@@ -127,7 +129,9 @@ body {
   font: inherit;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.15s ease, opacity 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    opacity 0.15s ease;
 }
 
 .btn-primary {

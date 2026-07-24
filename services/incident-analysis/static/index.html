@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -17,8 +17,8 @@
       <p class="eyebrow">Brasaland Operations</p>
       <h1>Incident Report Analysis</h1>
       <p class="intro">
-        Upload an operational incidents CSV to validate records and review summary
-        metrics before the morning operations meeting.
+        Upload an operational incidents CSV to validate records and review summary metrics before
+        the morning operations meeting.
       </p>
     </header>
 
@@ -33,31 +33,19 @@
           role="button"
           aria-label="Upload incidents CSV by drag and drop or click to browse"
         >
-          <input
-            id="csv-file"
-            type="file"
-            accept=".csv"
-            aria-label="Incidents CSV file"
-          />
+          <input id="csv-file" type="file" accept=".csv" aria-label="Incidents CSV file" />
           <p class="drop-title">Drag and drop your CSV here</p>
           <p class="drop-subtitle">or click to choose a file</p>
           <p id="selected-file" class="selected-file" aria-live="polite"></p>
         </div>
 
-        <button id="analyze-btn" type="button" class="btn-primary" disabled>
-          Analyze
-        </button>
+        <button id="analyze-btn" type="button" class="btn-primary" disabled>Analyze</button>
       </section>
 
       <div id="error-alert" class="error-banner" role="alert" hidden></div>
       <div id="loading" class="loading" role="status" hidden>Analyzing CSV…</div>
 
-      <section
-        id="summary"
-        class="panel summary-panel"
-        aria-labelledby="summary-heading"
-        hidden
-      >
+      <section id="summary" class="panel summary-panel" aria-labelledby="summary-heading" hidden>
         <h2 id="summary-heading">Analysis Summary</h2>
 
         <div class="totals-grid" id="totals-grid"></div>

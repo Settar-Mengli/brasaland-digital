@@ -116,7 +116,9 @@ export default function SummaryPage() {
             <div className="space-y-6">
               <div className="rounded-xl border border-brasaland-charcoal/10 bg-brasaland-cream p-4">
                 <h3 className="font-semibold mb-2">Total incidents</h3>
-                <p className="text-3xl font-bold text-brasaland-ember tabular-nums">{summary.total}</p>
+                <p className="text-3xl font-bold text-brasaland-ember tabular-nums">
+                  {summary.total}
+                </p>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">

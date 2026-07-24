@@ -71,7 +71,10 @@ export async function parseApiErrorResponse(
       }
 
       if (Array.isArray(detail)) {
-        return { message: formatValidationDetail(detail as ValidationErrorItem[]), fieldErrors: [] };
+        return {
+          message: formatValidationDetail(detail as ValidationErrorItem[]),
+          fieldErrors: [],
+        };
       }
     }
   } catch {

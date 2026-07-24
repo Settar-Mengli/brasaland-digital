@@ -149,11 +149,7 @@
                 "location_id": { "$ref": "#/definitions/locationId" },
                 "failure_code": {
                   "type": "string",
-                  "enum": [
-                    "ingredient_not_found",
-                    "validation_error",
-                    "unknown_supplier"
-                  ]
+                  "enum": ["ingredient_not_found", "validation_error", "unknown_supplier"]
                 },
                 "failure_message": { "type": "string" }
               }
@@ -229,12 +225,7 @@
             "event_type": { "const": "consumption_order_failed" },
             "properties": {
               "type": "object",
-              "required": [
-                "ingredient_id",
-                "quantity",
-                "location_id",
-                "failure_code"
-              ],
+              "required": ["ingredient_id", "quantity", "location_id", "failure_code"],
               "additionalProperties": false,
               "properties": {
                 "ingredient_id": { "type": "integer" },
@@ -291,12 +282,7 @@
             "event_type": { "const": "direct_stock_edit_rejected" },
             "properties": {
               "type": "object",
-              "required": [
-                "ingredient_id",
-                "location_id",
-                "attempted_action",
-                "rejection_reason"
-              ],
+              "required": ["ingredient_id", "location_id", "attempted_action", "rejection_reason"],
               "additionalProperties": false,
               "properties": {
                 "ingredient_id": { "type": "integer" },
