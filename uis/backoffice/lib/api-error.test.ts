@@ -22,14 +22,16 @@ describe('parseApiError', () => {
     const message = await parseApiError(
       mockResponse({
         detail: [
-          { loc: ['body', 'quantity'], msg: 'Input should be greater than 0', type: 'greater_than' },
+          {
+            loc: ['body', 'quantity'],
+            msg: 'Input should be greater than 0',
+            type: 'greater_than',
+          },
           { loc: ['body', 'reason'], msg: 'Field required', type: 'missing' },
         ],
       }),
     );
-    expect(message).toBe(
-      'quantity: Input should be greater than 0; reason: Field required',
-    );
+    expect(message).toBe('quantity: Input should be greater than 0; reason: Field required');
   });
 
   it('falls back to status text when detail is missing', async () => {

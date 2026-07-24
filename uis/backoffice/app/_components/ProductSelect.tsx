@@ -36,8 +36,7 @@ export default function ProductSelect({
         }
       } catch (error) {
         if (!cancelled) {
-          const message =
-            error instanceof Error ? error.message : 'Failed to load ingredients.';
+          const message = error instanceof Error ? error.message : 'Failed to load ingredients.';
           setLoadError(message);
         }
       } finally {
@@ -56,7 +55,10 @@ export default function ProductSelect({
 
   if (loadError) {
     return (
-      <p role="alert" className="text-sm text-brasaland-error bg-brasaland-error/10 rounded-md px-3 py-2">
+      <p
+        role="alert"
+        className="text-sm text-brasaland-error bg-brasaland-error/10 rounded-md px-3 py-2"
+      >
         {loadError}
       </p>
     );

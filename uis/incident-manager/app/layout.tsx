@@ -20,7 +20,8 @@ const playfair = Playfair_Display({
 
 export const metadata: Metadata = {
   title: 'Brasaland — Incident Manager',
-  description: 'Centralized incident registration, tracking, and summary metrics for Brasaland Operations.',
+  description:
+    'Centralized incident registration, tracking, and summary metrics for Brasaland Operations.',
 };
 
 export default function IncidentManagerLayout({

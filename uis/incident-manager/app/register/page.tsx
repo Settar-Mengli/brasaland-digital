@@ -119,7 +119,9 @@ export default function RegisterPage() {
   return (
     <div className="max-w-3xl">
       <div className="mb-6">
-        <h1 className="font-display text-3xl font-bold text-brasaland-charcoal">Register Incident</h1>
+        <h1 className="font-display text-3xl font-bold text-brasaland-charcoal">
+          Register Incident
+        </h1>
         <p className="text-sm text-brasaland-charcoal/60 mt-1">
           Log a new operational incident for tracking across Brasaland locations.
         </p>
