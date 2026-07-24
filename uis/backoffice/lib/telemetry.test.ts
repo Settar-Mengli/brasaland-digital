@@ -85,7 +85,12 @@ describe('telemetry service', () => {
     const { track, __getQueueForTests } = await import('./telemetry');
     track('session_expired', { idle_duration_ms: 0, source: 'backoffice' });
 
-    const [event] = __getQueueForTests();
+    const queue = __getQueueForTests();
+    expect(queue).toHaveLength(1);
+    const event = queue[0];
+    if (event === undefined) {
+      throw new Error('expected one queued telemetry event');
+    }
     expect(Object.keys(event.properties)).toEqual(['idle_duration_ms', 'source']);
   });
 
@@ -139,7 +144,11 @@ describe('telemetry service', () => {
 
     const queue = __getQueueForTests();
     expect(queue).toHaveLength(1);
-    expect(queue[0].properties).toEqual({
+    const aggregated = queue[0];
+    if (aggregated === undefined) {
+      throw new Error('expected one aggregated login-failure event');
+    }
+    expect(aggregated.properties).toEqual({
       failure_reason: 'wrong_credentials',
       source: 'backoffice',
       attempt_count: 2,
@@ -155,7 +164,22 @@ describe('telemetry service', () => {
     __beaconQueueForTests();
 
     expect(sendBeacon).toHaveBeenCalledTimes(1);
-    const [endpoint, payload] = sendBeacon.mock.calls[0] as [string, Blob];
+    const rawCalls: unknown = sendBeacon.mock.calls;
+    if (!Array.isArray(rawCalls) || rawCalls.length < 1) {
+      throw new Error('expected sendBeacon to be called once');
+    }
+    const rawCall: unknown = rawCalls[0];
+    if (!Array.isArray(rawCall) || rawCall.length < 2) {
+      throw new Error('expected sendBeacon to receive endpoint and payload');
+    }
+    const endpoint: unknown = rawCall[0];
+    const payload: unknown = rawCall[1];
+    if (typeof endpoint !== 'string') {
+      throw new Error('expected sendBeacon endpoint to be a string');
+    }
+    if (!(payload instanceof Blob)) {
+      throw new Error('expected sendBeacon payload to be a Blob');
+    }
     expect(endpoint).toBe(TELEMETRY_ENDPOINT);
     expect(payload).toBeInstanceOf(Blob);
     expect(payload.type).toBe('application/json');
@@ -163,8 +187,12 @@ describe('telemetry service', () => {
       events: Array<{ event_type: string; properties: Record<string, unknown> }>;
     };
     expect(body.events).toHaveLength(1);
-    expect(body.events[0].event_type).toBe('session_expired');
-    expect(body.events[0].properties).toEqual({ idle_duration_ms: 0, source: 'backoffice' });
+    const beaconEvent = body.events[0];
+    if (beaconEvent === undefined) {
+      throw new Error('expected one event in the beacon body');
+    }
+    expect(beaconEvent.event_type).toBe('session_expired');
+    expect(beaconEvent.properties).toEqual({ idle_duration_ms: 0, source: 'backoffice' });
   });
 });
 
