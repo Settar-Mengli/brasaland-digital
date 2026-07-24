@@ -64,3 +64,43 @@ jobs:
         run: npm ci
       - name: Run tests
         run: npm run test --workspace ${{ matrix.workspace }}
+
+  node-typecheck:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          [
+            {
+              workspace: "@brasaland/operations-toolkit",
+              command: "npm run typecheck --workspace @brasaland/operations-toolkit",
+              working-directory: ".",
+            },
+            {
+              workspace: "@brasaland/backoffice",
+              command: "npx tsc --noEmit",
+              working-directory: "uis/backoffice",
+            },
+            {
+              workspace: "@brasaland/website",
+              command: "npx tsc --noEmit",
+              working-directory: "uis/website",
+            },
+            {
+              workspace: "@brasaland/incident-manager",
+              command: "npx tsc --noEmit",
+              working-directory: "uis/incident-manager",
+            },
+          ]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Typecheck
+        run: ${{ matrix.command }}
+        working-directory: ${{ matrix.working-directory }}
