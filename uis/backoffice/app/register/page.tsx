@@ -68,9 +68,9 @@ export default function RegisterPage() {
 
     try {
       await register(email, password, {
-        name: name.trim() || undefined,
-        phone: phone.trim() || undefined,
-        address: address.trim() || undefined,
+        name: name.trim(),
+        phone: phone.trim(),
+        address: address.trim(),
       });
       router.replace('/inventory/products');
     } catch (submitError) {
