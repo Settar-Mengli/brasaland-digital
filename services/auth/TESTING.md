@@ -144,10 +144,10 @@ Regenerate the report with `uv run pytest`.
 - Refresh and password-reset tokens are rejected as Bearer access tokens (H1).
 - `/auth/logout` revokes the presented refresh token.
 - Static pages `/`, `/forgot-password`, `/reset-password` return HTML.
-- `GET /profiles/me` returns email + name/phone/address for the authenticated user.
-- `PUT /profiles/me` updates and returns name/phone/address.
-- `GET`/`PUT /profiles/me` without a token return 401.
-- `PUT /profiles/me` ignores email, password, `is_admin`, and `is_active` in the body (no privilege escalation or email takeover).
+- `GET /auth/profiles/me` returns email + name/phone/address for the authenticated user.
+- `PUT /auth/profiles/me` updates and returns name/phone/address.
+- `GET`/`PUT /auth/profiles/me` without a token return 401.
+- `PUT /auth/profiles/me` ignores email, password, `is_admin`, and `is_active` in the body (no privilege escalation or email takeover).
 
 ### `tests/test_reset_api.py` (6)
 

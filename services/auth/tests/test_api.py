@@ -428,7 +428,7 @@ def test_get_profiles_me_returns_email_and_profile_fields(client: TestClient) ->
     token_payload = _register(client, "profile-get@brasaland.com", "password123")
 
     response = client.get(
-        "/profiles/me",
+        "/auth/profiles/me",
         headers=_auth_header(token_payload["access_token"]),
     )
     assert response.status_code == 200
@@ -444,7 +444,7 @@ def test_put_profiles_me_updates_and_returns_new_values(client: TestClient) -> N
     token_payload = _register(client, "profile-put@brasaland.com", "password123")
 
     response = client.put(
-        "/profiles/me",
+        "/auth/profiles/me",
         headers=_auth_header(token_payload["access_token"]),
         json={
             "name": "Settar Mengli",
@@ -461,7 +461,7 @@ def test_put_profiles_me_updates_and_returns_new_values(client: TestClient) -> N
     _assert_no_hashed_password(data)
 
     get_response = client.get(
-        "/profiles/me",
+        "/auth/profiles/me",
         headers=_auth_header(token_payload["access_token"]),
     )
     assert get_response.status_code == 200
@@ -469,11 +469,11 @@ def test_put_profiles_me_updates_and_returns_new_values(client: TestClient) -> N
 
 
 def test_profiles_me_without_token_returns_401(client: TestClient) -> None:
-    get_response = client.get("/profiles/me")
+    get_response = client.get("/auth/profiles/me")
     assert get_response.status_code == 401
 
     put_response = client.put(
-        "/profiles/me",
+        "/auth/profiles/me",
         json={"name": "Nope"},
     )
     assert put_response.status_code == 401
@@ -489,7 +489,7 @@ def test_put_profiles_me_ignores_email_password_and_flags(client: TestClient) ->
     assert before["is_active"] is True
 
     response = client.put(
-        "/profiles/me",
+        "/auth/profiles/me",
         headers=headers,
         json={
             "name": "Safe Name",

@@ -228,14 +228,14 @@ def auth_me(current_user: Annotated[UserRecord, Depends(get_current_user)]) -> U
     return _to_response(current_user, current_user)
 
 
-@app.get("/profiles/me", response_model=ProfileResponse)
+@app.get("/auth/profiles/me", response_model=ProfileResponse)
 def get_profile_me(
     current_user: Annotated[UserRecord, Depends(get_current_user)],
 ) -> ProfileResponse:
     return _to_profile_response(current_user)
 
 
-@app.put("/profiles/me", response_model=ProfileResponse)
+@app.put("/auth/profiles/me", response_model=ProfileResponse)
 def put_profile_me(
     body: ProfileUpdate,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
