@@ -23,7 +23,7 @@ describe('inventory client', () => {
     vi.resetModules();
   });
 
-  it('getProducts calls the products URL without auth', async () => {
+  it('getProducts calls the products URL with Bearer auth', async () => {
     const fetchMock = vi.mocked(fetch);
     fetchMock.mockResolvedValueOnce(
       new Response(JSON.stringify([{ id: 1, name: 'Beef brisket', current_stock: 60 }]), {
@@ -34,7 +34,33 @@ describe('inventory client', () => {
     const { getProducts } = await import('./inventory');
     await getProducts();
 
-    expect(fetchMock).toHaveBeenCalledWith(`${INVENTORY_BASE}/products`, undefined);
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${INVENTORY_BASE}/products`,
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer test-access-token',
+        }),
+      }),
+    );
+  });
+
+  it('clears the session and redirects on 401', async () => {
+    const assignMock = vi.fn();
+    vi.stubGlobal('window', {
+      ...globalThis,
+      localStorage,
+      location: { assign: assignMock },
+    });
+
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValueOnce(
+      new Response(null, { status: 401, statusText: 'Unauthorized' }),
+    );
+
+    const { getProducts } = await import('./inventory');
+    await expect(getProducts()).rejects.toThrow('Unauthorized');
+    expect(localStorage.removeItem).toHaveBeenCalledWith('brasaland_access_token');
+    expect(assignMock).toHaveBeenCalledWith('/login');
   });
 
   it('createInbound sends Bearer token on POST', async () => {

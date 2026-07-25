@@ -26,6 +26,7 @@ from auth.service import (
     resolve_active_user,
     revoke_refresh_token,
     rotate_refresh_token,
+    update_profile,
     update_user,
 )
 from auth.types import (
@@ -53,6 +54,9 @@ INVALID_REFRESH_TOKEN = "Invalid or expired refresh token"
 class UserRegister(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)
+    name: str = ""
+    phone: str = ""
+    address: str = ""
 
 
 class UserUpdate(BaseModel):
@@ -66,6 +70,22 @@ class UserResponse(BaseModel):
     is_active: bool
     is_admin: bool
     created_at: str
+    name: str = ""
+    phone: str = ""
+    address: str = ""
+
+
+class ProfileUpdate(BaseModel):
+    name: str | None = None
+    phone: str | None = None
+    address: str | None = None
+
+
+class ProfileResponse(BaseModel):
+    email: EmailStr
+    name: str = ""
+    phone: str = ""
+    address: str = ""
 
 
 class TokenResponse(BaseModel):
@@ -99,6 +119,18 @@ def _to_response(user: UserRecord, requester: UserRecord) -> UserResponse:
         is_active=user["is_active"],
         is_admin=user["is_admin"],
         created_at=user["created_at"],
+        name=user.get("name", ""),
+        phone=user.get("phone", ""),
+        address=user.get("address", ""),
+    )
+
+
+def _to_profile_response(user: UserRecord) -> ProfileResponse:
+    return ProfileResponse(
+        email=user["email"],
+        name=user.get("name", ""),
+        phone=user.get("phone", ""),
+        address=user.get("address", ""),
     )
 
 
@@ -124,7 +156,13 @@ def _token_response(access_token: str, refresh_token: str) -> TokenResponse:
 @app.post("/auth/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 def auth_register(body: UserRegister) -> TokenResponse:
     try:
-        user = register_user(body.email, body.password)
+        user = register_user(
+            body.email,
+            body.password,
+            name=body.name,
+            phone=body.phone,
+            address=body.address,
+        )
     except EmailAlreadyExistsError as error:
         raise HTTPException(status_code=400, detail=EMAIL_ALREADY_REGISTERED) from error
     return _token_response(*issue_token_pair(user))
@@ -190,13 +228,40 @@ def auth_me(current_user: Annotated[UserRecord, Depends(get_current_user)]) -> U
     return _to_response(current_user, current_user)
 
 
+@app.get("/auth/profiles/me", response_model=ProfileResponse)
+def get_profile_me(
+    current_user: Annotated[UserRecord, Depends(get_current_user)],
+) -> ProfileResponse:
+    return _to_profile_response(current_user)
+
+
+@app.put("/auth/profiles/me", response_model=ProfileResponse)
+def put_profile_me(
+    body: ProfileUpdate,
+    current_user: Annotated[UserRecord, Depends(get_current_user)],
+) -> ProfileResponse:
+    user = update_profile(
+        current_user["id"],
+        name=body.name,
+        phone=body.phone,
+        address=body.address,
+    )
+    return _to_profile_response(user)
+
+
 @app.post("/users", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def create_user(
     body: UserRegister,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
 ) -> UserResponse:
     try:
-        user = register_user(body.email, body.password)
+        user = register_user(
+            body.email,
+            body.password,
+            name=body.name,
+            phone=body.phone,
+            address=body.address,
+        )
     except EmailAlreadyExistsError as error:
         raise HTTPException(status_code=400, detail=EMAIL_ALREADY_REGISTERED) from error
     return _to_response(user, current_user)

@@ -3,6 +3,12 @@ import type { TokenResponse } from './inventory-types';
 
 const TOKEN_KEY = 'brasaland_access_token';
 
+export type RegisterProfile = {
+  name?: string;
+  phone?: string;
+  address?: string;
+};
+
 function getAuthBaseUrl(): string {
   const url = process.env.NEXT_PUBLIC_AUTH_API_URL;
   if (!url) {
@@ -28,6 +34,41 @@ export async function login(email: string, password: string): Promise<void> {
 
   const data = (await response.json()) as TokenResponse;
   setAccessToken(data.access_token);
+}
+
+export async function register(
+  email: string,
+  password: string,
+  profile?: RegisterProfile,
+): Promise<void> {
+  const body: Record<string, string> = { email, password };
+  if (profile?.name) {
+    body.name = profile.name;
+  }
+  if (profile?.phone) {
+    body.phone = profile.phone;
+  }
+  if (profile?.address) {
+    body.address = profile.address;
+  }
+
+  const response = await fetch(`${getAuthBaseUrl()}/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseApiError(response));
+  }
+
+  const data = (await response.json()) as TokenResponse;
+  setAccessToken(data.access_token);
+}
+
+export function logout(): void {
+  clearAccessToken();
+  window.location.assign('/login');
 }
 
 export function getAccessToken(): string | null {

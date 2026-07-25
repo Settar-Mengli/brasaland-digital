@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TypedDict
+from typing import NotRequired, TypedDict
 
 
 class UserRecord(TypedDict):
@@ -12,6 +12,9 @@ class UserRecord(TypedDict):
     created_at: str
     reset_token_hash: str | None
     reset_token_expires: str | None
+    name: NotRequired[str]
+    phone: NotRequired[str]
+    address: NotRequired[str]
 
 
 class EmailAlreadyExistsError(Exception):

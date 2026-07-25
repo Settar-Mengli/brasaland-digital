@@ -1,5 +1,6 @@
 import { getAccessToken } from './auth';
 import { parseApiError } from './api-error';
+import { handleUnauthorized } from './session';
 import type {
   Ingredient,
   IngredientEntryCreate,
@@ -17,19 +18,34 @@ function getInventoryBaseUrl(): string {
   return url.replace(/\/$/, '');
 }
 
+function requireAccessToken(): string {
+  const token = getAccessToken();
+  if (!token) {
+    throw new Error('Not authenticated');
+  }
+  return token;
+}
+
 async function inventoryFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${getInventoryBaseUrl()}${path}`, init);
+  handleUnauthorized(response);
   if (!response.ok) {
     throw new Error(await parseApiError(response));
   }
   return response.json() as Promise<T>;
 }
 
+async function inventoryGet<T>(path: string): Promise<T> {
+  const token = requireAccessToken();
+  return inventoryFetch<T>(path, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
 async function inventoryPost<T>(path: string, body: unknown): Promise<T> {
-  const token = getAccessToken();
-  if (!token) {
-    throw new Error('Not authenticated');
-  }
+  const token = requireAccessToken();
   return inventoryFetch<T>(path, {
     method: 'POST',
     headers: {
@@ -41,11 +57,11 @@ async function inventoryPost<T>(path: string, body: unknown): Promise<T> {
 }
 
 export function getProducts(): Promise<Ingredient[]> {
-  return inventoryFetch<Ingredient[]>('/products');
+  return inventoryGet<Ingredient[]>('/products');
 }
 
 export function getProduct(id: number): Promise<Ingredient> {
-  return inventoryFetch<Ingredient>(`/products/${id}`);
+  return inventoryGet<Ingredient>(`/products/${id}`);
 }
 
 export function createInbound(body: IngredientEntryCreate): Promise<IngredientEntryResponse> {
@@ -57,5 +73,5 @@ export function createOutbound(body: IngredientExitCreate): Promise<IngredientEx
 }
 
 export function getOrders(): Promise<OrdersListResponse> {
-  return inventoryFetch<OrdersListResponse>('/orders');
+  return inventoryGet<OrdersListResponse>('/orders');
 }

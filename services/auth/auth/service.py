@@ -144,6 +144,9 @@ def register_user(
     email: str,
     password: str,
     is_admin: bool = False,
+    name: str = "",
+    phone: str = "",
+    address: str = "",
 ) -> UserRecord:
     normalized_email = _normalize_email(email)
     if get_user_by_email(normalized_email) is not None:
@@ -158,6 +161,9 @@ def register_user(
             "is_active": True,
             "is_admin": is_admin,
             "created_at": _utc_now_iso(),
+            "name": name,
+            "phone": phone,
+            "address": address,
         }
     )
 
@@ -310,6 +316,31 @@ def update_user(user_id: int, fields: dict[str, Any]) -> UserRecord:
         update_fields["email"] = normalized_email
 
     user = update_user_record(user_id, update_fields)
+    if user is None:
+        raise UserNotFoundError(f"User not found: {user_id}")
+    return user
+
+
+def update_profile(
+    user_id: int,
+    *,
+    name: str | None = None,
+    phone: str | None = None,
+    address: str | None = None,
+) -> UserRecord:
+    """Update only profile display fields. Never email, password, or flags."""
+    fields: dict[str, Any] = {}
+    if name is not None:
+        fields["name"] = name
+    if phone is not None:
+        fields["phone"] = phone
+    if address is not None:
+        fields["address"] = address
+
+    if not fields:
+        return get_user(user_id)
+
+    user = update_user_record(user_id, fields)
     if user is None:
         raise UserNotFoundError(f"User not found: {user_id}")
     return user

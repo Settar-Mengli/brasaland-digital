@@ -3,12 +3,15 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+import { logout } from '@/lib/auth';
+
 const LINKS = [
   { href: '/', label: 'Dashboard' },
   { href: '/locations', label: 'Locations' },
   { href: '/inventory/products', label: 'Inventory' },
   { href: '/inventory/orders', label: 'Orders' },
   { href: '/reporting', label: 'Reporting' },
+  { href: '/account/profile', label: 'Profile' },
 ] as const;
 
 function isActive(pathname: string, href: string): boolean {
@@ -39,6 +42,15 @@ export default function NavLinks() {
           </Link>
         );
       })}
+      <button
+        type="button"
+        onClick={() => {
+          logout();
+        }}
+        className="text-sm text-brasaland-ivory/70 hover:text-brasaland-ivory transition-colors"
+      >
+        Logout
+      </button>
     </nav>
   );
 }
