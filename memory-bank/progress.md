@@ -760,3 +760,9 @@ feat(data): add nightly telemetry export job with run state control
 ```text
 feat(reporting): async pipeline trigger via Celery with Redis broker and DLQ
 ```
+
+## Backoffice auth gaps (register / profile / logout / 401)
+
+**Status:** Frontend implemented in `uis/backoffice` (unstaged); backend profile fields + `/profiles/me` already on `services/auth`.
+
+**Scope:** `/register`, `/account/profile` (InventoryAuthGuard), Nav Profile + Logout, `lib/auth` register/logout, `lib/profile`, shared `handleUnauthorized` on inventory/reporting/profile fetches, Bearer on inventory GETs. `uis/website` untouched.

@@ -18,10 +18,10 @@ cd uis/backoffice
 copy .env.example .env.local
 ```
 
-| Variable | Purpose |
-| --- | --- |
+| Variable                        | Purpose                                                        |
+| ------------------------------- | -------------------------------------------------------------- |
 | `NEXT_PUBLIC_INVENTORY_API_URL` | Same-origin proxy base → `http://localhost:3003/api/inventory` |
-| `NEXT_PUBLIC_AUTH_API_URL` | Same-origin proxy base → `http://localhost:3003/api/auth` |
+| `NEXT_PUBLIC_AUTH_API_URL`      | Same-origin proxy base → `http://localhost:3003/api/auth`      |
 
 Rewrites in `next.config.ts` forward `/api/inventory/*` to `services/inventory` and `/api/auth/*` to `services/auth`. Canonical ports: [../../docs/standards/project-context.md](../../docs/standards/project-context.md#port-assignments).
 
@@ -35,15 +35,19 @@ Open **http://127.0.0.1:3003**
 
 ## Routes
 
-| Path | Auth | Description |
-| --- | --- | --- |
-| `/` | No | Operations dashboard (M2 fixtures) |
-| `/locations` | No | Locations table (M2 fixtures) |
-| `/login` | No | Sign in (JWT stored in `localStorage`) |
-| `/inventory/products` | Yes | Ingredient list with `current_stock` |
-| `/inventory/orders/inbound` | Yes | Log IngredientEntry (supplier delivery) |
-| `/inventory/orders/outbound` | Yes | Log IngredientExit (consumption or waste) |
-| `/inventory/orders` | Yes | Read-only order history |
+| Path                         | Auth | Description                                                 |
+| ---------------------------- | ---- | ----------------------------------------------------------- |
+| `/`                          | No   | Operations dashboard (M2 fixtures)                          |
+| `/locations`                 | No   | Locations table (M2 fixtures)                               |
+| `/login`                     | No   | Sign in (JWT stored in `localStorage`)                      |
+| `/register`                  | No   | Create account (`POST /auth/register`); stores access token |
+| `/account/profile`           | Yes  | View/edit name, phone, address (`GET`/`PUT /profiles/me`)   |
+| `/inventory/products`        | Yes  | Ingredient list with `current_stock`                        |
+| `/inventory/orders/inbound`  | Yes  | Log IngredientEntry (supplier delivery)                     |
+| `/inventory/orders/outbound` | Yes  | Log IngredientExit (consumption or waste)                   |
+| `/inventory/orders`          | Yes  | Read-only order history                                     |
+
+**Auth session behavior:** inventory and reporting API clients attach `Authorization: Bearer` (including inventory GETs). On **401**, they clear `brasaland_access_token` and hard-navigate to `/login`. Login and register failures stay on-page errors (no redirect). Nav **Logout** clears the token and redirects to `/login`.
 
 ## Screenshots
 
@@ -56,17 +60,18 @@ Locations table (`/locations`) with M2 fixture data:
 1. Start auth: `cd services/auth && uv run uvicorn app:app --port 8002`
 2. Start inventory: `cd services/inventory && uv run uvicorn app:app --port 8012`
 3. Seed inventory (once): `cd services/inventory && uv run python seed.py`
-4. Register or use an existing user on auth (port 8002 `/docs` if needed)
+4. Register at backoffice `/register` or use an existing user on auth (port 8002 `/docs` if needed)
 5. `cd uis/backoffice && npm run dev`
 6. Open `/login` → sign in → redirected to `/inventory/products`
 7. Verify seeded ingredients and `current_stock`
 8. Log an **inbound** order from `/inventory/orders/inbound`
 9. Log an **outbound** order from `/inventory/orders/outbound` (try exceeding stock to see API error message)
 10. Open `/inventory/orders` — merged history with Inbound/Outbound badges
+11. Open `/account/profile` — update name/phone/address; use **Logout** in the nav to clear the session
 
 ## API client
 
-All inventory HTTP calls go through **`lib/inventory.ts`**. Auth token helpers live in **`lib/auth.ts`**. Components must not call `fetch` directly.
+All inventory HTTP calls go through **`lib/inventory.ts`** (Bearer on reads and writes; shared 401 → `/login`). Auth helpers live in **`lib/auth.ts`** (`login`, `register`, `logout`). Profile calls go through **`lib/profile.ts`**. Components must not call `fetch` directly.
 
 ## Telemetry
 
@@ -81,17 +86,17 @@ copy .env.example .env.local
 
 Phase 1 events emitted from the backoffice UI:
 
-| Event | Trigger |
-| --- | --- |
-| `user_login_succeeded` | Successful login with location selected |
-| `user_login_failed` | Failed login (60s burst aggregation) |
-| `session_expired` | Missing or expired JWT on guarded routes |
-| `ingredient_list_viewed` | Products list loads successfully |
-| `supply_order_created` | Inbound order submitted successfully |
-| `supply_order_failed` | Inbound order rejected |
-| `consumption_order_created` | Outbound order submitted successfully |
-| `consumption_order_failed` | Outbound order rejected |
-| `order_form_abandoned` | Order form idle 30s after interaction without submit |
+| Event                       | Trigger                                              |
+| --------------------------- | ---------------------------------------------------- |
+| `user_login_succeeded`      | Successful login with location selected              |
+| `user_login_failed`         | Failed login (60s burst aggregation)                 |
+| `session_expired`           | Missing or expired JWT on guarded routes             |
+| `ingredient_list_viewed`    | Products list loads successfully                     |
+| `supply_order_created`      | Inbound order submitted successfully                 |
+| `supply_order_failed`       | Inbound order rejected                               |
+| `consumption_order_created` | Outbound order submitted successfully                |
+| `consumption_order_failed`  | Outbound order rejected                              |
+| `order_form_abandoned`      | Order form idle 30s after interaction without submit |
 
 `supply_order_created` currently emits `supplier_id: 0` because the inventory API uses `supplier_name` only (telemetry plan §8 gap — no supplier directory id yet).
 

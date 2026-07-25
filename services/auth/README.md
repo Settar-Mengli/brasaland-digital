@@ -130,11 +130,13 @@ Refresh tokens carry `type: "refresh"` and cannot be used as Bearer access token
 | --- | --- | --- | --- | --- | --- |
 | `POST` | `/auth/forgot-password` | Public | `200` + message (always) | `422` validation | Request reset link; **enumeration-safe** — identical response whether email exists; email sent only when registered |
 | `POST` | `/auth/reset-password` | Public | `200` + message | `400` invalid/expired/used token, `422` validation | Set new password with token from email; **single-use** |
-| `POST` | `/auth/register` | Public | `201` + access + refresh tokens | `400` duplicate email, `422` validation | Sign up; returns token pair so the new user is logged in immediately |
+| `POST` | `/auth/register` | Public | `201` + access + refresh tokens | `400` duplicate email, `422` validation | Sign up (`email` + `password` min 8; optional `name`/`phone`/`address`); returns token pair so the new user is logged in immediately |
 | `POST` | `/auth/login` | Public | `200` + access + refresh tokens | `401` invalid credentials | Log in with email (`username`) and password |
 | `POST` | `/auth/refresh` | Public | `200` + new token pair | `401` invalid/expired/revoked refresh | Exchange refresh token for rotated access + refresh tokens |
 | `POST` | `/auth/logout` | Public | `204` empty body | `422` validation | Revoke refresh token (idempotent; unknown tokens still `204`) |
-| `GET` | `/auth/me` | Protected | `200` + user JSON | `401` missing/invalid/expired token | Current user profile (email always shown for self) |
+| `GET` | `/auth/me` | Protected | `200` + user JSON | `401` missing/invalid/expired token | Current user (`id`, `email`, flags, `created_at`, plus `name`/`phone`/`address`) |
+| `GET` | `/profiles/me` | Protected | `200` + `{ email, name, phone, address }` | `401` | Current user profile fields only |
+| `PUT` | `/profiles/me` | Protected | `200` + updated profile | `401`, `422` | Update **only** `name`/`phone`/`address` (owner from Bearer token; email/password/flags ignored if sent) |
 | `POST` | `/users` | Protected | `201` + user JSON | `400` duplicate email, `401`, `422` | Create another user (any authenticated caller; no admin check — public signup is `/auth/register`) |
 | `GET` | `/users` | Protected | `200` + list | `401` | List all users; email hidden unless requester is owner or admin |
 | `GET` | `/users/{id}` | Protected | `200` + user JSON | `401`, `404` | Get one user by id |
