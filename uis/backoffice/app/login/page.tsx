@@ -1,5 +1,6 @@
-'use client';
+﻿'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
 
@@ -133,6 +134,12 @@ export default function LoginPage() {
         >
           {submitting ? 'Signing in…' : 'Sign in'}
         </button>
+        <p className="text-sm text-brasaland-charcoal/60 text-center">
+          Need an account?{' '}
+          <Link href="/register" className="text-brasaland-ember hover:underline">
+            Create account
+          </Link>
+        </p>
       </form>
     </div>
   );
