@@ -422,3 +422,112 @@ def test_logout_is_idempotent_for_invalid_token(client: TestClient) -> None:
         json={"refresh_token": "not.a.valid.token"},
     )
     assert response.status_code == 204
+
+
+def test_get_profiles_me_returns_email_and_profile_fields(client: TestClient) -> None:
+    token_payload = _register(client, "profile-get@brasaland.com", "password123")
+
+    response = client.get(
+        "/profiles/me",
+        headers=_auth_header(token_payload["access_token"]),
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["email"] == "profile-get@brasaland.com"
+    assert data["name"] == ""
+    assert data["phone"] == ""
+    assert data["address"] == ""
+    _assert_no_hashed_password(data)
+
+
+def test_put_profiles_me_updates_and_returns_new_values(client: TestClient) -> None:
+    token_payload = _register(client, "profile-put@brasaland.com", "password123")
+
+    response = client.put(
+        "/profiles/me",
+        headers=_auth_header(token_payload["access_token"]),
+        json={
+            "name": "Settar Mengli",
+            "phone": "+57 300 000 0000",
+            "address": "Medellín, Colombia",
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["email"] == "profile-put@brasaland.com"
+    assert data["name"] == "Settar Mengli"
+    assert data["phone"] == "+57 300 000 0000"
+    assert data["address"] == "Medellín, Colombia"
+    _assert_no_hashed_password(data)
+
+    get_response = client.get(
+        "/profiles/me",
+        headers=_auth_header(token_payload["access_token"]),
+    )
+    assert get_response.status_code == 200
+    assert get_response.json() == data
+
+
+def test_profiles_me_without_token_returns_401(client: TestClient) -> None:
+    get_response = client.get("/profiles/me")
+    assert get_response.status_code == 401
+
+    put_response = client.put(
+        "/profiles/me",
+        json={"name": "Nope"},
+    )
+    assert put_response.status_code == 401
+
+
+def test_put_profiles_me_ignores_email_password_and_flags(client: TestClient) -> None:
+    token_payload = _register(client, "profile-secure@brasaland.com", "password123")
+    headers = _auth_header(token_payload["access_token"])
+
+    before = client.get("/auth/me", headers=headers).json()
+    assert before["email"] == "profile-secure@brasaland.com"
+    assert before["is_admin"] is False
+    assert before["is_active"] is True
+
+    response = client.put(
+        "/profiles/me",
+        headers=headers,
+        json={
+            "name": "Safe Name",
+            "phone": "555",
+            "address": "Calle 1",
+            "email": "attacker@evil.com",
+            "password": "hijacked-password",
+            "is_admin": True,
+            "is_active": False,
+        },
+    )
+    assert response.status_code == 200
+    profile = response.json()
+    assert profile["email"] == "profile-secure@brasaland.com"
+    assert profile["name"] == "Safe Name"
+    assert profile["phone"] == "555"
+    assert profile["address"] == "Calle 1"
+
+    after = client.get("/auth/me", headers=headers).json()
+    assert after["email"] == "profile-secure@brasaland.com"
+    assert after["is_admin"] is False
+    assert after["is_active"] is True
+    assert after["name"] == "Safe Name"
+
+    login = client.post(
+        "/auth/login",
+        data={
+            "username": "profile-secure@brasaland.com",
+            "password": "password123",
+        },
+    )
+    assert login.status_code == 200
+
+    hijack_login = client.post(
+        "/auth/login",
+        data={
+            "username": "profile-secure@brasaland.com",
+            "password": "hijacked-password",
+        },
+    )
+    assert hijack_login.status_code == 401
