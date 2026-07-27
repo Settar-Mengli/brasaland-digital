@@ -232,7 +232,17 @@ def plot_test_forecast(
     ax.legend(loc="upper left")
     ax.grid(True, alpha=0.3)
     fig.autofmt_xdate()
-    fig.tight_layout()
+    fig.text(
+        0.5,
+        0.01,
+        "p10-p90 band = per-tree spread of naive RF estimators_ around the ensemble-mean "
+        "prediction (the plotted naive-RF line).",
+        ha="center",
+        va="bottom",
+        fontsize=8,
+        wrap=True,
+    )
+    fig.tight_layout(rect=(0, 0.04, 1, 1))
     fig.savefig(chart_path, dpi=120)
     plt.close(fig)
 
