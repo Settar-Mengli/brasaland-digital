@@ -2,6 +2,8 @@
 
 Predict consolidated monthly `revenue_usd` with a chronological Random Forest.
 
+Company context: [`../raw/CONTEXT-brasaland.en.md`](../raw/CONTEXT-brasaland.en.md)
+
 ## How to run
 
 From the repo root (uses the `data/` uv project):
@@ -36,6 +38,7 @@ Chronological, no shuffle: train 2016–2023 (96 rows), test 2024–2025 (24 row
 | Metric | What it measures |
 | --- | --- |
 | **MSE (+ MAPE)** | Point accuracy in USD²; MAPE translates error for a business reader |
+| **Mean residual** | Directional bias of errors (mean of `y_true - y_pred`); positive = under-prediction |
 | **PSI** | Train↔test **target distribution** shift (train deciles, same edges on test). Bands: `<0.1` stable, `0.1–0.25` moderate, `>0.25` significant → retrain. **High PSI is EXPECTED here** — volumes outgrew the training envelope |
 | **Gini** | Rank discrimination of good vs bad months (`2·AUC − 1`); labels = above/below the **test-set** median revenue (not train median) |
 | **K2** | D’Agostino normality test on the test residuals' *shape* (`scipy.stats.normaltest`) — skewness/kurtosis, NOT bias. High p ⇒ residuals are well-shaped (no skew/heavy tails). Normal shape does not mean unbiased: directional under-prediction surfaces in MAPE and the mean residual, not in K2 |
@@ -46,7 +49,7 @@ Low MSE alone can hide distribution shift (PSI), weak ranking of strong vs weak 
 
 ## Chart
 
-`sales_forecast_test.png` shows 2024–2025 actual vs graded naive RF vs productionization trend-aware RF, with a shaded **p10–p90** band from per-tree predictions of the naive RF (prediction with its variability range, not a single number).
+`sales_forecast_test.png` shows 2024–2025 actual vs graded naive RF vs productionization trend-aware RF, with a shaded **p10–p90** band from per-tree predictions of the naive RF (prediction with its variability range, not a single number). The plotted naive-RF line is the ensemble mean (`model.predict`), and the shaded band is the 10th–90th percentile of the individual trees' predictions around that same mean — so the band is centered on the line by construction.
 
 ## Productionization analysis (additive — does not replace the graded RF)
 
