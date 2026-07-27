@@ -46,3 +46,4 @@ fmt_keys.py
 
 # Nightly telemetry audit exports (keep data/raw/.gitkeep)
 data/raw/*.csv
+!data/raw/brasaland_sales.csv

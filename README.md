@@ -192,6 +192,14 @@ python scripts/nightly_export.py
 
 The CSV under `data/raw/telemetry_YYYY-MM-DD.csv` is an **audit snapshot only**. The M6 pipeline always rereads PostgreSQL; it is not wired to the CSV.
 
+## Sales forecasting (graded RF)
+
+Chronological Random Forest on consolidated monthly revenue (`data/raw/brasaland_sales.csv`). Graded model: `RandomForestRegressor(random_state=42)`; metrics MSE(+MAPE), PSI, Gini, K2 on 2024–2025; chart at `data/eval/sales_forecast_test.png`. Details: [`data/eval/README.md`](data/eval/README.md).
+
+```powershell
+uv run --directory data --python 3.13 python ../scripts/train_sales_forecast.py
+```
+
 ### Daily target → weekly pipeline
 
 Each run maps `target_date` to its containing ISO Monday (`week_start`) and invokes:
