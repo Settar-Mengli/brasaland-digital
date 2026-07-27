@@ -766,3 +766,41 @@ feat(reporting): async pipeline trigger via Celery with Redis broker and DLQ
 **Status:** Frontend implemented in `uis/backoffice` (unstaged); backend profile fields + `/profiles/me` already on `services/auth`.
 
 **Scope:** `/register`, `/account/profile` (InventoryAuthGuard), Nav Profile + Logout, `lib/auth` register/logout, `lib/profile`, shared `handleUnauthorized` on inventory/reporting/profile fetches, Bearer on inventory GETs. `uis/website` untouched.
+
+## Sales forecasting graded RF
+
+**Status:** Implemented on branch `feat/sales-forecasting-model` (agent wrote files; user commits/PR).
+
+**Scope:** Fetch `data/raw/brasaland_sales.csv` (syllabus URL; verified 120 consolidated months 2016–2025). Chronological train 2016–2023 / test 2024–2025. Graded `RandomForestRegressor(random_state=42)` on time features only (`trend`, `month_sin`, `month_cos`, `year`). TEST metrics: MSE(+MAPE), PSI, Gini, K2. Chart `data/eval/sales_forecast_test.png` (actual vs naive RF vs trend-aware RF + p10–p90). Deps in `data/pyproject.toml`: scikit-learn, scipy, matplotlib. Gitignore exception for the graded CSV. No CI YAML change (`pipelines-tests` picks up the new test).
+
+**Files:**
+
+| Path | Change |
+| --- | --- |
+| `data/raw/brasaland_sales.csv` | Fetched syllabus dataset |
+| `.gitignore` | `!data/raw/brasaland_sales.csv` |
+| `data/pyproject.toml` / `data/uv.lock` | ML deps |
+| `data/pipelines/sales_forecast.py` | Features, split, RF, metrics, plot |
+| `scripts/train_sales_forecast.py` | CLI |
+| `tests/pipelines/test_sales_forecast_split.py` | Split/leakage unit test |
+| `data/eval/README.md` + `sales_forecast_test.png` | Graded docs + chart |
+| `tests/pipelines/README.md`, `README.md`, `memory-bank/progress.md` | Docs |
+
+**Verify (local):**
+
+```powershell
+uv run --directory data --python 3.13 pytest
+uv run --directory data --python 3.13 python ../scripts/train_sales_forecast.py
+```
+
+**Next step (user):** Conventional Commits per plan sequence → PR against `main` with TEST metrics in the PR body → merge on green.
+
+**Proposed commits (user types):**
+
+```text
+chore(data): track brasaland_sales.csv for sales forecasting
+chore(data): add scikit-learn scipy matplotlib for forecasting
+feat(data): add sales forecast RF train script and eval chart
+test(data): assert chronological sales forecast split
+docs: document sales forecasting deliverable
+```
