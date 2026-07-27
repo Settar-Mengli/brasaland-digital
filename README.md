@@ -194,10 +194,11 @@ The CSV under `data/raw/telemetry_YYYY-MM-DD.csv` is an **audit snapshot only**.
 
 ## Sales forecasting (graded RF)
 
-Chronological Random Forest on consolidated monthly revenue (`data/raw/brasaland_sales.csv`). Graded model: `RandomForestRegressor(random_state=42)`; metrics MSE(+MAPE), PSI, Gini, K2 on 2024–2025; chart at `data/eval/sales_forecast_test.png`. Details: [`data/eval/README.md`](data/eval/README.md).
+Chronological Random Forest on consolidated monthly revenue (`data/raw/brasaland_sales.csv`). Graded model: `RandomForestRegressor(random_state=42)`; metrics MSE(+MAPE), PSI, Gini, K2 on 2024–2025; chart at `data/eval/sales_forecast_test.png`. Evaluation: train/test MAE·RMSE, in-train `TimeSeriesSplit` CV, learning curve at [`data/eval/learning_curve.png`](data/eval/learning_curve.png), report at [`data/eval/evaluation_report.md`](data/eval/evaluation_report.md). Details: [`data/eval/README.md`](data/eval/README.md).
 
 ```powershell
 uv run --directory data --python 3.13 python ../scripts/train_sales_forecast.py
+uv run --directory data --python 3.13 python ../scripts/evaluate_sales_forecast.py
 ```
 
 ### Daily target → weekly pipeline

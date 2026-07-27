@@ -8,12 +8,22 @@ Company context: [`../raw/CONTEXT-brasaland.en.md`](../raw/CONTEXT-brasaland.en.
 
 From the repo root (uses the `data/` uv project):
 
+**Train (graded RF + forecast chart):**
+
 ```powershell
 uv run --directory data --python 3.13 python ../scripts/train_sales_forecast.py
 ```
 
+**Evaluate (holdout MAE/RMSE, temporal CV, learning curve):**
+
+```powershell
+uv run --directory data --python 3.13 python ../scripts/evaluate_sales_forecast.py
+```
+
 Input: [`data/raw/brasaland_sales.csv`](../raw/brasaland_sales.csv)  
-Chart: [`sales_forecast_test.png`](sales_forecast_test.png)
+Forecast chart: [`sales_forecast_test.png`](sales_forecast_test.png)  
+Learning curve: [`learning_curve.png`](learning_curve.png)  
+Evaluation report: [`evaluation_report.md`](evaluation_report.md)
 
 ## Model choice: Random Forest over XGBoost
 
@@ -50,6 +60,15 @@ Low MSE alone can hide distribution shift (PSI), weak ranking of strong vs weak 
 ## Chart
 
 `sales_forecast_test.png` shows 2024–2025 actual vs graded naive RF vs productionization trend-aware RF, with a shaded **p10–p90** band from per-tree predictions of the naive RF (prediction with its variability range, not a single number). The plotted naive-RF line is the ensemble mean (`model.predict`), and the shaded band is the 10th–90th percentile of the individual trees' predictions around that same mean — so the band is centered on the line by construction.
+
+## Evaluation (MAE / RMSE + temporal CV)
+
+[`scripts/evaluate_sales_forecast.py`](../../scripts/evaluate_sales_forecast.py) and [`pipelines/model_eval.py`](../pipelines/model_eval.py) evaluate the **graded** naive RF only (`fit_naive_rf`).
+
+- **Train / test holdout:** MAE and RMSE on the 2016–2023 fit set and the 2024–2025 chronological **test** holdout.
+- **Validation CV:** `TimeSeriesSplit` (≥5 folds) on the **train years only** — never includes 2024–2025. Features are built once on the full series then sliced (test `trend` continues 96..119); folds never rebuild features.
+- **Learning curve:** [`learning_curve.png`](learning_curve.png) — train vs **validation** error with explicit `TimeSeriesSplit` (not sklearn’s default CV).
+- **Report:** [`evaluation_report.md`](evaluation_report.md) — tables, metric rationale (RMSE primary), diagnosis separating in-train CV from the holdout extrapolation ceiling, and detrend corrective action via existing `TrendAwareModel`.
 
 ## Productionization analysis (additive — does not replace the graded RF)
 

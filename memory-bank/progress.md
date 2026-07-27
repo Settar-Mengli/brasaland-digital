@@ -804,3 +804,42 @@ feat(data): add sales forecast RF train script and eval chart
 test(data): assert chronological sales forecast split
 docs: document sales forecasting deliverable
 ```
+
+## Evaluating a regression model (graded RF)
+
+**Status:** Implemented on branch `feat/regression-model-eval` (agent wrote files; user commits/PR).
+
+**Scope:** Temporal CV (`TimeSeriesSplit`, 5 folds) and learning curve on **train years only** (2016–2023); holdout train vs **test** (2024–2025) MAE·RMSE; graded `fit_naive_rf` only. Features built once on the full series then sliced (test `trend` 96..119). Report diagnoses in-train CV separately from the holdout extrapolation ceiling; corrective action = detrend via existing `TrendAwareModel` (productionization). Docs updated so nothing goes stale. No CI YAML change (`pipelines-tests` picks up the new test).
+
+**Files:**
+
+| Path | Change |
+| --- | --- |
+| `data/pipelines/model_eval.py` | TimeSeriesSplit folds, CV metrics, learning curve + plot |
+| `scripts/evaluate_sales_forecast.py` | Orchestrator CLI |
+| `data/eval/learning_curve.png` | Learning-curve chart |
+| `data/eval/evaluation_report.md` | Diagnosis + MAE/RMSE + CV tables |
+| `tests/pipelines/test_regression_cv.py` | Chronological fold-order unit test |
+| `data/eval/README.md` | Eval how-to |
+| `tests/pipelines/README.md` | Expect 34 passed |
+| `README.md` | Evaluate entry point |
+| `memory-bank/progress.md` | This entry |
+| `data/raw/CONTEXT-brasaland.en.md` | §6 eval cross-ref bullet |
+
+**Verify (local):**
+
+```powershell
+uv run --directory data --python 3.13 python ../scripts/evaluate_sales_forecast.py
+uv run --directory data --python 3.13 pytest
+git ls-files data/eval/learning_curve.png
+```
+
+**Next step (user):** Conventional Commits → PR against `main` → merge on green.
+
+**Proposed commits (user types):**
+
+```text
+feat(data): add temporal CV and learning-curve eval for sales RF
+test(data): assert TimeSeriesSplit folds stay chronological
+docs: document regression-model evaluation deliverable
+```

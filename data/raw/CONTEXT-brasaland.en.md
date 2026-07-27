@@ -63,3 +63,4 @@ The dataset was generated with a fixed random seed (`random_state=42`), so it's 
 - A trained model (XGBoost or Random Forest) with all 4 metrics (MSE, PSI, Gini, K2 Score) calculated on the test set.
 - A visualization showing the prediction and its variability range against the real data from the 2 test years.
 - A unit test in `tests/pipelines/` validating the 8/2-year split.
+- Evaluation artifacts (temporal CV, learning curve, MAE/RMSE report) live under `data/eval/` and are produced by `scripts/evaluate_sales_forecast.py`.
