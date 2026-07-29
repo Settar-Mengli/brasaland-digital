@@ -191,6 +191,47 @@ services:
     networks:
       - brasaland-dev
 
+  qdrant:
+    image: qdrant/qdrant
+    ports:
+      - '6333:6333'
+      - '6334:6334'
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    restart: unless-stopped
+    networks:
+      - brasaland-dev
+
+  knowledge:
+    build:
+      context: .
+      dockerfile: services/knowledge/Dockerfile
+    command: uv run uvicorn app:app --host 0.0.0.0 --port 8015 --reload
+    ports:
+      - '8015:8015'
+    environment:
+      WATCHFILES_FORCE_POLLING: 'true'
+      PYTHONPATH: /app/data
+      QDRANT_URL: http://qdrant:6333
+      KNOWLEDGE_CORPUS_PATH: /app/docs/company-knowledge-base
+      LLM_GATEWAY_API_KEY: ${LLM_GATEWAY_API_KEY}
+      LLM_GATEWAY_BASE_URL: ${LLM_GATEWAY_BASE_URL}
+      GENERATION_MODEL_ID: ${GENERATION_MODEL_ID}
+      EMBED_MODEL_ID: ${EMBED_MODEL_ID:-BAAI/bge-small-en-v1.5}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+    volumes:
+      - ./services/knowledge:/app/services/knowledge
+      - ./data:/app/data
+      - ./packages:/app/packages
+      - ./docs/company-knowledge-base:/app/docs/company-knowledge-base:ro
+      - knowledge_venv:/app/services/knowledge/.venv
+    depends_on:
+      - qdrant
+    restart: unless-stopped
+    networks:
+      - brasaland-dev
+
   ui:
     build:
       context: .
@@ -205,10 +246,12 @@ services:
       AUTH_API_ORIGIN: http://auth:8002
       INCIDENTS_API_ORIGIN: http://incident-manager:8011
       REPORTING_API_ORIGIN: http://reporting:8014
+      KNOWLEDGE_API_ORIGIN: http://knowledge:8015
       NEXT_PUBLIC_INVENTORY_API_URL: http://localhost:3003/api/inventory
       NEXT_PUBLIC_AUTH_API_URL: http://localhost:3003/api/auth
       NEXT_PUBLIC_INCIDENTS_API_URL: http://localhost:3004/api/incidents
       NEXT_PUBLIC_REPORTING_API_URL: http://localhost:3003/api/reporting
+      NEXT_PUBLIC_KNOWLEDGE_API_URL: http://localhost:3003/api/knowledge
     volumes:
       - ./uis:/app/uis
       - ./apps/operations-toolkit:/app/apps/operations-toolkit
@@ -219,6 +262,7 @@ services:
       - inventory
       - incident-manager
       - reporting
+      - knowledge
     restart: unless-stopped
     networks:
       - brasaland-dev
@@ -239,5 +283,7 @@ volumes:
   incident-manager_venv:
   incident-analysis_venv:
   supplier-directory_venv:
+  knowledge_venv:
+  qdrant_storage:
   ui_node_modules:
   ui_uis_node_modules:

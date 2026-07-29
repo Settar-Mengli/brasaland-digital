@@ -23,6 +23,7 @@ jobs:
             services/inventory,
             services/telemetry,
             services/reporting,
+            services/knowledge,
           ]
     steps:
       - uses: actions/checkout@v4

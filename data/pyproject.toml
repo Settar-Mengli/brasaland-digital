@@ -11,6 +11,9 @@ dependencies = [
     "scikit-learn",
     "scipy",
     "matplotlib",
+    "qdrant-client",
+    "fastembed",
+    "openai",
 ]
 
 [dependency-groups]

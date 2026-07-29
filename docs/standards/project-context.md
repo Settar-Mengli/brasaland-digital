@@ -13,6 +13,7 @@ Thin index only. Domain narrative and token definitions live in the linked docum
 - [services/supplier-directory/CONTEXT-brasaland.md](../../services/supplier-directory/CONTEXT-brasaland.md)
 - [services/incident-analysis/CONTEXT-brasaland.md](../../services/incident-analysis/CONTEXT-brasaland.md)
 - [data/pipelines/CONTEXT-brasaland-pipeline.md](../../data/pipelines/CONTEXT-brasaland-pipeline.md)
+- [data/raw/CONTEXT-brasaland-rag.md](../../data/raw/CONTEXT-brasaland-rag.md)
 
 ## Port assignments
 
@@ -27,6 +28,7 @@ Authoritative local port table for this monorepo:
 | Inventory API | 8012 |
 | Telemetry API | 8013 |
 | Reporting API | 8014 |
+| Knowledge API | 8015 |
 | Public website (M1 http-server) | 3000 |
 | Talent pipeline tracker | 3001 |
 | Website (Next.js) | 3002 |
@@ -34,8 +36,10 @@ Authoritative local port table for this monorepo:
 | Incident manager UI (Next.js) | 3004 |
 | Redis (Celery broker) | 6379 |
 | Flower (Celery monitor) | 5555 |
+| Qdrant (REST) | 6333 |
+| Qdrant (gRPC) | 6334 |
 
-Reporting API (8014) ships in `services/reporting/` (FastAPI + Celery worker + Compose); backoffice exposes /reporting.
+Reporting API (8014) ships in `services/reporting/` (FastAPI + Celery worker + Compose); backoffice exposes /reporting. Knowledge API (8015) ships in `services/knowledge/` with Qdrant; backoffice exposes /knowledge.
 
 ## Live deployments
 
