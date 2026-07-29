@@ -4,7 +4,7 @@
 
 The digital platform for Brasaland, a 14-location grilled-food restaurant chain across Colombia and the United States.
 
-Brasaland Digital is an npm + Python monorepo: six npm workspaces under `apps/` and `uis/` (public marketing site, operations toolkit, talent pipeline tracker, Next.js website rebuild, operations backoffice, and incident-manager UI), plus Python packages under `packages/` and FastAPI services under `services/` (auth, inventory, incident-manager, supplier-directory, incident-analysis, telemetry, reporting). Shared tooling and conventions without forcing shared runtime dependencies.
+Brasaland Digital is an npm + Python monorepo: six npm workspaces under `apps/` and `uis/` (public marketing site, operations toolkit, talent pipeline tracker, Next.js website rebuild, operations backoffice, and incident-manager UI), plus Python packages under `packages/` and FastAPI services under `services/` (auth, inventory, incident-manager, supplier-directory, incident-analysis, telemetry, reporting, knowledge). Shared tooling and conventions without forcing shared runtime dependencies.
 
 ## Live demos
 
@@ -47,12 +47,15 @@ brasaland-digital/
 │   ├── incident-manager/        # Centralized incident manager (FastAPI, PostgreSQL/SQLModel)
 │   ├── inventory/               # Ingredient inventory API (FastAPI, PostgreSQL/SQLModel)
 │   ├── telemetry/               # Telemetry ingest + report API (FastAPI, PostgreSQL/SQLModel)
-│   └── reporting/               # Reporting API + Celery worker (FastAPI, PostgreSQL/SQLModel, Redis)
+│   ├── reporting/               # Reporting API + Celery worker (FastAPI, PostgreSQL/SQLModel, Redis)
+│   └── knowledge/               # RAG knowledge Q&A API (FastAPI, Qdrant, JWT-guarded)
 ├── memory-bank/                 # Agent context files (projectbrief, techContext, progress)
 ├── .agents/                     # Agent rules and skills
 ├── docs/
 │   ├── standards/               # Agent, coding, architecture, and project-context standards
 │   ├── brand-tokens.md          # Shared visual identity — colors, typography, tokens
+│   ├── company-knowledge-base/  # M7 manuals (loyalty, waste, allergens, supplier ordering)
+│   ├── rag/                     # RAG design doc
 │   ├── screenshots/             # Live demo screenshots
 │   └── telemetry/               # Phase 1 inventory telemetry plan + event schemas
 ├── AGENTS.md                    # Root agent rules
@@ -68,7 +71,7 @@ brasaland-digital/
 - **Talent tracker (M3, live):** Next.js (App Router), React, Tailwind CSS
 - **Website rebuild + Backoffice (M4):** Next.js 16 (App Router), React 19, Tailwind v4 (CSS-first), TypeScript strict
 - **Incident manager UI:** Next.js 16 (App Router), React 19, Tailwind v4, TypeScript
-- **Python services:** FastAPI under `services/` — auth, supplier-directory, incident-analysis, incident-manager, inventory, telemetry, reporting (Celery + Redis worker)
+- **Python services:** FastAPI under `services/` — auth, supplier-directory, incident-analysis, incident-manager, inventory, telemetry, reporting (Celery + Redis worker), knowledge (RAG + Qdrant)
 - **Tooling:** npm workspaces, Prettier, EditorConfig
 - **Deployment:** Vercel (separate projects per workspace)
 
@@ -94,7 +97,7 @@ Serves at `http://localhost:3000`.
 npm run test --workspace @brasaland/operations-toolkit
 ```
 
-GitHub Actions runs pytest across nine service and package directories, the `data/` pipelines suite, Vitest across three npm workspaces, TypeScript typecheck across four workspaces, and a Prettier format check (see `.github/workflows/ci.yml`).
+GitHub Actions runs pytest across ten service and package directories, the `data/` pipelines suite, Vitest across three npm workspaces, TypeScript typecheck across four workspaces, and a Prettier format check (see `.github/workflows/ci.yml`).
 
 **Run the M4 website rebuild locally (port 3002):**
 
@@ -200,6 +203,16 @@ Chronological Random Forest on consolidated monthly revenue (`data/raw/brasaland
 uv run --directory data --python 3.13 python ../scripts/train_sales_forecast.py
 uv run --directory data --python 3.13 python ../scripts/evaluate_sales_forecast.py
 ```
+
+## Knowledge base (RAG)
+
+Manuals live under `docs/company-knowledge-base/`. Design: [`docs/rag/rag-design.md`](docs/rag/rag-design.md). Index into Qdrant (operator-run, not app startup):
+
+```powershell
+uv run --directory data --python 3.13 python ../scripts/index_knowledge_base.py
+```
+
+API: `services/knowledge` on port **8015** — `POST /knowledge/query` (JWT required; metered LLM gateway). Backoffice UI: `/knowledge`. Env placeholders: repo-root `.env.example` (operator fills real keys by hand).
 
 ### Daily target → weekly pipeline
 

@@ -843,3 +843,26 @@ feat(data): add temporal CV and learning-curve eval for sales RF
 test(data): assert TimeSeriesSplit folds stay chronological
 docs: document regression-model evaluation deliverable
 ```
+
+## Milestone 7 — RAG & Knowledge Base
+
+**Status:** Implemented on working tree (agent wrote files; user commits/PR).
+
+**Scope:** Company-manual RAG: `data/pipelines/rag.py` (`embed` / `setup` / `retrieve` / `query`); Qdrant `brasaland_knowledge` (384 Cosine, BGE via fastembed); JWT-guarded `services/knowledge` on **8015**; backoffice `/knowledge`; mocked pipeline + service tests; design doc. Indexing is operator-run (`scripts/index_knowledge_base.py`), not FastAPI lifespan. Corpus compose-mounted read-only (R1). CI uv matrix +1 → **19** checks.
+
+**Verify (local):**
+
+```powershell
+uv run --directory data --python 3.13 pytest tests/pipelines/test_rag.py
+cd services/knowledge; uv run pytest
+npm run test --workspace @brasaland/backoffice
+```
+
+**Proposed commits (user types):**
+
+```text
+feat(data): add RAG chunk/embed/retrieve/query and index script
+feat(knowledge): add JWT-guarded knowledge API and Qdrant compose
+feat(backoffice): add knowledge Q&A page with Bearer client
+docs(rag): add design doc, manuals, and CONTEXT
+```

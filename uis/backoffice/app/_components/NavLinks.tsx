@@ -11,6 +11,7 @@ const LINKS = [
   { href: '/inventory/products', label: 'Inventory' },
   { href: '/inventory/orders', label: 'Orders' },
   { href: '/reporting', label: 'Reporting' },
+  { href: '/knowledge', label: 'Knowledge' },
   { href: '/account/profile', label: 'Profile' },
 ] as const;
 
