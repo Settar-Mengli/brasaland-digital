@@ -11,8 +11,8 @@ JWT-guarded RAG Q&A over company manuals (loyalty, waste, allergens, supplier or
 ## Architecture
 
 - Retrieval + generation live in `data/pipelines/rag.py` (`retrieve`, `generate_answer`, `query`).
-- LangGraph support agent: `data/pipelines/support_agent.py` — heuristic `route_sources` (ticket vs RAG vs both from the question alone; LLM router is a later swap), RAG retrieve/generate/refuse, ticket tool node, and `compose_answer` for all tool and both-route finalization. MemorySaver (`thread_id` = `run_id`); in-process `TRACES`. Inbound Bearer is forwarded to MCP via `configurable.access_token` only (never AgentState / checkpoint / trace).
-- Ticket tool: `data/pipelines/tools/ticket_lookup.py` — calls company-tools MCP `check_ticket_status` (langchain-mcp-adapters over Streamable HTTP). No direct incident-manager path from the agent. Dual id / `source_incident_id` resolution lives on the MCP server. Deterministic formatter for ticket fields. Honest fallback when unavailable/unknown.
+- LangGraph support agent: `data/pipelines/support_agent.py` — heuristic `route_sources` (ticket vs RAG vs both from the question alone; LLM router is a later swap), RAG retrieve/generate/refuse, ticket tool node, and `compose_answer` for all tool and both-route finalization. Guardrails: `input_guardrails` (pre-route) and `output_guardrails` (pre-END) via `data/pipelines/guardrails.py`; session extraction ledger for §3 piece-by-piece defense. MemorySaver (`thread_id` = `run_id`); in-process `TRACES`. Inbound Bearer and optional `session_id` are forwarded via `configurable` only (never AgentState / checkpoint / trace).
+- Ticket tool: `data/pipelines/tools/ticket_lookup.py` — calls company-tools MCP `check_ticket_status` (langchain-mcp-adapters over Streamable HTTP). No direct incident-manager path from the agent. Dual id / `source_incident_id` resolution lives on the MCP server. Deterministic formatter for ticket fields. Honest fallback when unavailable/unknown; malformed tool payloads → structural guardrail + fallback.
 - This service imports `pipelines` via `config.py` sys.path / Docker `PYTHONPATH=/app/data` (same pattern as `services/reporting`).
 - Indexing is **operator-run**, not app lifespan: `scripts/index_knowledge_base.py`.
 
@@ -22,10 +22,11 @@ JWT-guarded RAG Q&A over company manuals (loyalty, waste, allergens, supplier or
 | --- | --- | --- | --- |
 | `GET` | `/` | no | `{"service":"knowledge"}` |
 | `POST` | `/knowledge/query` | Bearer JWT | `{"question":"..."}` → `{"answer":"..."}` only |
-| `POST` | `/agent/query` | Bearer JWT | `{"question":"..."}` → `{"run_id","answer"}`; errors → `{"detail"}` |
+| `POST` | `/agent/query` | Bearer JWT | `{"question":"...","session_id"?}` → `{"run_id","answer"}`; errors → `{"detail"}`. Optional `session_id` is the guardrail ledger key (via configurable only, never checkpointed). If omitted, an ephemeral per-call UUID is used — not the JWT user id. |
 | `GET` | `/agent/trace/{run_id}` | Bearer JWT | structured trace; `404` if unknown |
+| `GET` | `/agent/guardrails/summary` | Bearer JWT | optional `?session_id=`; with `session_id` returns that session's counters; **omitting `session_id` yields process-wide counters** across all sessions in the worker |
 
-Trace shape: `nodes[]` records attempt order (including failed tool calls). `final.sources_ran` lists **contributing** sources only (`ticket_lookup` only if `tool_result.ok`; `retrieve_context` only if RAG context contributed). Also `final.route` and optional `matched_by`.
+Trace shape: `nodes[]` records attempt order (including failed tool calls and guardrail blocks with `failure_type` in `{structural, content, security}`). `final.sources_ran` lists **contributing** sources only (`ticket_lookup` only if `tool_result.ok`; `retrieve_context` only if RAG context contributed). Also `final.route` and optional `matched_by`.
 
 Empty question and no-context RAG paths do not force generation. No-context refusal copy:
 
@@ -35,6 +36,11 @@ Ticket tool failure / unknown ticket fallback:
 
 `I couldn't confirm that ticket's status right now.`
 
+Personal-use redirect (CONTEXT-guardrails):
+
+`I'm here to help with Brasaland's procedures and recipes. Do you have a question about your shift or preparation?`
+
+Guardrail injection tests: `tests/pipelines/test_agent_guardrails.py` (CONTEXT §4 cases; fail the build on obedience).
 ## Env
 
 Copy the repo-root `.env.example` → `.env` (never commit secrets). Required for live answers:

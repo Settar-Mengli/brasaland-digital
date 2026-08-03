@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from dependencies import get_current_user_uuid, oauth2_scheme
@@ -14,6 +14,7 @@ router = APIRouter(prefix="/agent")
 
 class AgentQueryRequest(BaseModel):
     question: str = Field(default="")
+    session_id: str | None = Field(default=None)
 
 
 class AgentQueryResponse(BaseModel):
@@ -29,16 +30,18 @@ def post_agent_query(
 ) -> AgentQueryResponse:
     from pipelines.support_agent import invoke_support_agent
 
-    # Forward inbound Bearer into MCP client via configurable (not AgentState).
+    # Forward inbound Bearer + session_id via configurable (not AgentState).
     result = invoke_support_agent(
         body.question,
         access_token=access_token,
         user_id=user_uuid,
+        session_id=body.session_id,
     )
     if "error" in result:
+        # Never forward provider/exception strings to the client.
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=result["error"],
+            detail="agent request failed",
         )
     return AgentQueryResponse(run_id=result["run_id"], answer=result["answer"])
 
@@ -57,3 +60,13 @@ def get_agent_trace(
             detail="trace not found",
         )
     return trace
+
+
+@router.get("/guardrails/summary")
+def get_agent_guardrails_summary(
+    _user_uuid: Annotated[str, Depends(get_current_user_uuid)],
+    session_id: Annotated[str | None, Query()] = None,
+) -> dict[str, Any]:
+    from pipelines.guardrails import get_guardrail_summary
+
+    return get_guardrail_summary(session_id)
