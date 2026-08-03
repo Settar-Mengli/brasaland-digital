@@ -881,3 +881,18 @@ cd services/knowledge; uv run pytest
 ```
 
 **Live grounding recon (gateway env, not CI):** see `services/knowledge/README.md`.
+
+## Part 2 — Support Agent External Tools (Ticket Lookup)
+
+**Status:** Implemented on branch `part-2-external-tools`.
+
+**Scope:** Deterministic `route_sources` (ticket / RAG / both from the question alone; heuristic — LLM router later). Live ticket tool in `data/pipelines/tools/ticket_lookup.py` → real incident-manager over HTTP (`INCIDENTS_API_ORIGIN`, 5.0s timeout, no Bearer). Dual ID resolution: numeric `id` then `source_incident_id`. Deterministic ticket formatter (no LLM on tool JSON). `compose_answer` owns all tool and both-route finalization; RAG path still uses Part 1 nodes. Trace: `nodes[]` = attempts; `final.sources_ran` = contribution only. Compose wires knowledge `INCIDENTS_API_ORIGIN` + `depends_on: incident-manager`. Inventory tool deferred. Evals: tool-only, RAG-only, unavailable fallback, 404→source_incident_id (plus Part 1 evals).
+
+**Verify (local):**
+
+```powershell
+uv run --directory data --python 3.13 pytest
+cd services/knowledge; uv run pytest
+```
+
+**Live ticket smoke:** see `services/knowledge/README.md`.

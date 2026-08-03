@@ -220,6 +220,7 @@ services:
       EMBED_MODEL_ID: ${EMBED_MODEL_ID:-BAAI/bge-small-en-v1.5}
       JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
       JWT_ALGORITHM: ${JWT_ALGORITHM}
+      INCIDENTS_API_ORIGIN: http://incident-manager:8011
     volumes:
       - ./services/knowledge:/app/services/knowledge
       - ./data:/app/data
@@ -228,6 +229,7 @@ services:
       - knowledge_venv:/app/services/knowledge/.venv
     depends_on:
       - qdrant
+      - incident-manager
     restart: unless-stopped
     networks:
       - brasaland-dev
