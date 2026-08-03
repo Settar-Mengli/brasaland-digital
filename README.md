@@ -212,7 +212,7 @@ Manuals live under `docs/company-knowledge-base/`. Design: [`docs/rag/rag-design
 uv run --directory data --python 3.13 python ../scripts/index_knowledge_base.py
 ```
 
-API: `services/knowledge` on port **8015** — `POST /knowledge/query` (JWT required; metered LLM gateway). Backoffice UI: `/knowledge`. Env placeholders: repo-root `.env.example` (operator fills real keys by hand).
+API: `services/knowledge` on port **8015** — `POST /knowledge/query` (JWT; metered LLM) and LangGraph agent `POST /agent/query` → `{"run_id","answer"}` plus `GET /agent/trace/{run_id}` (JWT). Graph: `data/pipelines/support_agent.py` (retrieve + `generate_answer` nodes; never monolithic `query()` in the graph). Evals: `uv run --directory data --python 3.13 pytest` (includes `test_support_agent_evals.py`). Live `generate_answer` grounding recon (gateway env): see [`services/knowledge/README.md`](services/knowledge/README.md). Backoffice UI: `/knowledge`. Env: repo-root `.env.example`.
 
 ### Daily target → weekly pipeline
 
