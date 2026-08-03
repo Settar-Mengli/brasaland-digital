@@ -45,6 +45,7 @@ def test_agent_query_success() -> None:
         "How many points for Gold?",
         access_token="test-token",
         user_id="42",
+        session_id=None,
     )
 
 
@@ -61,7 +62,7 @@ def test_agent_query_empty_returns_detail() -> None:
         app.dependency_overrides.clear()
 
     assert response.status_code == 400
-    assert response.json() == {"detail": "question must not be empty"}
+    assert response.json() == {"detail": "agent request failed"}
 
 
 def test_agent_query_node_failure_returns_detail() -> None:
@@ -81,5 +82,9 @@ def test_agent_query_node_failure_returns_detail() -> None:
 
     assert response.status_code == 400
     body = response.json()
-    assert body == {"detail": "LLM_GATEWAY_API_KEY is not set"}
+    assert body == {"detail": "agent request failed"}
+    detail = body["detail"].lower()
+    assert "litellm" not in detail
+    assert "403" not in detail
+    assert "prompt injection" not in detail
     assert "Traceback" not in str(body)
