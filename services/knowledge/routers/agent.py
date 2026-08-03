@@ -7,7 +7,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
-from dependencies import get_current_user_uuid
+from dependencies import get_current_user_uuid, oauth2_scheme
 
 router = APIRouter(prefix="/agent")
 
@@ -24,11 +24,17 @@ class AgentQueryResponse(BaseModel):
 @router.post("/query", response_model=AgentQueryResponse)
 def post_agent_query(
     body: AgentQueryRequest,
-    _user_uuid: Annotated[str, Depends(get_current_user_uuid)],
+    user_uuid: Annotated[str, Depends(get_current_user_uuid)],
+    access_token: Annotated[str, Depends(oauth2_scheme)],
 ) -> AgentQueryResponse:
     from pipelines.support_agent import invoke_support_agent
 
-    result = invoke_support_agent(body.question)
+    # Forward inbound Bearer into MCP client via configurable (not AgentState).
+    result = invoke_support_agent(
+        body.question,
+        access_token=access_token,
+        user_id=user_uuid,
+    )
     if "error" in result:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

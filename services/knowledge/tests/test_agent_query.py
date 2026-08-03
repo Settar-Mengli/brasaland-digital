@@ -7,7 +7,12 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from app import app
-from dependencies import get_current_user_uuid
+from dependencies import get_current_user_uuid, oauth2_scheme
+
+
+def _auth_overrides() -> None:
+    app.dependency_overrides[get_current_user_uuid] = lambda: "42"
+    app.dependency_overrides[oauth2_scheme] = lambda: "test-token"
 
 
 def test_agent_query_unauthorized() -> None:
@@ -18,7 +23,7 @@ def test_agent_query_unauthorized() -> None:
 
 def test_agent_query_success() -> None:
     client = TestClient(app)
-    app.dependency_overrides[get_current_user_uuid] = lambda: "42"
+    _auth_overrides()
     try:
         with patch(
             "pipelines.support_agent.invoke_support_agent",
@@ -36,12 +41,16 @@ def test_agent_query_success() -> None:
         "run_id": "run-1",
         "answer": "Gold needs 50+ points.",
     }
-    invoke_mock.assert_called_once_with("How many points for Gold?")
+    invoke_mock.assert_called_once_with(
+        "How many points for Gold?",
+        access_token="test-token",
+        user_id="42",
+    )
 
 
 def test_agent_query_empty_returns_detail() -> None:
     client = TestClient(app)
-    app.dependency_overrides[get_current_user_uuid] = lambda: "42"
+    _auth_overrides()
     try:
         with patch(
             "pipelines.support_agent.invoke_support_agent",
@@ -57,7 +66,7 @@ def test_agent_query_empty_returns_detail() -> None:
 
 def test_agent_query_node_failure_returns_detail() -> None:
     client = TestClient(app)
-    app.dependency_overrides[get_current_user_uuid] = lambda: "42"
+    _auth_overrides()
     try:
         with patch(
             "pipelines.support_agent.invoke_support_agent",
