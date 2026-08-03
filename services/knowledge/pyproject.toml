@@ -12,6 +12,7 @@ dependencies = [
     "fastembed",
     "openai",
     "langgraph>=1.2.10",
+    "httpx>=0.28.1",
 ]
 
 [tool.uv.sources]

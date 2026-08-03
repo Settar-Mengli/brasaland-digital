@@ -171,6 +171,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "fastembed" },
+    { name = "httpx" },
     { name = "langgraph" },
     { name = "matplotlib" },
     { name = "openai" },
@@ -193,6 +194,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "fastembed" },
+    { name = "httpx", specifier = ">=0.28.1" },
     { name = "langgraph", specifier = ">=1.2.10" },
     { name = "matplotlib" },
     { name = "openai" },

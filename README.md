@@ -212,7 +212,7 @@ Manuals live under `docs/company-knowledge-base/`. Design: [`docs/rag/rag-design
 uv run --directory data --python 3.13 python ../scripts/index_knowledge_base.py
 ```
 
-API: `services/knowledge` on port **8015** — `POST /knowledge/query` (JWT; metered LLM) and LangGraph agent `POST /agent/query` → `{"run_id","answer"}` plus `GET /agent/trace/{run_id}` (JWT). Graph: `data/pipelines/support_agent.py` (retrieve + `generate_answer` nodes; never monolithic `query()` in the graph). Evals: `uv run --directory data --python 3.13 pytest` (includes `test_support_agent_evals.py`). Live `generate_answer` grounding recon (gateway env): see [`services/knowledge/README.md`](services/knowledge/README.md). Backoffice UI: `/knowledge`. Env: repo-root `.env.example`.
+API: `services/knowledge` on port **8015** — `POST /knowledge/query` (JWT; metered LLM) and LangGraph agent `POST /agent/query` → `{"run_id","answer"}` plus `GET /agent/trace/{run_id}` (JWT). Graph: `data/pipelines/support_agent.py` — heuristic `route_sources` (ticket/RAG/both from the question alone; LLM router later), RAG nodes, and ticket-lookup tool (`data/pipelines/tools/ticket_lookup.py` → live incident-manager via `INCIDENTS_API_ORIGIN`; 5s timeout; deterministic ticket formatter; `compose_answer` owns tool/both finalization). Trace `nodes[]` = attempt order; `final.sources_ran` = contributing sources only. Ticket refs: numeric `id` (by-id then `source_incident_id`) or alphanumeric `source_incident_id` (list match only). Evals: `uv run --directory data --python 3.13 pytest` (includes `test_support_agent_evals.py`). Live recon: see [`services/knowledge/README.md`](services/knowledge/README.md). Backoffice UI: `/knowledge`. Env: repo-root `.env.example`.
 
 ### Daily target → weekly pipeline
 
