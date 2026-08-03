@@ -1,20 +1,22 @@
-"""Ticket lookup tool — live HTTP calls to incident-manager only.
+"""Ticket lookup via company-tools MCP (check_ticket_status).
 
-Resolves a ticket ref that may be a numeric API ``id`` or an alphanumeric
-``source_incident_id``. Numeric refs try GET /api/incidents/{id} first, then
-match source_incident_id on the list. Non-numeric refs skip by-id (avoids 422)
-and match source_incident_id only. Never fabricates status.
+Replaces the former direct httpx path to incident-manager. The agent must
+present a Bearer access token (forwarded from POST /agent/query). Dual id /
+source_incident_id resolution lives on the MCP server.
 """
 
 from __future__ import annotations
 
+import asyncio
+import json
+import logging
 import os
 from typing import Any, Literal, TypedDict
 
-import httpx
+logger = logging.getLogger("pipelines.tools.ticket_lookup")
 
-TICKET_LOOKUP_TIMEOUT_S = 5.0
-INCIDENTS_ORIGIN_ENV = "INCIDENTS_API_ORIGIN"
+MCP_SERVER_URL_ENV = "MCP_SERVER_URL"
+MCP_TOOL_NAME = "check_ticket_status"
 
 
 class TicketLookupInput(TypedDict, total=False):
@@ -45,8 +47,8 @@ class TicketLookupResult(TypedDict):
     error: str | None
 
 
-def _origin() -> str | None:
-    raw = os.environ.get(INCIDENTS_ORIGIN_ENV)
+def _mcp_url() -> str | None:
+    raw = os.environ.get(MCP_SERVER_URL_ENV)
     if raw is None or not raw.strip():
         return None
     return raw.rstrip("/")
@@ -83,17 +85,113 @@ def format_ticket_answer(incidents: list[TicketRecord]) -> str:
     return " ".join(parts)
 
 
-def lookup_ticket(inp: TicketLookupInput) -> TicketLookupResult:
-    """Call the real incident-manager API. Never invents rows."""
-    origin = _origin()
-    if origin is None:
+def _parse_tool_content(raw: Any) -> dict[str, Any]:
+    """Unwrap langchain-mcp-adapters content blocks to the tool JSON dict.
+
+    FastMCP dict returns arrive as
+    ``[{"type": "text", "text": "<json>", "id": "..."}]`` — not a bare dict.
+    """
+    if isinstance(raw, dict):
+        return raw
+    if isinstance(raw, list):
+        text = None
+        for block in raw:
+            if isinstance(block, dict) and block.get("type") == "text":
+                candidate = block.get("text")
+                if isinstance(candidate, str) and candidate.strip():
+                    text = candidate
+                    break
+        if text is None:
+            return {"ok": False, "message": "MCP tool returned no text content"}
+        raw = text
+    if isinstance(raw, str):
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError:
+            return {"ok": False, "message": raw}
+        if isinstance(parsed, dict):
+            return parsed
+        return {"ok": False, "message": "MCP tool text was not a JSON object"}
+    return {
+        "ok": False,
+        "message": f"unexpected MCP tool result type: {type(raw).__name__}",
+    }
+
+
+async def _ainvoke_check_ticket(
+    *, access_token: str, ticket_ref: str
+) -> TicketLookupResult:
+    from langchain_mcp_adapters.client import MultiServerMCPClient
+
+    url = _mcp_url()
+    if url is None:
         return TicketLookupResult(
             ok=False,
             incidents=[],
             matched_by=None,
-            error=f"{INCIDENTS_ORIGIN_ENV} is not set",
+            error=f"{MCP_SERVER_URL_ENV} is not set",
         )
 
+    client = MultiServerMCPClient(
+        {
+            "company_tools": {
+                "transport": "streamable_http",
+                "url": url,
+                "headers": {"Authorization": f"Bearer {access_token}"},
+            }
+        }
+    )
+    tools = await client.get_tools()
+    tool = next((item for item in tools if item.name == MCP_TOOL_NAME), None)
+    if tool is None:
+        return TicketLookupResult(
+            ok=False,
+            incidents=[],
+            matched_by=None,
+            error=f"MCP tool {MCP_TOOL_NAME} not found",
+        )
+
+    raw = await tool.ainvoke({"ticket_ref": ticket_ref})
+    payload = _parse_tool_content(raw)
+    if not payload.get("ok"):
+        return TicketLookupResult(
+            ok=False,
+            incidents=[],
+            matched_by=None,
+            error=str(
+                payload.get("code")
+                or payload.get("message")
+                or "MCP ticket lookup failed"
+            ),
+        )
+    incident = payload.get("incident")
+    if not isinstance(incident, dict):
+        return TicketLookupResult(
+            ok=False,
+            incidents=[],
+            matched_by=None,
+            error="unexpected MCP ticket payload",
+        )
+    matched = payload.get("matched_by")
+    matched_by: Literal["id", "source_incident_id", "filter"] | None
+    if matched in ("id", "source_incident_id", "filter"):
+        matched_by = matched  # type: ignore[assignment]
+    else:
+        matched_by = "id"
+    return TicketLookupResult(
+        ok=True,
+        incidents=[_record_from_payload(incident)],
+        matched_by=matched_by,
+        error=None,
+    )
+
+
+def lookup_ticket(
+    inp: TicketLookupInput,
+    *,
+    access_token: str | None = None,
+) -> TicketLookupResult:
+    """Call company-tools MCP check_ticket_status. Never invents rows."""
     ticket_ref = inp.get("ticket_ref")
     filters = {
         key: inp.get(key)
@@ -107,139 +205,45 @@ def lookup_ticket(inp: TicketLookupInput) -> TicketLookupResult:
             matched_by=None,
             error="ticket_ref or at least one filter is required",
         )
+    if access_token is None or not str(access_token).strip():
+        return TicketLookupResult(
+            ok=False,
+            incidents=[],
+            matched_by=None,
+            error="access_token is required for MCP ticket lookup",
+        )
+    if ticket_ref is None:
+        return TicketLookupResult(
+            ok=False,
+            incidents=[],
+            matched_by=None,
+            error="filter-only ticket lookup is not exposed via MCP in this release",
+        )
 
+    ref = str(ticket_ref)
+    # Never log the Bearer token.
+    logger.info(
+        "mcp_ticket_lookup client_call tool=%s ticket_ref=%s",
+        MCP_TOOL_NAME,
+        ref,
+    )
     try:
-        with httpx.Client(timeout=TICKET_LOOKUP_TIMEOUT_S) as client:
-            if ticket_ref is not None:
-                return _resolve_ref(client, origin, ticket_ref)
-            return _list_filtered(client, origin, filters)
-    except httpx.TimeoutException:
-        return TicketLookupResult(
-            ok=False,
-            incidents=[],
-            matched_by=None,
-            error="incident-manager request timed out",
+        return asyncio.run(
+            _ainvoke_check_ticket(access_token=access_token, ticket_ref=ref)
         )
-    except httpx.RequestError as exc:
-        return TicketLookupResult(
-            ok=False,
-            incidents=[],
-            matched_by=None,
-            error=f"incident-manager unreachable: {exc}",
-        )
-
-
-def _is_numeric_ref(ticket_ref: int | str) -> bool:
-    if isinstance(ticket_ref, int):
-        return True
-    return str(ticket_ref).isdigit()
-
-
-def _match_source_incident_id(
-    client: httpx.Client, origin: str, needle: str
-) -> TicketLookupResult:
-    listed = client.get(f"{origin}/api/incidents")
-    if listed.status_code != 200:
-        return TicketLookupResult(
-            ok=False,
-            incidents=[],
-            matched_by=None,
-            error=f"incident-manager list HTTP {listed.status_code}",
-        )
-    rows = listed.json()
-    if not isinstance(rows, list):
-        return TicketLookupResult(
-            ok=False,
-            incidents=[],
-            matched_by=None,
-            error="unexpected incident list payload",
-        )
-    matches = [
-        _record_from_payload(row)
-        for row in rows
-        if isinstance(row, dict) and str(row.get("source_incident_id")) == needle
-    ]
-    if not matches:
-        return TicketLookupResult(
-            ok=False,
-            incidents=[],
-            matched_by=None,
-            error="ticket not found",
-        )
-    return TicketLookupResult(
-        ok=True,
-        incidents=matches,
-        matched_by="source_incident_id",
-        error=None,
-    )
-
-
-def _resolve_ref(
-    client: httpx.Client, origin: str, ticket_ref: int | str
-) -> TicketLookupResult:
-    # Non-numeric refs are source_incident_id values — skip by-id (avoids 422).
-    if not _is_numeric_ref(ticket_ref):
-        return _match_source_incident_id(client, origin, str(ticket_ref))
-
-    by_id = client.get(f"{origin}/api/incidents/{ticket_ref}")
-    if by_id.status_code == 200:
-        payload = by_id.json()
-        if not isinstance(payload, dict):
-            return TicketLookupResult(
-                ok=False,
-                incidents=[],
-                matched_by=None,
-                error="unexpected incident payload",
+    except RuntimeError:
+        # Already inside a running loop (e.g. some test runners).
+        loop = asyncio.new_event_loop()
+        try:
+            return loop.run_until_complete(
+                _ainvoke_check_ticket(access_token=access_token, ticket_ref=ref)
             )
-        return TicketLookupResult(
-            ok=True,
-            incidents=[_record_from_payload(payload)],
-            matched_by="id",
-            error=None,
-        )
-    if by_id.status_code != 404:
+        finally:
+            loop.close()
+    except Exception as exc:  # noqa: BLE001
         return TicketLookupResult(
             ok=False,
             incidents=[],
             matched_by=None,
-            error=f"incident-manager HTTP {by_id.status_code}",
+            error=f"MCP ticket lookup failed: {exc}",
         )
-
-    return _match_source_incident_id(client, origin, str(ticket_ref))
-
-
-def _list_filtered(
-    client: httpx.Client, origin: str, filters: dict[str, Any]
-) -> TicketLookupResult:
-    response = client.get(f"{origin}/api/incidents", params=filters)
-    if response.status_code != 200:
-        return TicketLookupResult(
-            ok=False,
-            incidents=[],
-            matched_by=None,
-            error=f"incident-manager HTTP {response.status_code}",
-        )
-    rows = response.json()
-    if not isinstance(rows, list):
-        return TicketLookupResult(
-            ok=False,
-            incidents=[],
-            matched_by=None,
-            error="unexpected incident list payload",
-        )
-    incidents = [
-        _record_from_payload(row) for row in rows if isinstance(row, dict)
-    ]
-    if not incidents:
-        return TicketLookupResult(
-            ok=False,
-            incidents=[],
-            matched_by=None,
-            error="ticket not found",
-        )
-    return TicketLookupResult(
-        ok=True,
-        incidents=incidents,
-        matched_by="filter",
-        error=None,
-    )

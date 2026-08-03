@@ -24,6 +24,7 @@ jobs:
             services/telemetry,
             services/reporting,
             services/knowledge,
+            mcps/company-tools,
           ]
     steps:
       - uses: actions/checkout@v4

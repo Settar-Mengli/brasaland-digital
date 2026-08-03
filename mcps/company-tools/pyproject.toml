@@ -1,0 +1,37 @@
+[project]
+name = "company-tools-mcp"
+version = "0.1.0"
+description = "OAuth-protected MCP server for Brasaland incident and read-only inventory tools."
+readme = "README.md"
+authors = [
+    { name = "S. M.", email = "263843543+Settar-Mengli@users.noreply.github.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "brasaland-auth-verify",
+    "brasaland-shared",
+    "fastmcp>=3.4.5",
+    "httpx>=0.28.1",
+    "mcpauth>=0.1.1",
+]
+
+[project.scripts]
+company-tools-mcp = "company_tools_mcp:main"
+
+[build-system]
+requires = ["uv_build>=0.10.8,<0.11.0"]
+build-backend = "uv_build"
+
+[tool.uv.sources]
+brasaland-auth-verify = { path = "../../packages/auth-verify", editable = true }
+brasaland-shared = { path = "../../packages/shared", editable = true }
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "."]
+

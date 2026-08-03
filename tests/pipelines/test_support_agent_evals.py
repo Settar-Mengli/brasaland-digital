@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from pipelines.support_agent import (
     REFUSAL_ANSWER,
@@ -247,37 +247,26 @@ def test_eval_ticket_tool_unavailable_honest_fallback() -> None:
 
 
 def test_eval_ticket_resolves_via_source_incident_id_after_404() -> None:
-    """404 on numeric id → match source_incident_id on list (offline httpx mock)."""
+    """Numeric ref resolved via source_incident_id (MCP adapter returns matched_by)."""
     TRACES.clear()
     incident = _sample_incident(ticket_id=12, source_id="482")
-
-    def _fake_get(url: str, *args: object, **kwargs: object) -> MagicMock:
-        response = MagicMock()
-        if url.endswith("/api/incidents/482"):
-            response.status_code = 404
-            response.json.return_value = {"detail": "Not found"}
-            return response
-        if url.endswith("/api/incidents"):
-            response.status_code = 200
-            response.json.return_value = [dict(incident)]
-            return response
-        raise AssertionError(f"unexpected URL: {url}")
-
-    mock_client = MagicMock()
-    mock_client.get.side_effect = _fake_get
-    mock_client.__enter__.return_value = mock_client
-    mock_client.__exit__.return_value = False
+    tool_result: TicketLookupResult = {
+        "ok": True,
+        "incidents": [incident],
+        "matched_by": "source_incident_id",
+        "error": None,
+    }
 
     with (
-        patch.dict("os.environ", {"INCIDENTS_API_ORIGIN": "http://incidents.test"}),
         patch(
-            "pipelines.tools.ticket_lookup.httpx.Client",
-            return_value=mock_client,
-        ),
+            "pipelines.support_agent.lookup_ticket",
+            return_value=tool_result,
+        ) as lookup_mock,
         patch("pipelines.support_agent.retrieve") as retrieve_mock,
     ):
         result = invoke_support_agent("What is the status of ticket 482?")
 
+    lookup_mock.assert_called_once()
     retrieve_mock.assert_not_called()
     run_id = result["run_id"]
     assert "error" not in result
@@ -346,38 +335,27 @@ def test_eval_alphanumeric_ticket_routes_tool_only() -> None:
 
 
 def test_eval_alphanumeric_ref_skips_by_id_matches_source() -> None:
-    """Non-numeric ref skips GET /{id}; list match on source_incident_id."""
+    """Non-numeric ref resolves via source_incident_id through MCP adapter."""
     TRACES.clear()
     incident = _sample_incident(ticket_id=98, source_id="MANUAL-98")
-    by_id_calls: list[str] = []
-
-    def _fake_get(url: str, *args: object, **kwargs: object) -> MagicMock:
-        response = MagicMock()
-        if "/api/incidents/" in url and not url.rstrip("/").endswith("/incidents"):
-            by_id_calls.append(url)
-            raise AssertionError(f"by-id GET must be skipped for alphanumeric ref: {url}")
-        if url.endswith("/api/incidents"):
-            response.status_code = 200
-            response.json.return_value = [dict(incident)]
-            return response
-        raise AssertionError(f"unexpected URL: {url}")
-
-    mock_client = MagicMock()
-    mock_client.get.side_effect = _fake_get
-    mock_client.__enter__.return_value = mock_client
-    mock_client.__exit__.return_value = False
+    tool_result: TicketLookupResult = {
+        "ok": True,
+        "incidents": [incident],
+        "matched_by": "source_incident_id",
+        "error": None,
+    }
 
     with (
-        patch.dict("os.environ", {"INCIDENTS_API_ORIGIN": "http://incidents.test"}),
         patch(
-            "pipelines.tools.ticket_lookup.httpx.Client",
-            return_value=mock_client,
-        ),
+            "pipelines.support_agent.lookup_ticket",
+            return_value=tool_result,
+        ) as lookup_mock,
         patch("pipelines.support_agent.retrieve") as retrieve_mock,
     ):
         result = invoke_support_agent("What is the status of ticket MANUAL-98?")
 
-    assert by_id_calls == []
+    called_inp = lookup_mock.call_args[0][0]
+    assert called_inp.get("ticket_ref") == "MANUAL-98"
     retrieve_mock.assert_not_called()
     run_id = result["run_id"]
     assert "error" not in result
@@ -399,28 +377,20 @@ def test_eval_alphanumeric_ref_skips_by_id_matches_source() -> None:
 
 
 def test_eval_numeric_ticket_resolves_by_id() -> None:
-    """Regression: ticket 98 hits GET /api/incidents/98 and matched_by=id."""
+    """Regression: ticket 98 matched_by=id via MCP adapter."""
     TRACES.clear()
     incident = _sample_incident(ticket_id=98, source_id="MANUAL-98")
-
-    def _fake_get(url: str, *args: object, **kwargs: object) -> MagicMock:
-        response = MagicMock()
-        if url.endswith("/api/incidents/98"):
-            response.status_code = 200
-            response.json.return_value = dict(incident)
-            return response
-        raise AssertionError(f"unexpected URL: {url}")
-
-    mock_client = MagicMock()
-    mock_client.get.side_effect = _fake_get
-    mock_client.__enter__.return_value = mock_client
-    mock_client.__exit__.return_value = False
+    tool_result: TicketLookupResult = {
+        "ok": True,
+        "incidents": [incident],
+        "matched_by": "id",
+        "error": None,
+    }
 
     with (
-        patch.dict("os.environ", {"INCIDENTS_API_ORIGIN": "http://incidents.test"}),
         patch(
-            "pipelines.tools.ticket_lookup.httpx.Client",
-            return_value=mock_client,
+            "pipelines.support_agent.lookup_ticket",
+            return_value=tool_result,
         ),
         patch("pipelines.support_agent.retrieve") as retrieve_mock,
     ):

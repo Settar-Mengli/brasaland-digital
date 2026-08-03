@@ -4,7 +4,7 @@
 
 The digital platform for Brasaland, a 14-location grilled-food restaurant chain across Colombia and the United States.
 
-Brasaland Digital is an npm + Python monorepo: six npm workspaces under `apps/` and `uis/` (public marketing site, operations toolkit, talent pipeline tracker, Next.js website rebuild, operations backoffice, and incident-manager UI), plus Python packages under `packages/` and FastAPI services under `services/` (auth, inventory, incident-manager, supplier-directory, incident-analysis, telemetry, reporting, knowledge). Shared tooling and conventions without forcing shared runtime dependencies.
+Brasaland Digital is an npm + Python monorepo: six npm workspaces under `apps/` and `uis/` (public marketing site, operations toolkit, talent pipeline tracker, Next.js website rebuild, operations backoffice, and incident-manager UI), plus Python packages under `packages/`, FastAPI services under `services/` (auth, inventory, incident-manager, supplier-directory, incident-analysis, telemetry, reporting, knowledge), and OAuth-protected MCP servers under `mcps/` (company-tools). Shared tooling and conventions without forcing shared runtime dependencies.
 
 ## Live demos
 
@@ -49,6 +49,8 @@ brasaland-digital/
 │   ├── telemetry/               # Telemetry ingest + report API (FastAPI, PostgreSQL/SQLModel)
 │   ├── reporting/               # Reporting API + Celery worker (FastAPI, PostgreSQL/SQLModel, Redis)
 │   └── knowledge/               # RAG knowledge Q&A API (FastAPI, Qdrant, JWT-guarded)
+├── mcps/
+│   └── company-tools/           # OAuth MCP server (incidents + read-only inventory, :8016)
 ├── memory-bank/                 # Agent context files (projectbrief, techContext, progress)
 ├── .agents/                     # Agent rules and skills
 ├── docs/
@@ -72,6 +74,7 @@ brasaland-digital/
 - **Website rebuild + Backoffice (M4):** Next.js 16 (App Router), React 19, Tailwind v4 (CSS-first), TypeScript strict
 - **Incident manager UI:** Next.js 16 (App Router), React 19, Tailwind v4, TypeScript
 - **Python services:** FastAPI under `services/` — auth, supplier-directory, incident-analysis, incident-manager, inventory, telemetry, reporting (Celery + Redis worker), knowledge (RAG + Qdrant)
+- **MCP servers:** `mcps/company-tools` — Streamable HTTP + mcpauth on port **8016**
 - **Tooling:** npm workspaces, Prettier, EditorConfig
 - **Deployment:** Vercel (separate projects per workspace)
 
@@ -97,7 +100,7 @@ Serves at `http://localhost:3000`.
 npm run test --workspace @brasaland/operations-toolkit
 ```
 
-GitHub Actions runs pytest across ten service and package directories, the `data/` pipelines suite, Vitest across three npm workspaces, TypeScript typecheck across four workspaces, and a Prettier format check (see `.github/workflows/ci.yml`).
+GitHub Actions runs pytest across eleven service/package/MCP directories, the `data/` pipelines suite, Vitest across three npm workspaces, TypeScript typecheck across four workspaces, and a Prettier format check (see `.github/workflows/ci.yml`).
 
 **Run the M4 website rebuild locally (port 3002):**
 
@@ -212,7 +215,7 @@ Manuals live under `docs/company-knowledge-base/`. Design: [`docs/rag/rag-design
 uv run --directory data --python 3.13 python ../scripts/index_knowledge_base.py
 ```
 
-API: `services/knowledge` on port **8015** — `POST /knowledge/query` (JWT; metered LLM) and LangGraph agent `POST /agent/query` → `{"run_id","answer"}` plus `GET /agent/trace/{run_id}` (JWT). Graph: `data/pipelines/support_agent.py` — heuristic `route_sources` (ticket/RAG/both from the question alone; LLM router later), RAG nodes, and ticket-lookup tool (`data/pipelines/tools/ticket_lookup.py` → live incident-manager via `INCIDENTS_API_ORIGIN`; 5s timeout; deterministic ticket formatter; `compose_answer` owns tool/both finalization). Trace `nodes[]` = attempt order; `final.sources_ran` = contributing sources only. Ticket refs: numeric `id` (by-id then `source_incident_id`) or alphanumeric `source_incident_id` (list match only). Evals: `uv run --directory data --python 3.13 pytest` (includes `test_support_agent_evals.py`). Live recon: see [`services/knowledge/README.md`](services/knowledge/README.md). Backoffice UI: `/knowledge`. Env: repo-root `.env.example`.
+API: `services/knowledge` on port **8015** — `POST /knowledge/query` (JWT; metered LLM) and LangGraph agent `POST /agent/query` → `{"run_id","answer"}` plus `GET /agent/trace/{run_id}` (JWT). Graph: `data/pipelines/support_agent.py` — heuristic `route_sources` (ticket/RAG/both from the question alone; LLM router later), RAG nodes, and ticket lookup via **company-tools MCP** (`data/pipelines/tools/ticket_lookup.py` → `check_ticket_status` over Streamable HTTP; Bearer forwarded from `/agent/query` via LangGraph `configurable.access_token`, never checkpointed). MCP server: [`mcps/company-tools`](mcps/company-tools/README.md) on port **8016** (incidents create/status/check + read-only inventory; write inventory tools return `INVENTORY_WRITE_FORBIDDEN`). Trace `nodes[]` = attempt order; `final.sources_ran` = contributing sources only (`ticket_lookup` preserved). Evals: `uv run --directory data --python 3.13 pytest` (includes `test_support_agent_evals.py` + sentinel redaction). Live recon: see [`services/knowledge/README.md`](services/knowledge/README.md). Backoffice UI: `/knowledge`. Env: repo-root `.env.example` (`MCP_SERVER_URL`, `MCP_TICKETS_WRITE_ALLOWLIST`).
 
 ### Daily target → weekly pipeline
 

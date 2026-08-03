@@ -14,6 +14,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Literal, TypedDict
 
+from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 
@@ -67,6 +68,7 @@ class AgentState(TypedDict):
     route: RouteKind | None
     tool_result: dict[str, Any] | None
     sources_ran: list[str]
+    user_id: str | None
 
 
 def _utc_now() -> str:
@@ -182,9 +184,13 @@ def generate_answer_node(state: AgentState) -> dict[str, Any]:
     return {"answer": answer, "sources_ran": sources_ran}
 
 
-def lookup_ticket_node(state: AgentState) -> dict[str, Any]:
+def lookup_ticket_node(
+    state: AgentState, config: RunnableConfig
+) -> dict[str, Any]:
     run_id = state["run_id"]
     inp = _parse_ticket_input(state["question"])
+    # Bearer lives only in configurable — never AgentState / traces.
+    access_token = (config.get("configurable") or {}).get("access_token")
     if inp.get("ticket_ref") is None and not any(
         inp.get(k) for k in ("status", "origin", "branch", "category")
     ):
@@ -195,7 +201,7 @@ def lookup_ticket_node(state: AgentState) -> dict[str, Any]:
             "error": "no ticket reference found in question",
         }
     else:
-        result = lookup_ticket(inp)
+        result = lookup_ticket(inp, access_token=access_token)
     payload = dict(result)
     _append_trace(
         run_id,
@@ -205,6 +211,7 @@ def lookup_ticket_node(state: AgentState) -> dict[str, Any]:
         error=result.get("error"),
         incident_ids=[row["id"] for row in result.get("incidents") or []],
         incident_count=len(result.get("incidents") or []),
+        user_id=state.get("user_id"),
     )
     return {"tool_result": payload}
 
@@ -358,15 +365,36 @@ def get_trace(run_id: str) -> dict[str, Any] | None:
     return dict(trace)
 
 
-def invoke_support_agent(question: str, *, run_id: str | None = None) -> dict[str, Any]:
+def get_checkpoint_state(run_id: str) -> dict[str, Any] | None:
+    """Return the latest checkpointed AgentState values for ``run_id`` (no secrets)."""
+    config = {"configurable": {"thread_id": run_id}}
+    snapshot = COMPILED_GRAPH.get_state(config)
+    if snapshot is None or not snapshot.values:
+        return None
+    return dict(snapshot.values)
+
+
+def invoke_support_agent(
+    question: str,
+    *,
+    run_id: str | None = None,
+    access_token: str | None = None,
+    user_id: str | None = None,
+) -> dict[str, Any]:
     """Run the compiled graph. Always passes thread_id for MemorySaver.
+
+    ``access_token`` is passed only via ``config["configurable"]`` — never as
+    an AgentState field (Fix 1: not checkpointed).
 
     Returns ``{"run_id", "answer"}`` on success paths (including refusal).
     On empty question or node failure returns ``{"run_id", "error"}`` (no stack).
     """
     rid = run_id or str(uuid.uuid4())
     TRACES[rid] = {"run_id": rid, "nodes": [], "final": None}
-    config = {"configurable": {"thread_id": rid}}
+    configurable: dict[str, Any] = {"thread_id": rid}
+    if access_token is not None:
+        configurable["access_token"] = access_token
+    config = {"configurable": configurable}
     initial: AgentState = {
         "question": question or "",
         "context": [],
@@ -376,6 +404,7 @@ def invoke_support_agent(question: str, *, run_id: str | None = None) -> dict[st
         "route": None,
         "tool_result": None,
         "sources_ran": [],
+        "user_id": user_id,
     }
     try:
         final = COMPILED_GRAPH.invoke(initial, config=config)
@@ -397,6 +426,7 @@ def invoke_support_agent(question: str, *, run_id: str | None = None) -> dict[st
         "error": error,
         "route": route,
         "sources_ran": sources_ran,
+        "user_id": final.get("user_id"),
     }
     if tool_result.get("ok"):
         final_payload["matched_by"] = tool_result.get("matched_by")

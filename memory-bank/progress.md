@@ -896,3 +896,19 @@ cd services/knowledge; uv run pytest
 ```
 
 **Live ticket smoke:** see `services/knowledge/README.md`.
+
+## MCP Server — Company Tools + Agent Migration
+
+**Status:** Implemented on branch `mcps/company-tools-server`.
+
+**Scope:** New top-level `mcps/company-tools` Streamable-HTTP MCP server on **8016** (fastmcp + mcpauth; not FastMCP built-in auth). Tools: `check_ticket_status`, `create_ticket`, `update_ticket_status` (PATCH …/status only), `check_stock`, plus explicit inventory write rejects (`INVENTORY_WRITE_FORBIDDEN`). Scopes injected at the RS: baseline `tickets:read`+`inventory:read`; `tickets:write` via `MCP_TICKETS_WRITE_ALLOWLIST`; `inventory:write` never grantable. Agent migrates off direct incident-manager HTTP: `ticket_lookup` → MCP `check_ticket_status` via langchain-mcp-adapters; Bearer from `/agent/query` threaded only through `configurable.access_token` (never AgentState/checkpoint/trace). Trace node name `lookup_ticket` / `sources_ran` `ticket_lookup` preserved. Compose: `company-tools-mcp` depends on incident-manager + inventory; knowledge uses `MCP_SERVER_URL`.
+
+**Verify (local):**
+
+```powershell
+cd mcps/company-tools; uv run pytest
+uv run --directory data --python 3.13 pytest
+cd services/knowledge; uv run pytest
+```
+
+**Playground:** public Codespaces URL on :8016 `/mcp` — see `mcps/company-tools/README.md`.
