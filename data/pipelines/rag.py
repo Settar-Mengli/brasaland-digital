@@ -1,7 +1,8 @@
 """RAG: chunk, embed, retrieve, and generate answers from Brasaland manuals.
 
-Public entry point for generation is ``query(question)``. Indexing is operator-run
-via ``scripts/index_knowledge_base.py`` → ``setup()`` (not FastAPI lifespan).
+Public generation helpers: ``generate_answer(question, chunks)`` (retrieval-free)
+and ``query(question)`` (retrieve + generate). Indexing is operator-run via
+``scripts/index_knowledge_base.py`` → ``setup()`` (not FastAPI lifespan).
 """
 
 from __future__ import annotations
@@ -295,12 +296,17 @@ def _generate(question: str, chunks: list[dict[str, Any]]) -> str:
     return message.strip()
 
 
+def generate_answer(question: str, chunks: list[dict[str, Any]]) -> str:
+    """Generate a salesperson answer from already-retrieved chunks (no retrieval)."""
+    return _generate(question, chunks)
+
+
 def query(question: str, *, k: int = DEFAULT_TOP_K, min_score: float = DEFAULT_MIN_SCORE) -> str:
-    """Retrieve context and generate a salesperson answer. Sole public generation entry point."""
+    """Retrieve context and generate a salesperson answer."""
     cleaned = question.strip()
     if not cleaned:
         raise ValueError("question must not be empty")
     chunks = retrieve(cleaned, k=k, min_score=min_score)
     # Strip internal score before prompting
     prompt_chunks = [{k: v for k, v in c.items() if k != "_score"} for c in chunks]
-    return _generate(cleaned, prompt_chunks)
+    return generate_answer(cleaned, prompt_chunks)

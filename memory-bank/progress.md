@@ -866,3 +866,18 @@ feat(knowledge): add JWT-guarded knowledge API and Qdrant compose
 feat(backoffice): add knowledge Q&A page with Bearer client
 docs(rag): add design doc, manuals, and CONTEXT
 ```
+
+## Part 1 — LangGraph Support Agent (Migration + Agent Flow)
+
+**Status:** Implemented on branch `part-1-langgraph`.
+
+**Scope:** Public `generate_answer(question, chunks)` in `data/pipelines/rag.py` (wraps `_generate`; `query()` unchanged). Compiled LangGraph in `data/pipelines/support_agent.py`: nodes `validate_question` → `retrieve_context` → (`refuse_no_context` | `generate_answer_node`); MemorySaver with `thread_id=run_id` on every invoke including empty-question; in-process `TRACES` + `get_trace`. Knowledge service: JWT `POST /agent/query` and JWT `GET /agent/trace/{run_id}` alongside `/knowledge/query`. Evals in `tests/pipelines/test_support_agent_evals.py` (≥3 on TRACE; grounding Path B = offline context assert + live generate recon in README). Deps: `langgraph` in `data/` and `services/knowledge/`.
+
+**Verify (local):**
+
+```powershell
+uv run --directory data --python 3.13 pytest
+cd services/knowledge; uv run pytest
+```
+
+**Live grounding recon (gateway env, not CI):** see `services/knowledge/README.md`.

@@ -6,11 +6,12 @@ JWT-guarded RAG Q&A over company manuals (loyalty, waste, allergens, supplier or
 
 ## Why JWT?
 
-`POST /knowledge/query` calls a **metered** LLM gateway. Guarding the endpoint prevents unauthenticated callers from burning the monthly budget on a published port. Manuals themselves are not secret — the auth rationale is cost/abuse control (unlike open reporting GETs).
+`POST /knowledge/query` and `POST /agent/query` call a **metered** LLM gateway. Guarding the endpoints prevents unauthenticated callers from burning the monthly budget on a published port. Manuals themselves are not secret — the auth rationale is cost/abuse control (unlike open reporting GETs). Trace reads are JWT-guarded for the same abuse boundary.
 
 ## Architecture
 
-- Retrieval + generation live in `data/pipelines/rag.py` (`query()` is the sole public generation entry).
+- Retrieval + generation live in `data/pipelines/rag.py` (`retrieve`, `generate_answer`, `query`).
+- LangGraph support agent: `data/pipelines/support_agent.py` — separate retrieve / generate nodes, conditional edges, MemorySaver checkpointing (`thread_id` = `run_id`), in-process `TRACES`.
 - This service imports `pipelines` via `config.py` sys.path / Docker `PYTHONPATH=/app/data` (same pattern as `services/reporting`).
 - Indexing is **operator-run**, not app lifespan: `scripts/index_knowledge_base.py`.
 
@@ -20,6 +21,12 @@ JWT-guarded RAG Q&A over company manuals (loyalty, waste, allergens, supplier or
 | --- | --- | --- | --- |
 | `GET` | `/` | no | `{"service":"knowledge"}` |
 | `POST` | `/knowledge/query` | Bearer JWT | `{"question":"..."}` → `{"answer":"..."}` only |
+| `POST` | `/agent/query` | Bearer JWT | `{"question":"..."}` → `{"run_id","answer"}`; errors → `{"detail"}` |
+| `GET` | `/agent/trace/{run_id}` | Bearer JWT | structured trace; `404` if unknown |
+
+Empty question and no-context paths do not force generation. No-context refusal copy:
+
+`I don't have information about that in the official Brasaland manuals.`
 
 ## Env
 
@@ -51,4 +58,25 @@ uv run uvicorn app:app --host 0.0.0.0 --port 8015 --reload
 ```powershell
 cd services/knowledge
 uv run pytest
+
+uv run --directory data --python 3.13 pytest
+```
+
+## Live grounding recon (gateway required — not CI)
+
+CI asserts KB facts on the agent **trace context** (Path B). To verify real generation locally with gateway env set:
+
+```powershell
+cd data
+uv run --python 3.13 python -c @"
+from pipelines.rag import generate_answer
+chunks = [{
+    'text': 'Gold (50+ points): 15% permanent discount and early access to the seasonal menu before the general public.',
+    'source_document': 'loyalty-program',
+    'section': 'Program tiers',
+}]
+answer = generate_answer('How many points for Gold?', chunks)
+assert '50+' in answer and '15%' in answer, answer
+print('live grounding ok:', answer)
+"@
 ```
