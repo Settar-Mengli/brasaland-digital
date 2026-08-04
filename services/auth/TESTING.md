@@ -29,7 +29,7 @@ All tests must pass and coverage on the `auth/` package must remain at or above 
 | pytest-cov                       | Coverage measurement and `fail_under` gate                    |
 | httpx                            | HTTP client used by FastAPI `TestClient`                      |
 
-Runtime dependencies live in `[project.dependencies]`; test tools live in `[dependency-groups] dev` inside `pyproject.toml`. `requirements.txt` is a **generated export** for pip compatibility (`uv export --no-hashes -o requirements.txt`).
+Runtime dependencies live in `[project.dependencies]`; test tools live in `[dependency-groups] dev` inside `pyproject.toml`. Resolved versions are locked in `uv.lock`. Install with `uv sync --python 3.13`.
 
 ## Test architecture
 

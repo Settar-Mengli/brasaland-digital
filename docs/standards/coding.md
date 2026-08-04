@@ -49,8 +49,7 @@
 
 ### Project layout
 
-- `pyproject.toml` is the source of truth for dependencies and tool config.
-- Where `requirements.txt` exists, treat it as a **generated** export for pip compatibility (`uv export`), not the hand-edited primary manifest.
+- `pyproject.toml` is the source of truth for dependencies and tool config; `uv.lock` locks the resolved set. Install with `uv sync --python 3.13`. There are no pip `requirements.txt` export files.
 - Service apps typically use `[tool.uv] package = false`.
 - Path dependencies on monorepo packages use `[tool.uv.sources]` (editable path to `packages/*`).
 

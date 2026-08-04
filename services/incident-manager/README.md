@@ -35,8 +35,7 @@ services/incident-manager/
 ├── app.py                         # FastAPI app + static file serving
 ├── CONTEXT-brasaland.md           # Data contract (authoritative)
 ├── .env.example                   # DATABASE_URL (same brasaland-m5 project as inventory)
-├── pyproject.toml
-├── requirements.txt               # Generated pip-compat export (uv export)
+├── pyproject.toml                 # Declared deps (locked in uv.lock)
 └── README.md
 ```
 
@@ -121,7 +120,7 @@ Run every command from **`services/incident-manager/`** so the editable `brasala
 cd services/incident-manager
 copy .env.example .env
 # Edit .env — paste DATABASE_URL from services/inventory
-uv sync
+uv sync --python 3.13
 uv run pytest
 uv run python scripts/seed_incidents.py
 uv run uvicorn app:app --reload --port 8011
@@ -129,7 +128,7 @@ uv run uvicorn app:app --reload --port 8011
 
 Open **http://127.0.0.1:8011/**
 
-Requires **Python 3.11+**. Dependencies are managed with [uv](https://docs.astral.sh/uv/). `requirements.txt` is a generated pip-compat artifact (`uv export --no-hashes -o requirements.txt`).
+Requires **Python 3.11+**. Dependencies are declared in `pyproject.toml`, locked in `uv.lock`, and managed with [uv](https://docs.astral.sh/uv/).
 
 Schema is created lazily: `ensure_schema()` runs on first repository or seed access and calls `SQLModel.metadata.create_all(engine)`.
 

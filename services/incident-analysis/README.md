@@ -26,8 +26,7 @@ services/incident-analysis/
 │   └── app.js
 ├── tests/                      # pytest suite (golden fixture + unit + API tests)
 ├── incidents-brasaland.csv     # 100-row sample dataset
-├── pyproject.toml
-├── requirements.txt             # Generated pip-compat export (uv export)
+├── pyproject.toml               # Declared deps (locked in uv.lock)
 └── README.md
 ```
 
@@ -35,10 +34,10 @@ services/incident-analysis/
 
 ```powershell
 cd services/incident-analysis
-uv sync
+uv sync --python 3.13
 ```
 
-Requires **Python 3.11+**. Dependencies are managed with [uv](https://docs.astral.sh/uv/). `requirements.txt` is a generated pip-compat artifact (`uv export --no-hashes -o requirements.txt`).
+Requires **Python 3.11+**. Dependencies are declared in `pyproject.toml`, locked in `uv.lock`, and managed with [uv](https://docs.astral.sh/uv/).
 
 ## CLI usage
 

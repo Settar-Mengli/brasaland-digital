@@ -28,7 +28,7 @@ services/auth/
 ├── tests/                       # pytest (security + service + API)
 ├── data/                        # Runtime TinyDB (gitignored except .gitkeep)
 ├── .env.example                 # Environment variable template (tracked)
-├── requirements.txt
+├── pyproject.toml               # Declared deps (locked in uv.lock)
 └── README.md
 ```
 
@@ -36,7 +36,7 @@ services/auth/
 
 ```powershell
 cd services/auth
-uv sync
+uv sync --python 3.13
 uv run pytest
 ```
 
