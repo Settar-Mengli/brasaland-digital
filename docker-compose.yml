@@ -213,6 +213,7 @@ services:
       WATCHFILES_FORCE_POLLING: 'true'
       PYTHONPATH: /app/data
       QDRANT_URL: http://qdrant:6333
+      REDIS_URL: ${REDIS_URL}
       KNOWLEDGE_CORPUS_PATH: /app/docs/company-knowledge-base
       LLM_GATEWAY_API_KEY: ${LLM_GATEWAY_API_KEY}
       LLM_GATEWAY_BASE_URL: ${LLM_GATEWAY_BASE_URL}
@@ -230,6 +231,7 @@ services:
     depends_on:
       - qdrant
       - company-tools-mcp
+      - redis
     restart: unless-stopped
     networks:
       - brasaland-dev

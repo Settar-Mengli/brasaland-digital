@@ -89,8 +89,8 @@ def test_eval_answer_grounded_in_kb() -> None:
     with (
         patch("pipelines.support_agent.retrieve", return_value=injected) as retrieve_mock,
         patch(
-            "pipelines.support_agent.generate_answer",
-            return_value="stub-offline",
+            "pipelines.support_agent.generate_answer_structured",
+            return_value={"answer": "stub-offline", "memory_proposal": None},
         ) as gen_mock,
     ):
         result = invoke_support_agent("How many points for Gold?")
@@ -188,8 +188,8 @@ def test_eval_kb_question_uses_rag_not_tool() -> None:
     with (
         patch("pipelines.support_agent.retrieve", return_value=injected) as retrieve_mock,
         patch(
-            "pipelines.support_agent.generate_answer",
-            return_value="stub-offline",
+            "pipelines.support_agent.generate_answer_structured",
+            return_value={"answer": "stub-offline", "memory_proposal": None},
         ),
         patch("pipelines.support_agent.lookup_ticket") as lookup_mock,
     ):

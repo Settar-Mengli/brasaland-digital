@@ -11,6 +11,7 @@ import time
 from typing import Any, Literal, TypedDict
 
 FailureType = Literal["structural", "content", "security"]
+MemoryDecision = Literal["approve", "reject", "edit"]
 
 PERSONAL_USE_REDIRECT = (
     "I'm here to help with Brasaland's procedures and recipes. "
@@ -149,6 +150,33 @@ def clear_session_guard() -> None:
     PROCESS_COUNTS["security"] = 0
 
 
+def _log_pending_ttl_reject(session_id: str, entry: dict[str, Any], reason: str) -> None:
+    """When a session with pending_memory expires, persist a rejected audit event."""
+    pending = entry.get("pending_memory")
+    if not pending:
+        return
+    try:
+        from pipelines.memory_store import log_proposal_event
+
+        log_proposal_event(
+            {
+                "session_id": session_id,
+                "outcome": "rejected",
+                "proposal": {
+                    "summary": pending.get("summary"),
+                    "location": pending.get("location"),
+                    "category": pending.get("category"),
+                    "why": pending.get("why"),
+                    "proposal_id": pending.get("proposal_id"),
+                },
+                "originating_message": pending.get("originating_message") or "",
+                "reason": reason,
+            }
+        )
+    except Exception:  # noqa: BLE001 — purge must not raise
+        pass
+
+
 def _purge_expired(now: float | None = None) -> None:
     ts = now if now is not None else time.time()
     expired = [
@@ -157,6 +185,9 @@ def _purge_expired(now: float | None = None) -> None:
         if ts - float(entry.get("updated_at", 0)) > SESSION_TTL_SECONDS
     ]
     for sid in expired:
+        entry = SESSION_GUARD.get(sid) or {}
+        if entry.get("pending_memory"):
+            _log_pending_ttl_reject(sid, entry, "ttl_expired")
         del SESSION_GUARD[sid]
 
 
@@ -168,10 +199,39 @@ def _ensure_session(session_id: str) -> dict[str, Any]:
             "events": [],
             "extraction_turns": 0,
             "counts": {"structural": 0, "content": 0, "security": 0},
+            "pending_memory": None,
             "updated_at": time.time(),
         }
         SESSION_GUARD[session_id] = entry
+    elif "pending_memory" not in entry:
+        entry["pending_memory"] = None
     return entry
+
+
+def get_pending_memory(session_id: str | None) -> dict[str, Any] | None:
+    """Return pending memory proposal for the session, if any."""
+    if not session_id:
+        return None
+    entry = get_session_entry(session_id)
+    if entry is None:
+        return None
+    pending = entry.get("pending_memory")
+    return dict(pending) if isinstance(pending, dict) else None
+
+
+def set_pending_memory(
+    session_id: str | None, pending: dict[str, Any] | None
+) -> None:
+    """Set or clear the one pending memory proposal for the session."""
+    if not session_id:
+        return
+    entry = _ensure_session(session_id)
+    entry["pending_memory"] = dict(pending) if pending else None
+    entry["updated_at"] = time.time()
+
+
+def clear_pending_memory(session_id: str | None) -> None:
+    set_pending_memory(session_id, None)
 
 
 def record_guardrail(
@@ -268,11 +328,35 @@ def is_sensitive_extraction(question: str) -> bool:
 
 
 # In-domain follow-ups that must never escalate as recipe reconstruction.
+# Includes location-operational cues (CONTEXT-memory §2 hours/suppliers).
 _IN_DOMAIN_FOLLOWUP = re.compile(
     r"\b(points?|tier|gold|silver|bronze|ticket|incident|allergen|"
-    r"loyalty|waste|supplier\s+order|discount|program)\b",
+    r"loyalty|waste|supplier\s+order|discount|program|"
+    r"hours?|opening|closing|schedule|what\s+time|"
+    r"open(?:s|ing)?|clos(?:e|es|ing)|delivery\s+days?|"
+    r"hora(?:s)?|abre|abren|cierra|cierran|horario|entrega(?:s)?)\b",
     re.IGNORECASE,
 )
+
+# Location store-ops questions (hours / schedule / delivery days) — in-domain.
+_LOCATION_OPERATIONAL = re.compile(
+    r"("
+    r"\b(what\s+time|hours?|opening|closing|schedule)\b|"
+    r"\b(open(?:s|ing)?|clos(?:e|es|ing))\b|"
+    r"\b(delivery\s+days?|supplier\s+delivery)\b|"
+    r"\b(hora(?:s)?|abre|abren|cierra|cierran|horario|d[ií]as?\s+de\s+entrega|entrega(?:s)?)\b"
+    r")",
+    re.IGNORECASE,
+)
+
+
+def is_location_operational_query(question: str) -> bool:
+    """True for named-location ops (hours/open/close/schedule/delivery days).
+
+    CONTEXT-memory §2 / store operations — does not cover supplier prices or recipes.
+    """
+    return bool(_LOCATION_OPERATIONAL.search(question or ""))
+
 
 # Narrow continuation cues: recipe-tied tokens only (no loyalty/ticket/allergen).
 _EXTRACTION_CONTINUATION = re.compile(
@@ -292,18 +376,24 @@ def is_extraction_continuation(question: str) -> bool:
     """True for ordinal/amount/ingredient follow-ups continuing a prior extraction.
 
     Narrow on purpose: does not match bare in-domain follow-ups (points, tiers,
-    tickets, allergens) even when the session already has extraction_turns.
+    tickets, allergens, location hours) even when the session already has
+    extraction_turns.
     """
     q = (question or "").strip()
     if not q:
         return False
-    if _IN_DOMAIN_FOLLOWUP.search(q):
+    if _IN_DOMAIN_FOLLOWUP.search(q) or is_location_operational_query(q):
         return False
     return bool(_EXTRACTION_CONTINUATION.search(q))
 
 
 def classify_input(question: str) -> GuardDecision:
-    """Classify a user question. Does not mutate the session ledger."""
+    """Classify a user question. Does not mutate the session ledger.
+
+    Sensitive / injection / personal / small-talk checks run first and are
+    unchanged. Location-operational questions (hours, schedule, delivery days)
+    are explicitly in-domain and pass when those refuse lanes do not fire.
+    """
     q = question or ""
     if is_injection_attempt(q):
         return {
@@ -337,6 +427,14 @@ def classify_input(question: str) -> GuardDecision:
             "answer": SMALL_TALK_RECONNECT,
             "reason": "small_talk_redirect",
         }
+    if is_location_operational_query(q):
+        return {
+            "blocked": False,
+            "failure_type": None,
+            "action": "pass",
+            "answer": None,
+            "reason": "location_operational",
+        }
     return {
         "blocked": False,
         "failure_type": None,
@@ -344,6 +442,160 @@ def classify_input(question: str) -> GuardDecision:
         "answer": None,
         "reason": None,
     }
+
+
+# Explicit memory approve/edit — bare yes/sí/ok alone is NOT enough.
+_MEMORY_APPROVE = re.compile(
+    r"("
+    r"^\s*(yes|sí|si)[,!]?\s+(please\s+)?(remember|save|store|keep)\b|"
+    r"\b(please\s+)?(remember|save|store|keep)\s+(that|this|it)\b|"
+    r"\b(yes|sí|si)[,!]?\s+(please\s+)?(guárdalo|guardalo|recuérdalo|recuerdalo)\b|"
+    r"\b(guárdalo|guardalo|recuérdalo|recuerdalo|aprobad[oa]?)\b|"
+    r"\b(confirm|approve)\s+(that|this|it|the\s+memory)?\b|"
+    r"\bsí[,!]?\s+guárdalo\b|"
+    r"\byes[,!]?\s+remember\b|"
+    r"^\s*save\s+it\b|"
+    r"^\s*keep\s+it\b|"
+    r"^\s*store\s+it\b"
+    r")",
+    re.IGNORECASE,
+)
+
+# EDIT cues — must win over refuse/approve (value correction, including "as X, not Y").
+_MEMORY_EDIT = re.compile(
+    r"("
+    r"\b(change|edit|update|correct)\s+(it|that|this|the\s+memory)?\s*(to|:)\s*(?P<v1>.+)|"
+    r"\b(make\s+it)\s+(?P<v2>.+)|"
+    r"\b(actually,?\s+remember|remember\s+instead)\s*:?\s*(?P<v3>.+)|"
+    r"\bremember\s+(?:it|that|this)\s+as\s+(?P<v4>.+)|"
+    r"\b(rather)\s+(?:remember\s+)?(?P<v5>.+)|"
+    r"\b(corrige|cambia|edita)\s*:?\s*(?P<v6>.+)|"
+    r"\b(en\s+vez(?:\s+de)?|mejor)\s*:?\s*(?P<v7>.+)|"
+    r"\bedit\s*:\s*(?P<v8>.+)"
+    r")",
+    re.IGNORECASE | re.DOTALL,
+)
+
+# Refusal-of-storage only — never bare mid-sentence "not"/"no".
+_MEMORY_REFUSE_STORE = re.compile(
+    r"("
+    r"\b(don'?t|dont|do\s+not|never)\s+(please\s+)?(remember|save|store|keep)\b|"
+    r"\bno\s+lo\s+(recuerdes|guardes|almacenes)\b|"
+    r"\b(no|nunca)\s+(?:me\s+)?(?:lo\s+)?(recuerdes|guardes|almacenes)\b"
+    r")",
+    re.IGNORECASE,
+)
+
+_BARE_AFFIRM = re.compile(
+    r"^\s*(yes|sí|si|ok|okay|yep|yeah|sure)\s*[.!]?\s*$",
+    re.IGNORECASE,
+)
+
+_BARE_NO = re.compile(
+    r"^\s*(no|nope|nah)\s*[.!]?\s*$",
+    re.IGNORECASE,
+)
+
+_TRAILING_NOT_CLAUSE = re.compile(
+    r"\s*,\s*not\b.+$",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def _extract_edit_value(question: str) -> str | None:
+    """Return revised memory text when an edit/correction cue + new value is present."""
+    m = _MEMORY_EDIT.search(question or "")
+    if not m:
+        return None
+    edited: str | None = None
+    for name, value in m.groupdict().items():
+        if name.startswith("v") and value and value.strip():
+            edited = value.strip()
+    if not edited:
+        # Fallback: last non-empty unnamed group with content.
+        for group in m.groups():
+            if group and len(group.strip()) > 1:
+                edited = group.strip()
+    if not edited:
+        return None
+    # Prefer the corrected value before a trailing ", not <old>" contrast.
+    edited = _TRAILING_NOT_CLAUSE.sub("", edited).strip(" .,;:")
+    # Drop leading filler from "it as …" style captures already handled by named groups.
+    if len(edited) < 1:
+        return None
+    return edited
+
+
+def classify_memory_decision(
+    question: str,
+) -> tuple[MemoryDecision, str | None]:
+    """Classify a user reply against a pending memory proposal.
+
+    Precedence: EDIT (value correction) → storage-refusal REJECT → APPROVE →
+    default reject (silence / small-talk / bare yes-ok / topic-change).
+
+    Storage refusal matches don't/do-not/never + remember|save|store|keep (and ES
+    equivalents) — never a bare mid-sentence \"not\".
+    Returns (decision, edited_summary_or_None).
+    """
+    q = (question or "").strip()
+    if not q:
+        return "reject", None
+
+    # 1) EDIT first — wins over refuse and approve (e.g. "as 11:30, not 11").
+    edited = _extract_edit_value(q)
+    if edited:
+        return "edit", edited
+
+    # 2) Storage-refusal REJECT (scoped verbs + bare no/nope only).
+    if _MEMORY_REFUSE_STORE.search(q) or _BARE_NO.match(q):
+        return "reject", None
+
+    # 3) APPROVE — explicit save cue (not a refusal; refusals already returned).
+    if _MEMORY_APPROVE.search(q):
+        return "approve", None
+
+    # 4) Default reject: small-talk, bare affirm, ambiguity, topic-change.
+    if is_small_talk(q) or _BARE_AFFIRM.match(q):
+        return "reject", None
+
+    return "reject", None
+
+
+def strip_memory_decision_clause(question: str) -> str:
+    """Remove approve/edit cue spans so residual question text can be routed."""
+    q = (question or "").strip()
+    if not q:
+        return ""
+    # Split on sentence boundaries; drop sentences that are pure approve/edit.
+    parts = re.split(r"(?<=[.!?])\s+", q)
+    kept: list[str] = []
+    for part in parts:
+        decision, _ = classify_memory_decision(part)
+        if decision == "approve" and not re.search(
+            r"\?", part
+        ) and len(part.split()) <= 12:
+            continue
+        if decision == "edit" and _MEMORY_EDIT.fullmatch(part.strip()):
+            continue
+        # Also strip leading approve clause before a residual question.
+        cleaned = _MEMORY_APPROVE.sub("", part).strip(" ,;-")
+        if cleaned:
+            kept.append(cleaned if cleaned != part.strip() else part)
+    residual = " ".join(kept).strip()
+    # If whole message was approve+question without clear split, strip approve prefix.
+    if not residual or residual == q:
+        m = _MEMORY_APPROVE.search(q)
+        if m and m.start() == 0:
+            residual = q[m.end() :].strip(" ,;-")
+            # Drop conjunction leftovers
+            residual = re.sub(
+                r"^(and|also|también|y)\b[, ]*",
+                "",
+                residual,
+                flags=re.IGNORECASE,
+            ).strip()
+    return residual
 
 
 def apply_input_guard(

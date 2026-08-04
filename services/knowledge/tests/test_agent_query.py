@@ -40,6 +40,7 @@ def test_agent_query_success() -> None:
     assert response.json() == {
         "run_id": "run-1",
         "answer": "Gold needs 50+ points.",
+        "memory_proposal": None,
     }
     invoke_mock.assert_called_once_with(
         "How many points for Gold?",

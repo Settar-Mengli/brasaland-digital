@@ -932,3 +932,19 @@ uv run --directory data --python 3.13 pytest
 cd services/knowledge; uv run pytest
 cd mcps/company-tools; uv run pytest
 ```
+
+## Milestone 8 — Agent Memory and Self-Improvement
+
+**Status:** Implemented on branch `w23-d67-agent-memory`.
+
+**Scope:** Confirmation-gated memory on the same LangGraph support agent (no second model / multi-agent). Structured single-call output (`answer` + optional `memory_proposal`) in `generate_answer_structured`. Pending proposal on `SESSION_GUARD[session_id].pending_memory`; approval via `classify_memory_decision` in `guardrails.py` (bare yes/sí alone → reject; silence/topic-change → reject). Approved entries: Redis location+category upsert (`memory_store.py`); audit scrub on `originating_message`; write-path never-store + poisoning; deterministic read-side filter vs RAG chunks; generalized self-correction fail-closed. Graph nodes `resolve_memory` + `attach_memory_proposal`. HTTP: additive `memory_proposal` on `/agent/query`; JWT `GET /agent/memory` + `/agent/memory/audit`. Compose: knowledge `REDIS_URL` + `depends_on: redis`.
+
+**Design notes (for PR):** Memory type = structured semantic operational facts keyed by `(location, category)` — not pure episodic, not Qdrant vector memory, not KG. Read-side poisoning guaranteed by pre-injection filter (live model obedience not claimed in CI). Pending TTL expiry → rejected audit (`ttl_expired`).
+
+**Verify (local):**
+
+```powershell
+uv run --directory data --python 3.13 pytest ../tests/pipelines/test_agent_memory.py
+uv run --directory data --python 3.13 pytest
+cd services/knowledge; uv run pytest
+```
