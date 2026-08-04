@@ -25,15 +25,25 @@ from langgraph.graph import END, START, StateGraph
 from pipelines.guardrails import (
     OUTPUT_SAFE_REFUSAL,
     apply_input_guard,
+    classify_memory_decision,
+    clear_pending_memory,
     get_guardrail_summary,
+    get_pending_memory,
     record_guardrail,
+    set_pending_memory,
+    strip_memory_decision_clause,
     validate_output,
     validate_tool_result,
 )
 
 logger = logging.getLogger("pipelines.support_agent")
 
-from pipelines.rag import generate_answer, retrieve
+from pipelines.memory_store import (
+    log_proposal_event,
+    validate_memory_payload,
+    write_memory,
+)
+from pipelines.rag import generate_answer_structured, retrieve
 from pipelines.tools.ticket_lookup import (
     TicketLookupInput,
     TicketLookupResult,
@@ -51,6 +61,9 @@ TICKET_FALLBACK_ANSWER = (
 TICKET_UNCONFIRMED_NOTE = (
     "I couldn't confirm that ticket's status right now."
 )
+MEMORY_SAVED_CONFIRM = "Got it — I'll remember that for next time."
+MEMORY_EDITED_CONFIRM = "Got it — I've updated what I'll remember."
+MEMORY_REJECTED_ACK = "Okay, I won't store that."
 
 # Heuristic signals — keyword/regex router; LLM router is a later swap.
 _TICKET_SIGNAL = re.compile(
@@ -62,9 +75,13 @@ _TICKET_REF = re.compile(
     re.IGNORECASE,
 )
 # "manual" uses hyphen-aware boundaries so MANUAL-98 is not a RAG hit.
+# Location ops (hours/close/schedule/delivery) keep the RAG/memory path intentional.
 _RAG_SIGNAL = re.compile(
     r"\b(?:loyalty|points|gold|silver|bronze|policy|handbook|"
-    r"allergen|waste|supplier|ordering|discount|tier|program)\b|"
+    r"allergen|waste|supplier|ordering|discount|tier|program|"
+    r"hours?|opening|closing|schedule|what\s+time|"
+    r"open(?:s|ing)?|clos(?:e|es|ing)|delivery\s+days?|"
+    r"hora(?:s)?|abre|abren|cierra|cierran|horario|entrega(?:s)?)\b|"
     r"(?<![A-Za-z0-9-])manual(?![A-Za-z0-9-])",
     re.IGNORECASE,
 )
@@ -85,6 +102,9 @@ class AgentState(TypedDict):
     sources_ran: list[str]
     user_id: str | None
     guardrail_blocked: bool
+    memory_proposal: dict[str, Any] | None
+    memory_decision: str | None
+    skip_sources: bool
 
 
 def _utc_now() -> str:
@@ -183,7 +203,291 @@ def input_guardrails(
         failure_type=None,
         action="pass",
     )
-    return {"guardrail_blocked": False}
+    return {"guardrail_blocked": False, "skip_sources": False}
+
+
+def resolve_memory(
+    state: AgentState, config: RunnableConfig
+) -> dict[str, Any]:
+    """Resolve a pending memory proposal before routing a new question."""
+    run_id = state["run_id"]
+    session_id = _session_id_from_config(config)
+    pending = get_pending_memory(session_id)
+    if not pending:
+        _append_trace(run_id, "resolve_memory", action="noop")
+        return {
+            "memory_decision": None,
+            "skip_sources": False,
+            "memory_proposal": None,
+        }
+
+    question = state.get("question") or ""
+    decision, edited = classify_memory_decision(question)
+    residual = strip_memory_decision_clause(question)
+
+    def _reject(*, reason: str) -> dict[str, Any]:
+        log_proposal_event(
+            {
+                "session_id": session_id,
+                "outcome": "rejected",
+                "proposal": {
+                    "summary": pending.get("summary"),
+                    "location": pending.get("location"),
+                    "category": pending.get("category"),
+                    "why": pending.get("why"),
+                    "proposal_id": pending.get("proposal_id"),
+                },
+                "originating_message": question,
+                "reason": reason,
+            }
+        )
+        clear_pending_memory(session_id)
+        # Topic-change: clear pending, then answer the new question normally.
+        if reason == "topic_change":
+            _append_trace(
+                run_id,
+                "resolve_memory",
+                action="reject_continue",
+                reason=reason,
+                decision="reject",
+            )
+            return {
+                "question": question,
+                "memory_decision": "reject",
+                "skip_sources": False,
+                "memory_proposal": None,
+            }
+        _append_trace(
+            run_id,
+            "resolve_memory",
+            action="reject",
+            reason=reason,
+            decision="reject",
+        )
+        return {
+            "answer": MEMORY_REJECTED_ACK,
+            "memory_decision": "reject",
+            "skip_sources": True,
+            "sources_ran": [],
+            "memory_proposal": None,
+        }
+
+    if decision == "reject":
+        # Bare reject / silence-like vs topic-change (has residual operational text).
+        if residual and residual != question and len(residual.split()) > 2:
+            return _reject(reason="topic_change")
+        # Full message didn't match approve/edit — treat as topic-change if it
+        # looks like a new question, else reject-only.
+        if "?" in question or len(question.split()) > 8:
+            return _reject(reason="topic_change")
+        return _reject(reason="ambiguous")
+
+    summary = (
+        edited
+        if decision == "edit" and edited
+        else (pending.get("summary") or "")
+    )
+    location = pending.get("location") or "unknown"
+    category = pending.get("category") or "known_incidents"
+    poison = validate_memory_payload(summary=summary, category=category)
+    if poison:
+        log_proposal_event(
+            {
+                "session_id": session_id,
+                "outcome": "rejected",
+                "proposal": {
+                    "summary": summary,
+                    "location": location,
+                    "category": category,
+                    "proposal_id": pending.get("proposal_id"),
+                },
+                "originating_message": question,
+                "reason": poison,
+            }
+        )
+        clear_pending_memory(session_id)
+        _append_trace(
+            run_id,
+            "resolve_memory",
+            action="write_rejected",
+            reason=poison,
+            decision=decision,
+        )
+        return {
+            "answer": MEMORY_REJECTED_ACK,
+            "memory_decision": "reject",
+            "skip_sources": True,
+            "sources_ran": [],
+            "memory_proposal": None,
+        }
+
+    result = write_memory(
+        {
+            "location": location,
+            "category": category,
+            "summary": summary,
+            "proposal_id": pending.get("proposal_id"),
+        }
+    )
+    outcome = "edited" if decision == "edit" else "approved"
+    if not result["ok"]:
+        log_proposal_event(
+            {
+                "session_id": session_id,
+                "outcome": "rejected",
+                "proposal": {
+                    "summary": summary,
+                    "location": location,
+                    "category": category,
+                    "proposal_id": pending.get("proposal_id"),
+                },
+                "originating_message": question,
+                "reason": result.get("reason"),
+            }
+        )
+        clear_pending_memory(session_id)
+        _append_trace(
+            run_id,
+            "resolve_memory",
+            action="write_failed",
+            reason=result.get("reason"),
+            decision=decision,
+        )
+        return {
+            "answer": MEMORY_REJECTED_ACK,
+            "memory_decision": "reject",
+            "skip_sources": True,
+            "sources_ran": [],
+            "memory_proposal": None,
+        }
+
+    log_proposal_event(
+        {
+            "session_id": session_id,
+            "outcome": outcome,
+            "proposal": {
+                "summary": summary,
+                "location": location,
+                "category": category,
+                "proposal_id": pending.get("proposal_id"),
+            },
+            "originating_message": question,
+            "reason": None,
+        }
+    )
+    clear_pending_memory(session_id)
+    confirm = MEMORY_EDITED_CONFIRM if outcome == "edited" else MEMORY_SAVED_CONFIRM
+
+    # Residual new question after approve/edit.
+    if residual and residual.strip() and residual.strip() != question.strip():
+        # Heuristic: residual still looks like a question/request.
+        if "?" in residual or len(residual.split()) > 3:
+            _append_trace(
+                run_id,
+                "resolve_memory",
+                action="approve_continue",
+                decision=decision,
+                outcome=outcome,
+            )
+            return {
+                "question": residual.strip(),
+                "answer": None,
+                "memory_decision": decision,
+                "skip_sources": False,
+                "memory_proposal": None,
+            }
+
+    _append_trace(
+        run_id,
+        "resolve_memory",
+        action="approve",
+        decision=decision,
+        outcome=outcome,
+    )
+    return {
+        "answer": confirm,
+        "memory_decision": decision,
+        "skip_sources": True,
+        "sources_ran": [],
+        "memory_proposal": None,
+    }
+
+
+def attach_memory_proposal(
+    state: AgentState, config: RunnableConfig
+) -> dict[str, Any]:
+    """Register at most one pending proposal; drop if one already pending."""
+    run_id = state["run_id"]
+    session_id = _session_id_from_config(config)
+    proposal = state.get("memory_proposal")
+    if not proposal:
+        _append_trace(run_id, "attach_memory_proposal", action="noop")
+        return {"memory_proposal": None}
+
+    if get_pending_memory(session_id):
+        _append_trace(
+            run_id,
+            "attach_memory_proposal",
+            action="dropped_one_pending",
+        )
+        return {"memory_proposal": None}
+
+    summary = (proposal.get("summary") or "").strip()
+    category = proposal.get("category") or "known_incidents"
+    poison = validate_memory_payload(summary=summary, category=category)
+    if poison:
+        log_proposal_event(
+            {
+                "session_id": session_id,
+                "outcome": "rejected",
+                "proposal": proposal,
+                "originating_message": state.get("question") or "",
+                "reason": poison,
+            }
+        )
+        _append_trace(
+            run_id,
+            "attach_memory_proposal",
+            action="never_store",
+            reason=poison,
+        )
+        return {"memory_proposal": None}
+
+    proposal_id = str(uuid.uuid4())
+    pending = {
+        "proposal_id": proposal_id,
+        "summary": summary,
+        "location": proposal.get("location") or "unknown",
+        "category": category,
+        "why": proposal.get("why") or "",
+        "originating_message": state.get("question") or "",
+        "proposed_at": _utc_now(),
+    }
+    set_pending_memory(session_id, pending)
+    log_proposal_event(
+        {
+            "id": proposal_id,
+            "session_id": session_id,
+            "outcome": "proposed",
+            "proposal": {
+                "summary": summary,
+                "location": pending["location"],
+                "category": category,
+                "why": pending["why"],
+                "proposal_id": proposal_id,
+            },
+            "originating_message": state.get("question") or "",
+            "reason": None,
+        }
+    )
+    _append_trace(
+        run_id,
+        "attach_memory_proposal",
+        action="proposed",
+        proposal_id=proposal_id,
+        category=category,
+    )
+    return {"memory_proposal": pending}
 
 
 def route_sources(state: AgentState) -> dict[str, Any]:
@@ -229,7 +533,9 @@ def generate_answer_node(state: AgentState) -> dict[str, Any]:
     run_id = state["run_id"]
     context = state.get("context") or []
     prompt_chunks = [{k: v for k, v in c.items() if k != "_score"} for c in context]
-    answer = generate_answer(state["question"], prompt_chunks)
+    structured = generate_answer_structured(state["question"], prompt_chunks)
+    answer = structured["answer"]
+    proposal = structured.get("memory_proposal")
     sources_ran = ["retrieve_context"]
     _append_trace(
         run_id,
@@ -238,8 +544,13 @@ def generate_answer_node(state: AgentState) -> dict[str, Any]:
         context=context,
         answer=answer,
         sources_ran=sources_ran,
+        memory_proposal=proposal,
     )
-    return {"answer": answer, "sources_ran": sources_ran}
+    return {
+        "answer": answer,
+        "sources_ran": sources_ran,
+        "memory_proposal": proposal,
+    }
 
 
 def lookup_ticket_node(
@@ -313,6 +624,7 @@ def compose_answer(state: AgentState) -> dict[str, Any]:
     incidents = list(tool_result.get("incidents") or [])
     context = state.get("context") or []
     sources_ran: list[str] = []
+    proposal: dict[str, Any] | None = None
 
     tool_text = format_ticket_answer(incidents) if tool_ok and incidents else ""
 
@@ -329,7 +641,11 @@ def compose_answer(state: AgentState) -> dict[str, Any]:
             prompt_chunks = [
                 {k: v for k, v in c.items() if k != "_score"} for c in context
             ]
-            rag_text = generate_answer(state["question"], prompt_chunks)
+            structured = generate_answer_structured(
+                state["question"], prompt_chunks
+            )
+            rag_text = structured["answer"]
+            proposal = structured.get("memory_proposal")
             answer = f"{tool_text}\n\n{rag_text}"
             sources_ran = ["ticket_lookup", "retrieve_context"]
         elif tool_ok and tool_text:
@@ -339,7 +655,11 @@ def compose_answer(state: AgentState) -> dict[str, Any]:
             prompt_chunks = [
                 {k: v for k, v in c.items() if k != "_score"} for c in context
             ]
-            rag_text = generate_answer(state["question"], prompt_chunks)
+            structured = generate_answer_structured(
+                state["question"], prompt_chunks
+            )
+            rag_text = structured["answer"]
+            proposal = structured.get("memory_proposal")
             answer = f"{TICKET_UNCONFIRMED_NOTE}\n\n{rag_text}"
             sources_ran = ["retrieve_context"]
         else:
@@ -355,8 +675,13 @@ def compose_answer(state: AgentState) -> dict[str, Any]:
         sources_ran=sources_ran,
         matched_by=matched_by,
         tool_ok=tool_ok,
+        memory_proposal=proposal,
     )
-    return {"answer": answer, "sources_ran": sources_ran}
+    return {
+        "answer": answer,
+        "sources_ran": sources_ran,
+        "memory_proposal": proposal,
+    }
 
 
 def output_guardrails(
@@ -414,8 +739,16 @@ def _route_after_validate(
 
 def _route_after_input(
     state: AgentState,
-) -> Literal["route_sources", "output_guardrails"]:
+) -> Literal["resolve_memory", "output_guardrails"]:
     if state.get("guardrail_blocked"):
+        return "output_guardrails"
+    return "resolve_memory"
+
+
+def _route_after_resolve(
+    state: AgentState,
+) -> Literal["route_sources", "output_guardrails"]:
+    if state.get("skip_sources"):
         return "output_guardrails"
     return "route_sources"
 
@@ -436,26 +769,42 @@ def _route_after_lookup(
     return "compose_answer"
 
 
+def _memory_available_for_question(question: str) -> bool:
+    """True when persistent memory has entries relevant to the question."""
+    try:
+        from pipelines.memory_store import guess_location_from_text, read_memory
+    except Exception:  # noqa: BLE001
+        return False
+    location = guess_location_from_text(question)
+    entries = read_memory(location=location) if location else []
+    return bool(entries)
+
+
 def _route_after_retrieve(
     state: AgentState,
 ) -> Literal["refuse_no_context", "generate_answer_node", "compose_answer"]:
     if state.get("route") == "both":
         return "compose_answer"
-    if not state.get("context"):
-        return "refuse_no_context"
-    return "generate_answer_node"
+    if state.get("context"):
+        return "generate_answer_node"
+    # Empty RAG: still generate when location memory can answer (hours, etc.).
+    if _memory_available_for_question(state.get("question") or ""):
+        return "generate_answer_node"
+    return "refuse_no_context"
 
 
 def _build_graph():
     builder = StateGraph(AgentState)
     builder.add_node("validate_question", validate_question)
     builder.add_node("input_guardrails", input_guardrails)
+    builder.add_node("resolve_memory", resolve_memory)
     builder.add_node("route_sources", route_sources)
     builder.add_node("retrieve_context", retrieve_context)
     builder.add_node("refuse_no_context", refuse_no_context)
     builder.add_node("generate_answer_node", generate_answer_node)
     builder.add_node("lookup_ticket", lookup_ticket_node)
     builder.add_node("compose_answer", compose_answer)
+    builder.add_node("attach_memory_proposal", attach_memory_proposal)
     builder.add_node("output_guardrails", output_guardrails)
 
     builder.add_edge(START, "validate_question")
@@ -470,6 +819,14 @@ def _build_graph():
     builder.add_conditional_edges(
         "input_guardrails",
         _route_after_input,
+        {
+            "resolve_memory": "resolve_memory",
+            "output_guardrails": "output_guardrails",
+        },
+    )
+    builder.add_conditional_edges(
+        "resolve_memory",
+        _route_after_resolve,
         {
             "route_sources": "route_sources",
             "output_guardrails": "output_guardrails",
@@ -500,9 +857,10 @@ def _build_graph():
             "compose_answer": "compose_answer",
         },
     )
-    builder.add_edge("refuse_no_context", "output_guardrails")
-    builder.add_edge("generate_answer_node", "output_guardrails")
-    builder.add_edge("compose_answer", "output_guardrails")
+    builder.add_edge("refuse_no_context", "attach_memory_proposal")
+    builder.add_edge("generate_answer_node", "attach_memory_proposal")
+    builder.add_edge("compose_answer", "attach_memory_proposal")
+    builder.add_edge("attach_memory_proposal", "output_guardrails")
     builder.add_edge("output_guardrails", END)
 
     return builder.compile(checkpointer=MemorySaver())
@@ -564,6 +922,9 @@ def invoke_support_agent(
         "sources_ran": [],
         "user_id": user_id,
         "guardrail_blocked": False,
+        "memory_proposal": None,
+        "memory_decision": None,
+        "skip_sources": False,
     }
     try:
         final = COMPILED_GRAPH.invoke(initial, config=config)
@@ -583,14 +944,16 @@ def invoke_support_agent(
             "error": None,
             "guardrail_blocked": True,
             "sources_ran": [],
+            "memory_proposal": None,
         }
-        return {"run_id": rid, "answer": safe}
+        return {"run_id": rid, "answer": safe, "memory_proposal": None}
 
     error = final.get("error")
     answer = final.get("answer")
     tool_result = final.get("tool_result") or {}
     sources_ran = list(final.get("sources_ran") or [])
     route = final.get("route")
+    memory_proposal = final.get("memory_proposal")
     final_payload: dict[str, Any] = {
         "question": final.get("question"),
         "context": final.get("context") or [],
@@ -600,13 +963,19 @@ def invoke_support_agent(
         "sources_ran": sources_ran,
         "user_id": final.get("user_id"),
         "guardrail_blocked": bool(final.get("guardrail_blocked")),
+        "memory_proposal": memory_proposal,
+        "memory_decision": final.get("memory_decision"),
     }
     if tool_result.get("ok"):
         final_payload["matched_by"] = tool_result.get("matched_by")
     TRACES[rid]["final"] = final_payload
     if error:
         return {"run_id": rid, "error": error}
-    return {"run_id": rid, "answer": answer or ""}
+    return {
+        "run_id": rid,
+        "answer": answer or "",
+        "memory_proposal": memory_proposal,
+    }
 
 
 # Re-export for HTTP summary endpoint.

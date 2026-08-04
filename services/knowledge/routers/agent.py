@@ -20,6 +20,7 @@ class AgentQueryRequest(BaseModel):
 class AgentQueryResponse(BaseModel):
     run_id: str
     answer: str
+    memory_proposal: dict[str, Any] | None = None
 
 
 @router.post("/query", response_model=AgentQueryResponse)
@@ -43,7 +44,11 @@ def post_agent_query(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="agent request failed",
         )
-    return AgentQueryResponse(run_id=result["run_id"], answer=result["answer"])
+    return AgentQueryResponse(
+        run_id=result["run_id"],
+        answer=result["answer"],
+        memory_proposal=result.get("memory_proposal"),
+    )
 
 
 @router.get("/trace/{run_id}")
@@ -70,3 +75,25 @@ def get_agent_guardrails_summary(
     from pipelines.guardrails import get_guardrail_summary
 
     return get_guardrail_summary(session_id)
+
+
+@router.get("/memory")
+def get_agent_memory(
+    _user_uuid: Annotated[str, Depends(get_current_user_uuid)],
+    location: Annotated[str | None, Query()] = None,
+    category: Annotated[str | None, Query()] = None,
+) -> dict[str, Any]:
+    from pipelines.memory_store import read_memory
+
+    entries = read_memory(location=location, category=category)
+    return {"entries": entries}
+
+
+@router.get("/memory/audit")
+def get_agent_memory_audit(
+    _user_uuid: Annotated[str, Depends(get_current_user_uuid)],
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> dict[str, Any]:
+    from pipelines.memory_store import list_audit
+
+    return {"events": list_audit(limit=limit)}

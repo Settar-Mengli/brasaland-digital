@@ -10,8 +10,8 @@ JWT-guarded RAG Q&A over company manuals (loyalty, waste, allergens, supplier or
 
 ## Architecture
 
-- Retrieval + generation live in `data/pipelines/rag.py` (`retrieve`, `generate_answer`, `query`).
-- LangGraph support agent: `data/pipelines/support_agent.py` — heuristic `route_sources` (ticket vs RAG vs both from the question alone; LLM router is a later swap), RAG retrieve/generate/refuse, ticket tool node, and `compose_answer` for all tool and both-route finalization. Guardrails: `input_guardrails` (pre-route) and `output_guardrails` (pre-END) via `data/pipelines/guardrails.py`; session extraction ledger for §3 piece-by-piece defense. MemorySaver (`thread_id` = `run_id`); in-process `TRACES`. Inbound Bearer and optional `session_id` are forwarded via `configurable` only (never AgentState / checkpoint / trace).
+- Retrieval + generation live in `data/pipelines/rag.py` (`retrieve`, `generate_answer`, `generate_answer_structured`, `query`).
+- LangGraph support agent: `data/pipelines/support_agent.py` — heuristic `route_sources` (ticket vs RAG vs both from the question alone; LLM router is a later swap), RAG retrieve/generate/refuse, ticket tool node, and `compose_answer` for all tool and both-route finalization. Guardrails: `input_guardrails` (pre-route) and `output_guardrails` (pre-END) via `data/pipelines/guardrails.py`; session extraction ledger for §3 piece-by-piece defense. **Agent memory (M8):** `resolve_memory` + `attach_memory_proposal`; pending proposal on `SESSION_GUARD[session_id].pending_memory`; approved entries in Redis (`REDIS_URL`) via `data/pipelines/memory_store.py` (location+category upsert); audit log with scrubbed `originating_message`. Structured single-call output (`answer` + optional `memory_proposal`). MemorySaver (`thread_id` = `run_id`); in-process `TRACES`. Inbound Bearer and optional `session_id` are forwarded via `configurable` only (never AgentState / checkpoint / trace).
 - Ticket tool: `data/pipelines/tools/ticket_lookup.py` — calls company-tools MCP `check_ticket_status` (langchain-mcp-adapters over Streamable HTTP). No direct incident-manager path from the agent. Dual id / `source_incident_id` resolution lives on the MCP server. Deterministic formatter for ticket fields. Honest fallback when unavailable/unknown; malformed tool payloads → structural guardrail + fallback.
 - This service imports `pipelines` via `config.py` sys.path / Docker `PYTHONPATH=/app/data` (same pattern as `services/reporting`).
 - Indexing is **operator-run**, not app lifespan: `scripts/index_knowledge_base.py`.
@@ -22,9 +22,11 @@ JWT-guarded RAG Q&A over company manuals (loyalty, waste, allergens, supplier or
 | --- | --- | --- | --- |
 | `GET` | `/` | no | `{"service":"knowledge"}` |
 | `POST` | `/knowledge/query` | Bearer JWT | `{"question":"..."}` → `{"answer":"..."}` only |
-| `POST` | `/agent/query` | Bearer JWT | `{"question":"...","session_id"?}` → `{"run_id","answer"}`; errors → `{"detail"}`. Optional `session_id` is the guardrail ledger key (via configurable only, never checkpointed). If omitted, an ephemeral per-call UUID is used — not the JWT user id. |
+| `POST` | `/agent/query` | Bearer JWT | `{"question":"...","session_id"?}` → `{"run_id","answer","memory_proposal"?}`; errors → `{"detail"}`. Optional `session_id` is the guardrail + pending-memory key (via configurable only, never checkpointed). If omitted, an ephemeral per-call UUID is used — not the JWT user id. |
 | `GET` | `/agent/trace/{run_id}` | Bearer JWT | structured trace; `404` if unknown |
 | `GET` | `/agent/guardrails/summary` | Bearer JWT | optional `?session_id=`; with `session_id` returns that session's counters; **omitting `session_id` yields process-wide counters** across all sessions in the worker |
+| `GET` | `/agent/memory` | Bearer JWT | optional `?location=` / `?category=` — consolidated approved memory entries |
+| `GET` | `/agent/memory/audit` | Bearer JWT | recent proposal audit events (scrubbed originating messages; retained on reject) |
 
 Trace shape: `nodes[]` records attempt order (including failed tool calls and guardrail blocks with `failure_type` in `{structural, content, security}`). `final.sources_ran` lists **contributing** sources only (`ticket_lookup` only if `tool_result.ok`; `retrieve_context` only if RAG context contributed). Also `final.route` and optional `matched_by`.
 
@@ -49,6 +51,7 @@ Copy the repo-root `.env.example` → `.env` (never commit secrets). Required fo
 - `EMBED_MODEL_ID` (default `BAAI/bge-small-en-v1.5`)
 - `KNOWLEDGE_CORPUS_PATH` (optional; default repo `docs/company-knowledge-base`)
 - `JWT_PUBLIC_KEY`, `JWT_ALGORITHM`
+- `REDIS_URL` — approved agent memory + audit (Compose redis:6379; in-memory fallback when unset for offline tests)
 - `MCP_SERVER_URL` — company-tools MCP Streamable HTTP URL (native `http://localhost:8016/mcp`; Compose `http://company-tools-mcp:8016/mcp`). The inbound user Bearer from `/agent/query` is forwarded to MCP; no service-login secret.
 
 ## Index the corpus
