@@ -3,9 +3,9 @@ name = "brasaland-data"
 version = "0.1.0"
 requires-python = ">=3.11,<3.14"
 dependencies = [
-    "prefect>=3",
+    "prefect>=3.7.8,<4",
     "pandas",
-    "sqlmodel",
+    "sqlmodel>=0.0.39,<1",
     "psycopg2-binary",
     "python-dotenv",
     "scikit-learn",

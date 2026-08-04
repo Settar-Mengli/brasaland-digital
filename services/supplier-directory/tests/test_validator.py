@@ -38,12 +38,15 @@ def test_usa_cop_rejected() -> None:
 
 
 def test_colombia_cop_passes() -> None:
-    validate_supplier(_base(country="Colombia", currency="COP"))
+    assert validate_supplier(_base(country="Colombia", currency="COP")) is None
 
 
 def test_usa_usd_passes() -> None:
-    validate_supplier(
-        _base(country="USA", currency="USD", categories=["meat"])
+    assert (
+        validate_supplier(
+            _base(country="USA", currency="USD", categories=["meat"])
+        )
+        is None
     )
 
 

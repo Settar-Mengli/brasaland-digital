@@ -204,14 +204,14 @@ requires-dist = [
     { name = "mcp", specifier = ">=1.20.0,<2" },
     { name = "openai" },
     { name = "pandas" },
-    { name = "prefect", specifier = ">=3" },
+    { name = "prefect", specifier = ">=3.7.8,<4" },
     { name = "psycopg2-binary" },
     { name = "python-dotenv" },
     { name = "qdrant-client" },
     { name = "redis", specifier = ">=5" },
     { name = "scikit-learn" },
     { name = "scipy" },
-    { name = "sqlmodel" },
+    { name = "sqlmodel", specifier = ">=0.0.39,<1" },
 ]
 
 [package.metadata.requires-dev]

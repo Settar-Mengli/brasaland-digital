@@ -46,7 +46,7 @@ def get_engine() -> Engine:
     if not url:
         raise RuntimeError("DATABASE_URL is not set")
 
-    _engine = create_engine(url, echo=False)
+    _engine = create_engine(url, echo=False, pool_pre_ping=True)
     return _engine
 
 

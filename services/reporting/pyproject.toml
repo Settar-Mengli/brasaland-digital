@@ -7,11 +7,11 @@ dependencies = [
     "uvicorn[standard]==0.34.3",
     "pydantic==2.11.4",
     "python-dotenv==1.0.1",
-    "sqlmodel",
+    "sqlmodel>=0.0.39,<1",
     "psycopg2-binary",
     "pandas",
-    "prefect>=3",
-    "celery[redis]",
+    "prefect>=3.4.5,<4",
+    "celery[redis]>=5.6.3,<6",
 ]
 
 [dependency-groups]

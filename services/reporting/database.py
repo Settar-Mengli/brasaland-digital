@@ -26,7 +26,7 @@ def get_engine() -> Engine:
     if database_url is None:
         raise RuntimeError("DATABASE_URL is not set")
 
-    _engine = create_engine(database_url, echo=False)
+    _engine = create_engine(database_url, echo=False, pool_pre_ping=True)
 
     if _engine.dialect.name == "sqlite":
 
