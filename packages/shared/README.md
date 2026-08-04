@@ -4,13 +4,7 @@ Pure incident field validation and lifecycle rules for Brasaland Python services
 
 ## Install (editable, from a consuming service)
 
-Pip (`requirements.txt`):
-
-```
--e ../../packages/shared
-```
-
-Uv (`pyproject.toml`):
+Add to the service `pyproject.toml`:
 
 ```toml
 dependencies = ["brasaland-shared"]
@@ -19,19 +13,18 @@ dependencies = ["brasaland-shared"]
 brasaland-shared = { path = "../../packages/shared", editable = true }
 ```
 
+Then sync from the consuming service:
+
+```powershell
+uv sync --python 3.13
+```
+
 ## Testing
 
 ```powershell
 cd packages/shared
+uv sync --python 3.13
 uv run pytest
 ```
 
 Expect **33** passed.
-
-## requirements.txt
-
-Generated for pip compatibility (runtime export only):
-
-```powershell
-uv export --no-hashes -o requirements.txt
-```

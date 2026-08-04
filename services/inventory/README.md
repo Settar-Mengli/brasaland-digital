@@ -20,8 +20,7 @@ services/inventory/
 ├── seed.py                # CLI: load CONTEXT seed rows into Supabase
 ├── tests/                 # pytest (SQLite in-memory)
 ├── CONTEXT-brasaland.md   # Data contract (authoritative)
-├── pyproject.toml
-├── requirements.txt       # Generated pip-compat export (uv export)
+├── pyproject.toml         # Declared deps (locked in uv.lock)
 └── README.md
 ```
 
@@ -49,13 +48,13 @@ Copy `.env.example` to `.env` and set:
 
 ```powershell
 cd services/inventory
-uv sync
+uv sync --python 3.13
 uv run uvicorn app:app --port 8012
 ```
 
 Open **http://127.0.0.1:8012/docs**
 
-Requires **Python 3.11+**. Dependencies are managed with [uv](https://docs.astral.sh/uv/). `requirements.txt` is a generated pip-compat artifact (`uv export --no-hashes -o requirements.txt`).
+Requires **Python 3.11+**. Dependencies are declared in `pyproject.toml`, locked in `uv.lock`, and managed with [uv](https://docs.astral.sh/uv/).
 
 ## Seed
 

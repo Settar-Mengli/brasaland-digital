@@ -948,3 +948,11 @@ uv run --directory data --python 3.13 pytest ../tests/pipelines/test_agent_memor
 uv run --directory data --python 3.13 pytest
 cd services/knowledge; uv run pytest
 ```
+
+## uv-only conversion (chore/uv-only)
+
+**Status:** Staged on branch `chore/uv-only` (not committed).
+
+**Scope:** Removed six unused pip-export `requirements.txt` files (auth, supplier-directory, inventory, incident-manager, incident-analysis, packages/shared). Rewrote active docs to uv-only: deps declared in `pyproject.toml`, locked in `uv.lock`, install via `uv sync --python 3.13`. No `pyproject.toml` / `uv.lock` / dependency changes. Historical progress rows that mention `requirements.txt` left untouched.
+
+**Verify:** `uv sync --python 3.13` + `uv run pytest` passed for auth (88), supplier-directory (40), inventory (33), incident-manager (24), incident-analysis (18), packages/shared (33); `uv run --directory data --python 3.13 pytest` passed (99).

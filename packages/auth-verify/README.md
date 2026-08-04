@@ -34,16 +34,17 @@ dependencies = ["brasaland-auth-verify"]
 brasaland-auth-verify = { path = "../../packages/auth-verify", editable = true }
 ```
 
-Or in `requirements.txt` (pip):
+Then sync from the consuming service:
 
-```
--e ../../packages/auth-verify
+```powershell
+uv sync --python 3.13
 ```
 
 ## Testing
 
 ```powershell
 cd packages/auth-verify
+uv sync --python 3.13
 uv run pytest
 ```
 
