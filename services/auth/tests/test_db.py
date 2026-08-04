@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+import auth.db as db
 from auth.db import _resolve_path, get_db, reset_db
 
 
@@ -49,3 +50,5 @@ def test_get_db_opens_explicit_path_and_reopens_on_path_change(
 def test_reset_db_when_no_connection_is_open() -> None:
     reset_db()
     reset_db()
+    assert db._db is None
+    assert db._db_path is None

@@ -412,7 +412,7 @@ requires-dist = [
     { name = "psycopg2-binary" },
     { name = "pydantic", specifier = "==2.11.4" },
     { name = "python-dotenv", specifier = "==1.0.1" },
-    { name = "sqlmodel" },
+    { name = "sqlmodel", specifier = ">=0.0.39,<1" },
     { name = "uvicorn", extras = ["standard"], specifier = "==0.34.3" },
 ]
 

@@ -956,3 +956,16 @@ cd services/knowledge; uv run pytest
 **Scope:** Removed six unused pip-export `requirements.txt` files (auth, supplier-directory, inventory, incident-manager, incident-analysis, packages/shared). Rewrote active docs to uv-only: deps declared in `pyproject.toml`, locked in `uv.lock`, install via `uv sync --python 3.13`. No `pyproject.toml` / `uv.lock` / dependency changes. Historical progress rows that mention `requirements.txt` left untouched.
 
 **Verify:** `uv sync --python 3.13` + `uv run pytest` passed for auth (88), supplier-directory (40), inventory (33), incident-manager (24), incident-analysis (18), packages/shared (33); `uv run --directory data --python 3.13 pytest` passed (99).
+
+## DO-NOW hardening (chore/do-now-hardening)
+
+**Status:** Staged on branch `chore/do-now-hardening` (not committed).
+
+**Scope:** Additive hardening batch — no auth/business-logic/schema changes; no dependency version bumps.
+- `pool_pre_ping=True` on six `create_engine` call sites (reporting, telemetry, inventory, incident-manager, data pipeline + job_runner).
+- Pinned sqlmodel/celery/prefect to already-locked floors in pyproject (prefect kept separate: data `>=3.7.8,<4`, reporting `>=3.4.5,<4`); `uv lock` constraint-only diffs.
+- Host-only port binds to `127.0.0.1` for redis (6379), flower (5555), incident-manager (8011), qdrant (6333/6334).
+- Root `ruff.toml` (report-only; not wired into CI).
+- Strengthened assert-less tests in auth `test_db` and supplier-directory `test_validator`; added `uis/website/README.md`.
+
+**Note:** Compose runtime `.env` must use `REDIS_URL=redis://redis:6379/0` (service name), not the `.env.example` localhost default.
