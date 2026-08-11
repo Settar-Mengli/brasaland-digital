@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, UTC
+from typing import Any
 from uuid import uuid4
 
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -10,7 +11,7 @@ from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlmodel import Session, select
 
 from pipelines.rfp_intake.lifecycle import validate_transition
-from pipelines.rfp_intake.models import Ticket
+from pipelines.rfp_intake.models import DepartmentSection, RfpMetadata, Ticket
 
 
 def create_ticket(
@@ -84,5 +85,71 @@ def update_ticket_status(
     session.commit()
     session.refresh(ticket)
     return ticket
+
+
+_METADATA_COLUMNS = (
+    "client_name",
+    "location",
+    "service_type",
+    "scope",
+    "deadline",
+    "budget_range",
+    "departments_needed",
+    "readability_metrics",
+    "open_questions",
+)
+
+
+def save_rfp_metadata(
+    session: Session,
+    *,
+    rfp_id: str,
+    metadata: dict[str, Any],
+) -> RfpMetadata:
+    """Upsert rfp_metadata by rfp_id from a metadata dict (graph extract shape)."""
+    now = datetime.now(UTC)
+    existing = session.get(RfpMetadata, rfp_id)
+    if existing is None:
+        row = RfpMetadata(rfp_id=rfp_id, created_at=now, updated_at=now)
+        for key in _METADATA_COLUMNS:
+            if key in metadata:
+                setattr(row, key, metadata[key])
+        session.add(row)
+        session.commit()
+        session.refresh(row)
+        return row
+
+    for key in _METADATA_COLUMNS:
+        if key in metadata:
+            setattr(existing, key, metadata[key])
+    existing.updated_at = now
+    session.add(existing)
+    session.commit()
+    session.refresh(existing)
+    return existing
+
+
+def save_department_sections(
+    session: Session,
+    *,
+    ticket_id: str,
+    sections: list[dict[str, Any]],
+) -> list[DepartmentSection]:
+    """Insert department_section rows (approval_status defaults to pending)."""
+    rows: list[DepartmentSection] = []
+    for section in sections:
+        row = DepartmentSection(
+            ticket_id=ticket_id,
+            department_id=str(section["department_id"]),
+            key_aspects=section.get("key_aspects"),
+            draft_content=section.get("draft_content"),
+            evaluation_results=section.get("evaluation_results"),
+        )
+        session.add(row)
+        rows.append(row)
+    session.commit()
+    for row in rows:
+        session.refresh(row)
+    return rows
 
 
