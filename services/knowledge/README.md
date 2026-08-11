@@ -47,7 +47,7 @@ Guardrail injection tests: `tests/pipelines/test_agent_guardrails.py` (CONTEXT �
 
 Copy the repo-root `.env.example` → `.env` (never commit secrets). Required for live answers:
 
-- `QDRANT_URL`, `LLM_GATEWAY_API_KEY`, `LLM_GATEWAY_BASE_URL`, `GENERATION_MODEL_ID`
+- `QDRANT_URL`; generation failover `GEN_1_*` / `GEN_2_*` / `GEN_3_*` (`BASE_URL`, `API_KEY`, `MODEL` — at least one non-empty `GEN_i_API_KEY`); optional `GENERATION_TIMEOUT_SECONDS` (default `30`)
 - `EMBED_MODEL_ID` (default `BAAI/bge-small-en-v1.5`)
 - `KNOWLEDGE_CORPUS_PATH` (optional; default repo `docs/company-knowledge-base`)
 - `JWT_PUBLIC_KEY`, `JWT_ALGORITHM`

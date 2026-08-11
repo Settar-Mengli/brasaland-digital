@@ -7,11 +7,13 @@ and ``query(question)`` (retrieve + generate). Indexing is operator-run via
 
 from __future__ import annotations
 
+import logging
 import os
 import re
 import uuid
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 COLLECTION_NAME = "brasaland_knowledge"
 VECTOR_SIZE = 384
@@ -25,9 +27,10 @@ SOURCE_DOCUMENTS = (
     "supplier-ordering",
 )
 DEFAULT_EMBED_MODEL = "BAAI/bge-small-en-v1.5"
-DEFAULT_GATEWAY_BASE = "https://llm.4geeks.ai/v1"
+GENERATION_TIMEOUT_SECONDS = float(os.getenv("GENERATION_TIMEOUT_SECONDS", "30"))
 
 _embedder: Any | None = None
+logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """You are Brasaland's training and operations assistant for kitchen and floor staff and location managers.
 Your domain is Brasaland only: standardized recipes and preparation techniques, kitchen procedures and presentation standards, food handling and kitchen safety, training onboarding, plus the official company manuals (loyalty / Brasa Points, waste-control, menu allergens, supplier-ordering) and live ticket/stock tools when available.
@@ -498,6 +501,33 @@ def _load_memory_for_prompt(
     return list(filtered)
 
 
+def _provider_label(base_url: str) -> str:
+    host = (urlparse(base_url).hostname or "").lower()
+    for token in ("groq", "cerebras", "generativelanguage"):
+        if token in host:
+            return token
+    return host.split(".")[0] if host else "unknown"
+
+
+def _generation_tiers() -> list[tuple[int, str, str, str]]:
+    """Return qualifying (index, base_url, api_key, model) tiers in priority order."""
+    tiers: list[tuple[int, str, str, str]] = []
+    for i in (1, 2, 3):
+        api_key = (os.environ.get(f"GEN_{i}_API_KEY") or "").strip()
+        if not api_key:
+            continue
+        base_url = (os.environ.get(f"GEN_{i}_BASE_URL") or "").strip()
+        model = (os.environ.get(f"GEN_{i}_MODEL") or "").strip()
+        if not base_url or not model:
+            logger.warning(
+                "generation tier %s skipped: API key set but missing base_url or model",
+                i,
+            )
+            continue
+        tiers.append((i, base_url, api_key, model))
+    return tiers
+
+
 def _generate(
     question: str,
     chunks: list[dict[str, Any]],
@@ -507,36 +537,51 @@ def _generate(
 ) -> str:
     from openai import OpenAI
 
-    api_key = os.environ.get("LLM_GATEWAY_API_KEY")
-    if not api_key:
-        raise RuntimeError("LLM_GATEWAY_API_KEY is not set")
-    base_url = os.environ.get("LLM_GATEWAY_BASE_URL", DEFAULT_GATEWAY_BASE).rstrip("/")
-    model = os.environ.get("GENERATION_MODEL_ID")
-    if not model:
-        raise RuntimeError("GENERATION_MODEL_ID is not set")
+    tiers = _generation_tiers()
+    if not tiers:
+        raise RuntimeError(
+            "no generation provider configured: set at least one GEN_i_API_KEY"
+        )
 
     system = SYSTEM_PROMPT
     if structured:
         system = f"{SYSTEM_PROMPT}\n\n{STRUCTURED_OUTPUT_INSTRUCTION}"
-
-    client = OpenAI(api_key=api_key, base_url=base_url)
-    completion = client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": system},
-            {
-                "role": "user",
-                "content": _build_user_prompt(
-                    question, chunks, memory_entries=memory_entries
-                ),
-            },
-        ],
-        temperature=0.2,
+    user_content = _build_user_prompt(
+        question, chunks, memory_entries=memory_entries
     )
-    message = completion.choices[0].message.content
-    if not message:
-        raise RuntimeError("generation returned empty content")
-    return message.strip()
+
+    last_error: Exception | None = None
+    for index, base_url, api_key, model in tiers:
+        label = _provider_label(base_url)
+        try:
+            client = OpenAI(
+                api_key=api_key,
+                base_url=base_url,
+                timeout=GENERATION_TIMEOUT_SECONDS,
+                max_retries=0,
+            )
+            completion = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user_content},
+                ],
+                temperature=0.2,
+            )
+            message = completion.choices[0].message.content
+            if not message:
+                raise RuntimeError("generation returned empty content")
+            return message.strip()
+        except Exception as exc:  # noqa: BLE001 — failover to next tier
+            last_error = exc
+            logger.warning(
+                "generation tier %s (%s) failed: %s",
+                index,
+                label,
+                type(exc).__name__,
+            )
+
+    raise RuntimeError("all generation providers failed") from last_error
 
 
 def generate_answer(question: str, chunks: list[dict[str, Any]]) -> str:

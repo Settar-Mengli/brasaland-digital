@@ -961,7 +961,7 @@ cd services/knowledge; uv run pytest
 
 **Status:** Staged on branch `chore/do-now-hardening` (not committed).
 
-**Scope:** Additive hardening batch � no auth/business-logic/schema changes; no dependency version bumps.
+**Scope:** Additive hardening batch — no auth/business-logic/schema changes; no dependency version bumps.
 - `pool_pre_ping=True` on six `create_engine` call sites (reporting, telemetry, inventory, incident-manager, data pipeline + job_runner).
 - Pinned sqlmodel/celery/prefect to already-locked floors in pyproject (prefect kept separate: data `>=3.7.8,<4`, reporting `>=3.4.5,<4`); `uv lock` constraint-only diffs.
 - Host-only port binds to `127.0.0.1` for redis (6379), flower (5555), incident-manager (8011), qdrant (6333/6334).
@@ -969,3 +969,11 @@ cd services/knowledge; uv run pytest
 - Strengthened assert-less tests in auth `test_db` and supplier-directory `test_validator`; added `uis/website/README.md`.
 
 **Note:** Compose runtime `.env` must use `REDIS_URL=redis://redis:6379/0` (service name), not the `.env.example` localhost default.
+
+## Milestone 9 Phase 0 — RAG generation failover (keep-raising)
+
+**Status:** Implemented locally (not committed). Live smoke + commit owned by operator.
+
+**Scope:** Swapped RAG `_generate` off the hardcoded 4Geeks `LLM_GATEWAY_*` / `GENERATION_MODEL_ID` path onto an env-driven `GEN_1` → `GEN_2` → `GEN_3` OpenAI-compatible failover with per-attempt `GENERATION_TIMEOUT_SECONDS` (default 30). Missing/blank keys skip the tier; incomplete tiers (key without URL/model) warn and skip; no configured tier or all tiers failing raises `RuntimeError` (agent still degrades via `run_agent` outer catch; `/knowledge/query` still 500s — parked separately). Structured mode unchanged (prompt instruction only; parse stays in `generate_answer_structured`). Support agent needs no separate client change (same `_generate` path). Embeddings, Qdrant collection, and indexing untouched.
+
+**Files touched:** `data/pipelines/rag.py`, `.env.example`, `docker-compose.yml` (knowledge env), `docs/rag/rag-design.md`, `services/knowledge/README.md`, `memory-bank/progress.md`.

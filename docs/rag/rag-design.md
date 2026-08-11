@@ -8,7 +8,7 @@
 4. **Embed** — `fastembed` `BAAI/bge-small-en-v1.5` (384-dim), passages **without** `query:` prefix; lazy-init inside `embed()`.
 5. **Store** — Qdrant collection `brasaland_knowledge`, Cosine distance; clear-and-reload on each `setup()`.
 6. **Retrieve** — question embedded with `query: ` prefix; top-k filtered by `min_score` (**0.55**, validated).
-7. **Generate** — one chat completion via OpenAI-compatible 4Geeks gateway (`GENERATION_MODEL_ID`); salesperson prompt; answer string only.
+7. **Generate** — one chat completion via OpenAI-compatible providers in env failover order (`GEN_1` → `GEN_2` → `GEN_3`); operations prompt; answer string only.
 8. **Serve** — `POST /knowledge/query` (JWT) → backoffice `/knowledge` UI (Bearer + auth guard).
 
 ```mermaid
@@ -20,7 +20,7 @@ flowchart LR
   API --> Query[query]
   Query --> Retr[retrieve with query prefix]
   Retr --> Qdrant
-  Query --> LLM[Gateway chat model]
+  Query --> LLM[GEN_i chat failover]
 ```
 
 ## Chunking strategy
@@ -36,7 +36,7 @@ Manuals are short policy docs with headings and lists. Chunking follows markdown
 | Query prefix | `query: ` on questions only | BGE asymmetric retrieval convention |
 | `min_score` | **0.55** (Cosine, validated) | Recall@3 = 100% (9/9) on `data/eval/test-queries.json` (≥80% KPI); did not block correct hits; honest-miss path declines out-of-corpus questions |
 
-Two different models: **embed** = local BGE; **generate** = DeepSeek (or other) chat model ID on `https://llm.4geeks.ai`.
+Two different models: **embed** = local BGE; **generate** = OpenAI-compatible chat via `GEN_i_BASE_URL` / `GEN_i_API_KEY` / `GEN_i_MODEL` priority failover (no single hardcoded gateway URL).
 
 ## Auth
 
