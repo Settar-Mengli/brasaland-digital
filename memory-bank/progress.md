@@ -1,4 +1,4 @@
-# Brasaland Digital — M4 Progress
+﻿# Brasaland Digital — M4 Progress
 
 **Convention:** Verification, Delivered, Scope, and Status blocks under completed sections are point-in-time records of the session that produced them. They are never retro-edited. Current repository state lives in `README.md` and `docs/standards/project-context.md`.
 
@@ -977,3 +977,9 @@ cd services/knowledge; uv run pytest
 **Scope:** Swapped RAG `_generate` off the hardcoded 4Geeks `LLM_GATEWAY_*` / `GENERATION_MODEL_ID` path onto an env-driven `GEN_1` → `GEN_2` → `GEN_3` OpenAI-compatible failover with per-attempt `GENERATION_TIMEOUT_SECONDS` (default 30). Missing/blank keys skip the tier; incomplete tiers (key without URL/model) warn and skip; no configured tier or all tiers failing raises `RuntimeError` (agent still degrades via `run_agent` outer catch; `/knowledge/query` still 500s — parked separately). Structured mode unchanged (prompt instruction only; parse stays in `generate_answer_structured`). Support agent needs no separate client change (same `_generate` path). Embeddings, Qdrant collection, and indexing untouched.
 
 **Files touched:** `data/pipelines/rag.py`, `.env.example`, `docker-compose.yml` (knowledge env), `docs/rag/rag-design.md`, `services/knowledge/README.md`, `memory-bank/progress.md`.
+
+## Milestone 9 Phase 1 — RFP CONTEXT + seed fixtures
+
+**Status:** Authored locally (not committed). PDFs rendered by the operator; no service/graph/pipeline code this phase.
+
+**Scope:** Authored `data/raw/CONTEXT-rfp.md` as the RFP governing spec; three seed RFP markdown sources under `data/raw/seed/` (`sunset-bay-resorts`, `andes-tech-solutions`, `franchise-inquiry`) plus `scripts/render_seed_pdfs.py` (uv inline PEP 723 deps: `markdown`, `xhtml2pdf`); `.gitignore` updated so runtime `data/raw/*.pdf` is ignored while `data/raw/seed/**` remains trackable. Operator renders committed seed PDFs via `uv run scripts/render_seed_pdfs.py`.
