@@ -146,6 +146,16 @@ services:
       JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
       JWT_ALGORITHM: ${JWT_ALGORITHM}
       PYTHONPATH: /app/data
+      GEN_1_BASE_URL: ${GEN_1_BASE_URL}
+      GEN_1_API_KEY: ${GEN_1_API_KEY}
+      GEN_1_MODEL: ${GEN_1_MODEL}
+      GEN_2_BASE_URL: ${GEN_2_BASE_URL}
+      GEN_2_API_KEY: ${GEN_2_API_KEY}
+      GEN_2_MODEL: ${GEN_2_MODEL}
+      GEN_3_BASE_URL: ${GEN_3_BASE_URL}
+      GEN_3_API_KEY: ${GEN_3_API_KEY}
+      GEN_3_MODEL: ${GEN_3_MODEL}
+      GENERATION_TIMEOUT_SECONDS: ${GENERATION_TIMEOUT_SECONDS:-30}
     volumes:
       - ./services/rfp:/app/services/rfp
       - ./data:/app/data
@@ -165,6 +175,16 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL}
       PYTHONPATH: /app/data
+      GEN_1_BASE_URL: ${GEN_1_BASE_URL}
+      GEN_1_API_KEY: ${GEN_1_API_KEY}
+      GEN_1_MODEL: ${GEN_1_MODEL}
+      GEN_2_BASE_URL: ${GEN_2_BASE_URL}
+      GEN_2_API_KEY: ${GEN_2_API_KEY}
+      GEN_2_MODEL: ${GEN_2_MODEL}
+      GEN_3_BASE_URL: ${GEN_3_BASE_URL}
+      GEN_3_API_KEY: ${GEN_3_API_KEY}
+      GEN_3_MODEL: ${GEN_3_MODEL}
+      GENERATION_TIMEOUT_SECONDS: ${GENERATION_TIMEOUT_SECONDS:-30}
     volumes:
       - ./services/rfp:/app/services/rfp
       - ./data:/app/data

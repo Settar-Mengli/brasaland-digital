@@ -160,6 +160,19 @@ def extract_node(state: IntakeState) -> dict[str, Any]:
     parsed = generate_json(
         system_prompt=(
             "Extract structured fields from this RFP. Never invent missing figures. "
+            "Select departments_needed by matching the RFP against these departments: "
+            "- marketing: ALWAYS include — it owns every ticket. Also specifically for "
+            "brand terms, exclusivity, co-branding, offer validity. "
+            "- operaciones: include if the RFP involves event/catering operations, kitchen "
+            "or staff capacity, setup times, or per-event cost. "
+            "- procurement: include if the RFP implies ingredient sourcing, volume-based "
+            "cost, or supplier lead times (e.g. recurring catering, large volume, "
+            "multi-site supply). "
+            "- training: include ONLY if a NEW recipe, new signature menu, or a new "
+            "standard/certification is required. "
+            "Include every department that applies — a large co-branded contract with a "
+            "new menu typically needs all four. Do not omit a department that clearly "
+            "applies. "
             "Respond with JSON only matching: "
             '{"client_name":str|null,"location":str|null,"service_type":str|null,'
             '"scope":str|null,"deadline":str|null,"budget_range":str|null,'
@@ -177,6 +190,8 @@ def extract_node(state: IntakeState) -> dict[str, Any]:
     if not isinstance(raw_depts, list):
         raw_depts = []
     departments_needed = [str(d) for d in raw_depts if str(d) in allowed]
+    if "marketing" not in departments_needed:
+        departments_needed = ["marketing", *departments_needed]
 
     open_questions = parsed.get("open_questions") or []
     if not isinstance(open_questions, list):
