@@ -1007,3 +1007,9 @@ cd services/knowledge; uv run pytest
 **Status:** Implemented locally (not committed). Docker / git not run in this session (operator).
 
 **Scope:** [`services/rfp/tasks.py`](services/rfp/tasks.py) `rfp.process_rfp` now calls `run_intake`, then persists via `save_rfp_metadata` / `save_department_sections` and advances status only through `update_ticket_status`. Invalid graph judgment and any graph crash both → `discarded` (reason from `discard_reason` or `intake failed: <ExceptionType>`; full traceback logged on crash) — no 8th status, never stuck at `analyzing`. Valid → writers → `intake_complete`. Missing ticket → defensive `not_found` (no raise/retry). `summary` returned + logged only (no DB column this phase). Graph / writers / models / compose / CI untouched; `status="analyzing"` still initialized only in `create_ticket`.
+
+## Milestone 9 Phase 4 — backoffice RFP UI
+
+**Status:** Implemented locally (not committed). npm / vitest / docker / git not run in this session (operator).
+
+**Scope:** Backoffice mirrors knowledge patterns: new `lib/rfp.ts` + `lib/rfp-types.ts` (FormData upload with Bearer and no manual Content-Type; GET ticket poll) + `app/rfp/page.tsx` (InventoryAuthGuard, view-state idle|uploading|polling|done|error, bounded poll every 2500ms × 40 attempts with interval cleared on terminal/unmount). NavLinks gains RFP. `next.config.ts` rewrite `/api/rfp/:path*` → `RFP_API_ORIGIN`; `.env.example` + compose `ui` env `RFP_API_ORIGIN` / `NEXT_PUBLIC_RFP_API_URL`. Vitest in `lib/rfp.test.ts`. No new deps; rfp service/graph/other features untouched.

@@ -347,11 +347,13 @@ services:
       INCIDENTS_API_ORIGIN: http://incident-manager:8011
       REPORTING_API_ORIGIN: http://reporting:8014
       KNOWLEDGE_API_ORIGIN: http://knowledge:8015
+      RFP_API_ORIGIN: http://rfp:8017
       NEXT_PUBLIC_INVENTORY_API_URL: http://localhost:3003/api/inventory
       NEXT_PUBLIC_AUTH_API_URL: http://localhost:3003/api/auth
       NEXT_PUBLIC_INCIDENTS_API_URL: http://localhost:3004/api/incidents
       NEXT_PUBLIC_REPORTING_API_URL: http://localhost:3003/api/reporting
       NEXT_PUBLIC_KNOWLEDGE_API_URL: http://localhost:3003/api/knowledge
+      NEXT_PUBLIC_RFP_API_URL: http://localhost:3003/api/rfp
     volumes:
       - ./uis:/app/uis
       - ./apps/operations-toolkit:/app/apps/operations-toolkit
