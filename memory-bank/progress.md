@@ -989,3 +989,9 @@ cd services/knowledge; uv run pytest
 **Status:** Implemented locally (not committed). Offline tests authored; pytest not run in this session.
 
 **Scope:** SQLModel models (`ticket`, `rfp_metadata`, `department_section`, `final_document` in public schema) + sibling 7-status lifecycle + atomic `content_hash` create (`on_conflict_do_nothing`) + single choke-point `update_ticket_status`, all under `data/pipelines/rfp_intake/`. Offline-tested in `tests/pipelines/` (SQLite). Zero new deps. RFP tables added to `scripts/enable_rls.py` (not yet run). No Ticket→rfp_metadata FK (shared uuid only). Incident lifecycle / `brasaland_shared` untouched. No service/graph/Celery/Docker/compose.
+
+## Milestone 9 Phase 2b — RFP service (upload + async seam)
+
+**Status:** Implemented locally (not committed). `uv lock` / pytest / docker not run in this session (operator).
+
+**Scope:** New `services/rfp` FastAPI+Celery service on port 8017 — JWT-guarded multipart upload with hardened defenses (10 MiB cap, `%PDF-` magic, uuid filename, no client path), atomic `create_ticket`, 202 enqueue of stub `rfp.process_rfp` (no graph, no status change), GET ticket-row poll (not AsyncResult). Compose: `rfp` + `rfp-worker`; CI matrix entry after knowledge. Dockerfile mirrors knowledge (COPY `packages/` + `data/`). JWT dep byte-identical to knowledge. Flagged deviation: new API process vs CONTEXT “no new API process” wording (floor-not-ceiling; reporting/knowledge pattern).

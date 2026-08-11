@@ -132,6 +132,49 @@ services:
     networks:
       - brasaland-dev
 
+  rfp:
+    build:
+      context: .
+      dockerfile: services/rfp/Dockerfile
+    command: uv run uvicorn app:app --host 0.0.0.0 --port 8017 --reload
+    ports:
+      - '8017:8017'
+    environment:
+      WATCHFILES_FORCE_POLLING: 'true'
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+      PYTHONPATH: /app/data
+    volumes:
+      - ./services/rfp:/app/services/rfp
+      - ./data:/app/data
+      - rfp_venv:/app/services/rfp/.venv
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - brasaland-dev
+
+  rfp-worker:
+    build:
+      context: .
+      dockerfile: services/rfp/Dockerfile
+    command: uv run celery -A celery_app.celery_app worker --loglevel=INFO
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      PYTHONPATH: /app/data
+    volumes:
+      - ./services/rfp:/app/services/rfp
+      - ./data:/app/data
+      - rfp_worker_venv:/app/services/rfp/.venv
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - brasaland-dev
+
   incident-manager:
     build:
       context: .
@@ -322,6 +365,8 @@ volumes:
   supplier-directory_venv:
   knowledge_venv:
   company_tools_mcp_venv:
+  rfp_venv:
+  rfp_worker_venv:
   qdrant_storage:
   ui_node_modules:
   ui_uis_node_modules:

@@ -24,6 +24,7 @@ jobs:
             services/telemetry,
             services/reporting,
             services/knowledge,
+            services/rfp,
             mcps/company-tools,
           ]
     steps:

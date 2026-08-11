@@ -1,0 +1,163 @@
+"""API tests for RFP upload + ticket poll (auth override, SQLite, Celery patched)."""
+
+from __future__ import annotations
+
+import os
+from collections.abc import Generator
+from pathlib import Path
+from typing import Any
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+os.environ.setdefault("DATABASE_URL", "sqlite://")
+
+from sqlalchemy import event
+from sqlalchemy.pool import StaticPool
+from sqlmodel import Session, SQLModel, create_engine
+
+import config  # noqa: F401
+import pipelines.rfp_intake.models as rfp_models  # noqa: F401
+from app import app
+from database import get_db
+from dependencies import get_current_user_uuid
+
+_test_engine = create_engine(
+    "sqlite://",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
+
+
+@event.listens_for(_test_engine, "connect")
+def _set_sqlite_pragma(dbapi_connection: Any, connection_record: Any) -> None:
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
+
+
+@pytest.fixture(autouse=True)
+def _db_and_auth(tmp_path: Path) -> Generator[None, None, None]:
+    tables = [
+        rfp_models.Ticket.__table__,
+        rfp_models.RfpMetadata.__table__,
+        rfp_models.DepartmentSection.__table__,
+        rfp_models.FinalDocument.__table__,
+    ]
+    SQLModel.metadata.drop_all(_test_engine, tables=tables)
+    SQLModel.metadata.create_all(_test_engine, tables=tables)
+
+    def override_get_db() -> Generator[Session, None, None]:
+        with Session(_test_engine) as session:
+            yield session
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user_uuid] = lambda: "42"
+
+    with patch("upload.DATA_RAW", tmp_path / "raw"):
+        yield
+
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture()
+def client(_db_and_auth: None):
+    from fastapi.testclient import TestClient
+
+    return TestClient(app)
+
+
+def _tiny_pdf() -> bytes:
+    return b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"
+
+
+def test_post_tickets_unauthorized() -> None:
+    from fastapi.testclient import TestClient
+
+    app.dependency_overrides.clear()
+    bare = TestClient(app)
+    response = bare.post(
+        "/rfp/tickets",
+        files={"file": ("x.pdf", _tiny_pdf(), "application/pdf")},
+    )
+    assert response.status_code == 401
+
+
+def test_get_ticket_unauthorized() -> None:
+    from fastapi.testclient import TestClient
+
+    app.dependency_overrides.clear()
+    bare = TestClient(app)
+    response = bare.get("/rfp/tickets/does-not-exist")
+    assert response.status_code == 401
+
+
+def test_upload_valid_pdf_returns_202(client) -> None:
+    delay = MagicMock()
+    with patch("routers.rfp.process_rfp.delay", delay):
+        response = client.post(
+            "/rfp/tickets",
+            files={"file": ("doc.pdf", _tiny_pdf(), "application/pdf")},
+        )
+    assert response.status_code == 202
+    body = response.json()
+    assert body["status"] == "analyzing"
+    assert body["ticket_id"]
+    assert body["rfp_id"]
+    delay.assert_called_once_with(body["ticket_id"])
+
+
+def test_upload_non_pdf_returns_400(client) -> None:
+    response = client.post(
+        "/rfp/tickets",
+        files={"file": ("x.bin", b"not-a-pdf", "application/octet-stream")},
+    )
+    assert response.status_code == 400
+    assert "not a valid PDF" in response.json()["detail"]
+
+
+def test_upload_over_cap_returns_413(client) -> None:
+    # Cap check runs during chunked read; magic check is after — start with %PDF-
+    # then pad past the limit.
+    from upload import MAX_UPLOAD_BYTES
+
+    huge = b"%PDF-" + (b"x" * MAX_UPLOAD_BYTES)
+    response = client.post(
+        "/rfp/tickets",
+        files={"file": ("big.pdf", huge, "application/pdf")},
+    )
+    assert response.status_code == 413
+
+
+def test_get_ticket_round_trip_and_404(client) -> None:
+    with patch("routers.rfp.process_rfp.delay", MagicMock()):
+        created = client.post(
+            "/rfp/tickets",
+            files={"file": ("doc.pdf", _tiny_pdf(), "application/pdf")},
+        )
+    ticket_id = created.json()["ticket_id"]
+    got = client.get(f"/rfp/tickets/{ticket_id}")
+    assert got.status_code == 200
+    assert got.json()["ticket_id"] == ticket_id
+    assert got.json()["status"] == "analyzing"
+
+    missing = client.get("/rfp/tickets/missing-id")
+    assert missing.status_code == 404
+
+
+def test_duplicate_upload_is_idempotent_and_enqueues_once(client) -> None:
+    delay = MagicMock()
+    payload = _tiny_pdf()
+    with patch("routers.rfp.process_rfp.delay", delay):
+        first = client.post(
+            "/rfp/tickets",
+            files={"file": ("a.pdf", payload, "application/pdf")},
+        )
+        second = client.post(
+            "/rfp/tickets",
+            files={"file": ("b.pdf", payload, "application/pdf")},
+        )
+    assert first.status_code == 202
+    assert second.status_code == 202
+    assert first.json()["ticket_id"] == second.json()["ticket_id"]
+    assert delay.call_count == 1
