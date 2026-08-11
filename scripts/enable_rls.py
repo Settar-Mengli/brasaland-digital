@@ -34,6 +34,10 @@ TABLES: tuple[str, ...] = (
     "ingredientexit",
     "incident",
     "telemetry_events",
+    "ticket",
+    "rfp_metadata",
+    "department_section",
+    "final_document",
 )
 
 

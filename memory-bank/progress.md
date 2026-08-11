@@ -983,3 +983,9 @@ cd services/knowledge; uv run pytest
 **Status:** Authored locally (not committed). PDFs rendered by the operator; no service/graph/pipeline code this phase.
 
 **Scope:** Authored `data/raw/CONTEXT-rfp.md` as the RFP governing spec; three seed RFP markdown sources under `data/raw/seed/` (`sunset-bay-resorts`, `andes-tech-solutions`, `franchise-inquiry`) plus `scripts/render_seed_pdfs.py` (uv inline PEP 723 deps: `markdown`, `xhtml2pdf`); `.gitignore` updated so runtime `data/raw/*.pdf` is ignored while `data/raw/seed/**` remains trackable. Operator renders committed seed PDFs via `uv run scripts/render_seed_pdfs.py`.
+
+## Milestone 9 Phase 2a — RFP DB foundation
+
+**Status:** Implemented locally (not committed). Offline tests authored; pytest not run in this session.
+
+**Scope:** SQLModel models (`ticket`, `rfp_metadata`, `department_section`, `final_document` in public schema) + sibling 7-status lifecycle + atomic `content_hash` create (`on_conflict_do_nothing`) + single choke-point `update_ticket_status`, all under `data/pipelines/rfp_intake/`. Offline-tested in `tests/pipelines/` (SQLite). Zero new deps. RFP tables added to `scripts/enable_rls.py` (not yet run). No Ticket→rfp_metadata FK (shared uuid only). Incident lifecycle / `brasaland_shared` untouched. No service/graph/Celery/Docker/compose.
