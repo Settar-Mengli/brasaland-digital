@@ -161,3 +161,101 @@ def test_duplicate_upload_is_idempotent_and_enqueues_once(client) -> None:
     assert second.status_code == 202
     assert first.json()["ticket_id"] == second.json()["ticket_id"]
     assert delay.call_count == 1
+
+
+def test_post_response_unauthorized() -> None:
+    from fastapi.testclient import TestClient
+
+    app.dependency_overrides.clear()
+    bare = TestClient(app)
+    response = bare.post("/rfp/tickets/some-id/response")
+    assert response.status_code == 401
+
+
+def test_post_response_409_when_not_intake_complete(client) -> None:
+    with patch("routers.rfp.process_rfp.delay", MagicMock()):
+        created = client.post(
+            "/rfp/tickets",
+            files={"file": ("doc.pdf", _tiny_pdf(), "application/pdf")},
+        )
+    ticket_id = created.json()["ticket_id"]
+    # Upload leaves status at analyzing — response must 409.
+    delay = MagicMock()
+    with patch("routers.rfp.process_rfp_response.delay", delay):
+        response = client.post(f"/rfp/tickets/{ticket_id}/response")
+    assert response.status_code == 409
+    delay.assert_not_called()
+
+
+def test_post_response_202_when_intake_complete(client) -> None:
+    from pipelines.rfp_intake.repository import (
+        create_ticket,
+        save_rfp_metadata,
+        update_ticket_status,
+    )
+
+    with Session(_test_engine) as session:
+        ticket, _ = create_ticket(
+            session,
+            rfp_id="rfp-response-ok",
+            content_hash="hash-response-ok",
+            raw_pdf_path="/tmp/ok.pdf",
+        )
+        save_rfp_metadata(
+            session,
+            rfp_id=ticket.rfp_id,
+            metadata={"client_name": "Acme", "departments_needed": ["marketing"]},
+        )
+        update_ticket_status(session, ticket.ticket_id, "intake_complete")
+        ticket_id = ticket.ticket_id
+
+    delay = MagicMock()
+    with patch("routers.rfp.process_rfp_response.delay", delay):
+        response = client.post(f"/rfp/tickets/{ticket_id}/response")
+    assert response.status_code == 202
+    body = response.json()
+    assert body["ticket_id"] == ticket_id
+    assert body["status"] == "intake_complete"
+    delay.assert_called_once_with(ticket_id)
+
+
+def test_get_ticket_includes_sections(client) -> None:
+    from pipelines.rfp_intake.repository import (
+        create_ticket,
+        save_department_sections,
+        update_department_section,
+    )
+
+    with Session(_test_engine) as session:
+        ticket, _ = create_ticket(
+            session,
+            rfp_id="rfp-sections",
+            content_hash="hash-sections",
+            raw_pdf_path="/tmp/s.pdf",
+        )
+        save_department_sections(
+            session,
+            ticket_id=ticket.ticket_id,
+            sections=[{"department_id": "marketing", "key_aspects": ["brand"]}],
+        )
+        update_department_section(
+            session,
+            ticket_id=ticket.ticket_id,
+            department_id="marketing",
+            draft_content="Draft text",
+            evaluation_results={"overall_pass": True, "iterations": 1},
+        )
+        ticket_id = ticket.ticket_id
+
+    got = client.get(f"/rfp/tickets/{ticket_id}")
+    assert got.status_code == 200
+    body = got.json()
+    assert "sections" in body
+    assert isinstance(body["sections"], list)
+    assert len(body["sections"]) == 1
+    section = body["sections"][0]
+    assert section["department_id"] == "marketing"
+    assert section["key_aspects"] == ["brand"]
+    assert section["draft_content"] == "Draft text"
+    assert section["evaluation_results"]["overall_pass"] is True
+    assert section["approval_status"] == "pending"
