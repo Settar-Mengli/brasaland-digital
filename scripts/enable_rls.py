@@ -2,7 +2,7 @@
 
 What: Runs ALTER TABLE ... ENABLE ROW LEVEL SECURITY on ingredient, ingrediententry,
 ingredientexit, incident, telemetry_events, ticket, rfp_metadata, department_section,
-final_document, and task_dead_letters. Does not create policies and does not set FORCE ROW LEVEL
+and final_document. Does not create policies and does not set FORCE ROW LEVEL
 SECURITY.
 
 Why: Closes PostgREST/anon Data API exposure (deny-by-default when RLS is on with zero
@@ -39,7 +39,6 @@ TABLES: tuple[str, ...] = (
     "rfp_metadata",
     "department_section",
     "final_document",
-    "task_dead_letters",
 )
 
 
