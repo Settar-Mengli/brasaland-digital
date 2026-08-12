@@ -242,11 +242,13 @@ function RfpPageContent() {
       const triggered = await triggerRfpResponse(current.ticket_id);
       startPolling(triggered.ticket_id, triggered, RESPONSE_TERMINAL_STATUSES);
     } catch (error) {
-      setView({
-        status: 'error',
-        message: error instanceof Error ? error.message : 'Failed to start response generation.',
-        ticket: 'sections' in current ? (current as RfpTicket) : undefined,
-      });
+      const message =
+        error instanceof Error ? error.message : 'Failed to start response generation.';
+      const errorView: ViewState =
+        'sections' in current
+          ? { status: 'error', message, ticket: current as RfpTicket }
+          : { status: 'error', message };
+      setView(errorView);
     }
   }
 
