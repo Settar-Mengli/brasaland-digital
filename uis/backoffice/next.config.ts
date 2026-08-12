@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
     const telemetryOrigin = rewriteOrigin('TELEMETRY_API_ORIGIN', 'http://localhost:8013');
     const reportingOrigin = rewriteOrigin('REPORTING_API_ORIGIN', 'http://localhost:8014');
     const knowledgeOrigin = rewriteOrigin('KNOWLEDGE_API_ORIGIN', 'http://localhost:8015');
+    const rfpOrigin = rewriteOrigin('RFP_API_ORIGIN', 'http://localhost:8017');
 
     return [
       {
@@ -32,6 +33,10 @@ const nextConfig: NextConfig = {
       {
         source: '/api/knowledge/:path*',
         destination: `${knowledgeOrigin}/knowledge/:path*`,
+      },
+      {
+        source: '/api/rfp/:path*',
+        destination: `${rfpOrigin}/rfp/:path*`,
       },
     ];
   },

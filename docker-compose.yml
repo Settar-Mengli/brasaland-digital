@@ -132,6 +132,69 @@ services:
     networks:
       - brasaland-dev
 
+  rfp:
+    build:
+      context: .
+      dockerfile: services/rfp/Dockerfile
+    command: uv run uvicorn app:app --host 0.0.0.0 --port 8017 --reload
+    ports:
+      - '8017:8017'
+    environment:
+      WATCHFILES_FORCE_POLLING: 'true'
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+      PYTHONPATH: /app/data
+      GEN_1_BASE_URL: ${GEN_1_BASE_URL}
+      GEN_1_API_KEY: ${GEN_1_API_KEY}
+      GEN_1_MODEL: ${GEN_1_MODEL}
+      GEN_2_BASE_URL: ${GEN_2_BASE_URL}
+      GEN_2_API_KEY: ${GEN_2_API_KEY}
+      GEN_2_MODEL: ${GEN_2_MODEL}
+      GEN_3_BASE_URL: ${GEN_3_BASE_URL}
+      GEN_3_API_KEY: ${GEN_3_API_KEY}
+      GEN_3_MODEL: ${GEN_3_MODEL}
+      GENERATION_TIMEOUT_SECONDS: ${GENERATION_TIMEOUT_SECONDS:-30}
+    volumes:
+      - ./services/rfp:/app/services/rfp
+      - ./data:/app/data
+      - rfp_venv:/app/services/rfp/.venv
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - brasaland-dev
+
+  rfp-worker:
+    build:
+      context: .
+      dockerfile: services/rfp/Dockerfile
+    command: uv run celery -A celery_app.celery_app worker --loglevel=INFO
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      PYTHONPATH: /app/data
+      GEN_1_BASE_URL: ${GEN_1_BASE_URL}
+      GEN_1_API_KEY: ${GEN_1_API_KEY}
+      GEN_1_MODEL: ${GEN_1_MODEL}
+      GEN_2_BASE_URL: ${GEN_2_BASE_URL}
+      GEN_2_API_KEY: ${GEN_2_API_KEY}
+      GEN_2_MODEL: ${GEN_2_MODEL}
+      GEN_3_BASE_URL: ${GEN_3_BASE_URL}
+      GEN_3_API_KEY: ${GEN_3_API_KEY}
+      GEN_3_MODEL: ${GEN_3_MODEL}
+      GENERATION_TIMEOUT_SECONDS: ${GENERATION_TIMEOUT_SECONDS:-30}
+    volumes:
+      - ./services/rfp:/app/services/rfp
+      - ./data:/app/data
+      - rfp_worker_venv:/app/services/rfp/.venv
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - brasaland-dev
+
   incident-manager:
     build:
       context: .
@@ -215,9 +278,16 @@ services:
       QDRANT_URL: http://qdrant:6333
       REDIS_URL: ${REDIS_URL}
       KNOWLEDGE_CORPUS_PATH: /app/docs/company-knowledge-base
-      LLM_GATEWAY_API_KEY: ${LLM_GATEWAY_API_KEY}
-      LLM_GATEWAY_BASE_URL: ${LLM_GATEWAY_BASE_URL}
-      GENERATION_MODEL_ID: ${GENERATION_MODEL_ID}
+      GEN_1_BASE_URL: ${GEN_1_BASE_URL}
+      GEN_1_API_KEY: ${GEN_1_API_KEY}
+      GEN_1_MODEL: ${GEN_1_MODEL}
+      GEN_2_BASE_URL: ${GEN_2_BASE_URL}
+      GEN_2_API_KEY: ${GEN_2_API_KEY}
+      GEN_2_MODEL: ${GEN_2_MODEL}
+      GEN_3_BASE_URL: ${GEN_3_BASE_URL}
+      GEN_3_API_KEY: ${GEN_3_API_KEY}
+      GEN_3_MODEL: ${GEN_3_MODEL}
+      GENERATION_TIMEOUT_SECONDS: ${GENERATION_TIMEOUT_SECONDS:-30}
       EMBED_MODEL_ID: ${EMBED_MODEL_ID:-BAAI/bge-small-en-v1.5}
       JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
       JWT_ALGORITHM: ${JWT_ALGORITHM}
@@ -277,11 +347,13 @@ services:
       INCIDENTS_API_ORIGIN: http://incident-manager:8011
       REPORTING_API_ORIGIN: http://reporting:8014
       KNOWLEDGE_API_ORIGIN: http://knowledge:8015
+      RFP_API_ORIGIN: http://rfp:8017
       NEXT_PUBLIC_INVENTORY_API_URL: http://localhost:3003/api/inventory
       NEXT_PUBLIC_AUTH_API_URL: http://localhost:3003/api/auth
       NEXT_PUBLIC_INCIDENTS_API_URL: http://localhost:3004/api/incidents
       NEXT_PUBLIC_REPORTING_API_URL: http://localhost:3003/api/reporting
       NEXT_PUBLIC_KNOWLEDGE_API_URL: http://localhost:3003/api/knowledge
+      NEXT_PUBLIC_RFP_API_URL: http://localhost:3003/api/rfp
     volumes:
       - ./uis:/app/uis
       - ./apps/operations-toolkit:/app/apps/operations-toolkit
@@ -315,6 +387,8 @@ volumes:
   supplier-directory_venv:
   knowledge_venv:
   company_tools_mcp_venv:
+  rfp_venv:
+  rfp_worker_venv:
   qdrant_storage:
   ui_node_modules:
   ui_uis_node_modules:

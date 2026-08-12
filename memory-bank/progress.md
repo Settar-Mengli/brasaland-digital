@@ -1,4 +1,4 @@
-# Brasaland Digital — M4 Progress
+﻿# Brasaland Digital — M4 Progress
 
 **Convention:** Verification, Delivered, Scope, and Status blocks under completed sections are point-in-time records of the session that produced them. They are never retro-edited. Current repository state lives in `README.md` and `docs/standards/project-context.md`.
 
@@ -821,7 +821,7 @@ docs: document sales forecasting deliverable
 | `data/eval/evaluation_report.md` | Diagnosis + MAE/RMSE + CV tables |
 | `tests/pipelines/test_regression_cv.py` | Chronological fold-order unit test |
 | `data/eval/README.md` | Eval how-to |
-| `tests/pipelines/README.md` | Expect 34 passed |
+| `tests/pipelines/README.md` | Expect 142 passed |
 | `README.md` | Evaluate entry point |
 | `memory-bank/progress.md` | This entry |
 | `data/raw/CONTEXT-brasaland.en.md` | §6 eval cross-ref bullet |
@@ -955,13 +955,13 @@ cd services/knowledge; uv run pytest
 
 **Scope:** Removed six unused pip-export `requirements.txt` files (auth, supplier-directory, inventory, incident-manager, incident-analysis, packages/shared). Rewrote active docs to uv-only: deps declared in `pyproject.toml`, locked in `uv.lock`, install via `uv sync --python 3.13`. No `pyproject.toml` / `uv.lock` / dependency changes. Historical progress rows that mention `requirements.txt` left untouched.
 
-**Verify:** `uv sync --python 3.13` + `uv run pytest` passed for auth (88), supplier-directory (40), inventory (33), incident-manager (24), incident-analysis (18), packages/shared (33); `uv run --directory data --python 3.13 pytest` passed (99).
+**Verify:** `uv sync --python 3.13` + `uv run pytest` passed for auth (88), supplier-directory (40), inventory (33), incident-manager (24), incident-analysis (18), packages/shared (33); `uv run --directory data --python 3.13 pytest` passed (142).
 
 ## DO-NOW hardening (chore/do-now-hardening)
 
 **Status:** Staged on branch `chore/do-now-hardening` (not committed).
 
-**Scope:** Additive hardening batch � no auth/business-logic/schema changes; no dependency version bumps.
+**Scope:** Additive hardening batch — no auth/business-logic/schema changes; no dependency version bumps.
 - `pool_pre_ping=True` on six `create_engine` call sites (reporting, telemetry, inventory, incident-manager, data pipeline + job_runner).
 - Pinned sqlmodel/celery/prefect to already-locked floors in pyproject (prefect kept separate: data `>=3.7.8,<4`, reporting `>=3.4.5,<4`); `uv lock` constraint-only diffs.
 - Host-only port binds to `127.0.0.1` for redis (6379), flower (5555), incident-manager (8011), qdrant (6333/6334).
@@ -969,3 +969,53 @@ cd services/knowledge; uv run pytest
 - Strengthened assert-less tests in auth `test_db` and supplier-directory `test_validator`; added `uis/website/README.md`.
 
 **Note:** Compose runtime `.env` must use `REDIS_URL=redis://redis:6379/0` (service name), not the `.env.example` localhost default.
+
+## Milestone 9 Phase 0 — RAG generation failover (keep-raising)
+
+**Status:** Implemented locally (not committed). Live smoke + commit owned by operator.
+
+**Scope:** Swapped RAG `_generate` off the hardcoded 4Geeks `LLM_GATEWAY_*` / `GENERATION_MODEL_ID` path onto an env-driven `GEN_1` → `GEN_2` → `GEN_3` OpenAI-compatible failover with per-attempt `GENERATION_TIMEOUT_SECONDS` (default 30). Missing/blank keys skip the tier; incomplete tiers (key without URL/model) warn and skip; no configured tier or all tiers failing raises `RuntimeError` (agent still degrades via `run_agent` outer catch; `/knowledge/query` still 500s — parked separately). Structured mode unchanged (prompt instruction only; parse stays in `generate_answer_structured`). Support agent needs no separate client change (same `_generate` path). Embeddings, Qdrant collection, and indexing untouched.
+
+**Files touched:** `data/pipelines/rag.py`, `.env.example`, `docker-compose.yml` (knowledge env), `docs/rag/rag-design.md`, `services/knowledge/README.md`, `memory-bank/progress.md`.
+
+## Milestone 9 Phase 1 — RFP CONTEXT + seed fixtures
+
+**Status:** Authored locally (not committed). PDFs rendered by the operator; no service/graph/pipeline code this phase.
+
+**Scope:** Authored `data/raw/CONTEXT-rfp.md` as the RFP governing spec; three seed RFP markdown sources under `data/raw/seed/` (`sunset-bay-resorts`, `andes-tech-solutions`, `franchise-inquiry`) plus `scripts/render_seed_pdfs.py` (uv inline PEP 723 deps: `markdown`, `xhtml2pdf`); `.gitignore` updated so runtime `data/raw/*.pdf` is ignored while `data/raw/seed/**` remains trackable. Operator renders committed seed PDFs via `uv run scripts/render_seed_pdfs.py`.
+
+## Milestone 9 Phase 2a — RFP DB foundation
+
+**Status:** Implemented locally (not committed). Offline tests authored; pytest not run in this session.
+
+**Scope:** SQLModel models (`ticket`, `rfp_metadata`, `department_section`, `final_document` in public schema) + sibling 7-status lifecycle + atomic `content_hash` create (`on_conflict_do_nothing`) + single choke-point `update_ticket_status`, all under `data/pipelines/rfp_intake/`. Offline-tested in `tests/pipelines/` (SQLite). Zero new deps. RFP tables added to `scripts/enable_rls.py` (not yet run). No Ticket→rfp_metadata FK (shared uuid only). Incident lifecycle / `brasaland_shared` untouched. No service/graph/Celery/Docker/compose.
+
+## Milestone 9 Phase 2b — RFP service (upload + async seam)
+
+**Status:** Implemented locally (not committed). `uv lock` / pytest / docker not run in this session (operator).
+
+**Scope:** New `services/rfp` FastAPI+Celery service on port 8017 — JWT-guarded multipart upload with hardened defenses (10 MiB cap, `%PDF-` magic, uuid filename, no client path), atomic `create_ticket`, 202 enqueue of stub `rfp.process_rfp` (no graph, no status change), GET ticket-row poll (not AsyncResult). Compose: `rfp` + `rfp-worker`; CI matrix entry after knowledge. Dockerfile mirrors knowledge (COPY `packages/` + `data/`). JWT dep byte-identical to knowledge. Flagged deviation: new API process vs CONTEXT “no new API process” wording (floor-not-ceiling; reporting/knowledge pattern).
+
+## Milestone 9 Phase 3a — intake graph building blocks
+
+**Status:** Implemented locally (not committed). `uv lock` / pytest / docker / git not run in this session (operator).
+
+**Scope:** New RFP-owned `generation.py` (independent GEN_i failover + `_parse_json_object` + `clean_markdown_artifacts`; does not import `rag` internals). New `graph.py` LangGraph pipeline: convert (MarkItDown) → classify (deterministic prefilter + LLM only when ambiguous) → extract (structured metadata + **textstat** readability — flagged swap vs CONTEXT’s py-readability-metrics) → orchestrator → four parallel department workers (`marketing` / `operaciones` / `procurement` / `training`) with `Annotated[list, operator.add]` reducer on `department_sections` → synthesize (Sales summary + owner names). Graph nodes are DB-free; `status="analyzing"` still only in `create_ticket`. New repo writers `save_rfp_metadata` / `save_department_sections`. Deps: `markitdown[pdf]` + `textstat` added to `data/` and `services/rfp/`; `langgraph` + `openai` also added to `services/rfp`. Offline tests under `tests/pipelines/test_rfp_{generation,classifier,worker,reducer,repository_writers}.py`. Stub Celery task / service app / compose / CI untouched (Phase 3b wires `run_intake`).
+
+## Milestone 9 Phase 3b — intake graph wired into worker
+
+**Status:** Implemented locally (not committed). Docker / git not run in this session (operator).
+
+**Scope:** [`services/rfp/tasks.py`](services/rfp/tasks.py) `rfp.process_rfp` now calls `run_intake`, then persists via `save_rfp_metadata` / `save_department_sections` and advances status only through `update_ticket_status`. Invalid graph judgment and any graph crash both → `discarded` (reason from `discard_reason` or `intake failed: <ExceptionType>`; full traceback logged on crash) — no 8th status, never stuck at `analyzing`. Valid → writers → `intake_complete`. Missing ticket → defensive `not_found` (no raise/retry). `summary` returned + logged only (no DB column this phase). Graph / writers / models / compose / CI untouched; `status="analyzing"` still initialized only in `create_ticket`.
+
+## Milestone 9 Phase 4 — backoffice RFP UI
+
+**Status:** Implemented locally (not committed). npm / vitest / docker / git not run in this session (operator).
+
+**Scope:** Backoffice mirrors knowledge patterns: new `lib/rfp.ts` + `lib/rfp-types.ts` (FormData upload with Bearer and no manual Content-Type; GET ticket poll) + `app/rfp/page.tsx` (InventoryAuthGuard, view-state idle|uploading|polling|done|error, bounded poll every 2500ms × 40 attempts with interval cleared on terminal/unmount). NavLinks gains RFP. `next.config.ts` rewrite `/api/rfp/:path*` → `RFP_API_ORIGIN`; `.env.example` + compose `ui` env `RFP_API_ORIGIN` / `NEXT_PUBLIC_RFP_API_URL`. Vitest in `lib/rfp.test.ts`. No new deps; rfp service/graph/other features untouched.
+
+## Milestone 9 Phase 5 — RLS prep + docs truth-up
+
+**Status:** Implemented locally (not committed). RLS script / DB / docker / commit not run in this session (operator).
+
+**Scope:** Prettier applied to the six backoffice RFP UI files (`app/rfp/page.tsx`, `lib/rfp*.ts`, `NavLinks.tsx`, `next.config.ts`) so CI `format:check` passes; `npx tsc --noEmit` in backoffice reported no RFP-file errors. [`scripts/enable_rls.py`](scripts/enable_rls.py) TABLES now includes `task_dead_letters` alongside the four RFP tables; docstring updated (script not executed). Docs truth-up: pipeline Expect **142**, root README adds `services/rfp` + twelve CI dirs + M9 Part 1 milestone row, [`docs/standards/project-context.md`](docs/standards/project-context.md) adds CONTEXT-rfp + port **8017**, [`services/rfp/README.md`](services/rfp/README.md) reflects wired `run_intake` worker + GEN_* env + upload hardening. No DB/DDL.
