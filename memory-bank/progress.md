@@ -1019,3 +1019,13 @@ cd services/knowledge; uv run pytest
 **Status:** Implemented locally (not committed). RLS script / DB / docker / commit not run in this session (operator).
 
 **Scope:** Prettier applied to the six backoffice RFP UI files (`app/rfp/page.tsx`, `lib/rfp*.ts`, `NavLinks.tsx`, `next.config.ts`) so CI `format:check` passes; `npx tsc --noEmit` in backoffice reported no RFP-file errors. [`scripts/enable_rls.py`](scripts/enable_rls.py) TABLES now includes `task_dead_letters` alongside the four RFP tables; docstring updated (script not executed). Docs truth-up: pipeline Expect **142**, root README adds `services/rfp` + twelve CI dirs + M9 Part 1 milestone row, [`docs/standards/project-context.md`](docs/standards/project-context.md) adds CONTEXT-rfp + port **8017**, [`services/rfp/README.md`](services/rfp/README.md) reflects wired `run_intake` worker + GEN_* env + upload hardening. No DB/DDL.
+
+## Milestone 9 Part 2 — RFP Response Generation
+
+**Status:** Implemented locally (not committed). Live smoke passed (operator).
+
+**Scope:** Part 2 builds on intake without editing `graph.py`. New [`response_evaluators.py`](data/pipelines/rfp_intake/response_evaluators.py) (textstat readability, relevance, §5 compliance loaded from `data/raw/CONTEXT-rfp.md`) + [`response_graph.py`](data/pipelines/rfp_intake/response_graph.py) (parallel dept workers with in-node generate↔evaluate loop, `ITERATION_LIMIT=3`; exhaust → `needs_human_review` inside `evaluation_results`). Repository readers/updater (`get_department_sections`, `get_rfp_metadata`, `update_department_section`). Celery `rfp.process_rfp_response` + `POST /rfp/tickets/{id}/response` (409 unless `intake_complete`) + expanded GET `sections[]`. Backoffice Generate button + `RESPONSE_TERMINAL_STATUSES` poll + SectionCard eval UI. Crash recovery never leaves ticket at `drafting` / never discards.
+
+**Tests (this session):** pipeline `tests/pipelines/` **154** passed; `services/rfp` route tests **11** passed; backoffice `lib/rfp.test.ts` **6** passed (earlier in Part 2 UI phase).
+
+**Live smoke:** fresh-byte seed PDF → intake_complete → POST response → under_evaluation; four departments drafted in place (4 rows, not 8); **2** overall_pass / **2** needs_human_review.
