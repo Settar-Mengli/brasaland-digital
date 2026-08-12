@@ -8,3 +8,4 @@ coverage
 next-env.d.ts
 package-lock.json
 docker-compose.yml
+services/auth/data/users.json

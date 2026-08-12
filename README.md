@@ -4,7 +4,7 @@
 
 The digital platform for Brasaland, a 14-location grilled-food restaurant chain across Colombia and the United States.
 
-Brasaland Digital is an npm + Python monorepo: six npm workspaces under `apps/` and `uis/` (public marketing site, operations toolkit, talent pipeline tracker, Next.js website rebuild, operations backoffice, and incident-manager UI), plus Python packages under `packages/`, FastAPI services under `services/` (auth, inventory, incident-manager, supplier-directory, incident-analysis, telemetry, reporting, knowledge), and OAuth-protected MCP servers under `mcps/` (company-tools). Shared tooling and conventions without forcing shared runtime dependencies.
+Brasaland Digital is an npm + Python monorepo: six npm workspaces under `apps/` and `uis/` (public marketing site, operations toolkit, talent pipeline tracker, Next.js website rebuild, operations backoffice, and incident-manager UI), plus Python packages under `packages/`, FastAPI services under `services/` (auth, inventory, incident-manager, supplier-directory, incident-analysis, telemetry, reporting, knowledge, rfp), and OAuth-protected MCP servers under `mcps/` (company-tools). Shared tooling and conventions without forcing shared runtime dependencies.
 
 ## Live demos
 
@@ -48,7 +48,8 @@ brasaland-digital/
 │   ├── inventory/               # Ingredient inventory API (FastAPI, PostgreSQL/SQLModel)
 │   ├── telemetry/               # Telemetry ingest + report API (FastAPI, PostgreSQL/SQLModel)
 │   ├── reporting/               # Reporting API + Celery worker (FastAPI, PostgreSQL/SQLModel, Redis)
-│   └── knowledge/               # RAG knowledge Q&A API (FastAPI, Qdrant, JWT-guarded)
+│   ├── knowledge/               # RAG knowledge Q&A API (FastAPI, Qdrant, JWT-guarded)
+│   └── rfp/                     # RFP intake API + Celery worker (FastAPI, SQLModel, Redis, :8017)
 ├── mcps/
 │   └── company-tools/           # OAuth MCP server (incidents + read-only inventory, :8016)
 ├── memory-bank/                 # Agent context files (projectbrief, techContext, progress)
@@ -73,7 +74,7 @@ brasaland-digital/
 - **Talent tracker (M3, live):** Next.js (App Router), React, Tailwind CSS
 - **Website rebuild + Backoffice (M4):** Next.js 16 (App Router), React 19, Tailwind v4 (CSS-first), TypeScript strict
 - **Incident manager UI:** Next.js 16 (App Router), React 19, Tailwind v4, TypeScript
-- **Python services:** FastAPI under `services/` — auth, supplier-directory, incident-analysis, incident-manager, inventory, telemetry, reporting (Celery + Redis worker), knowledge (RAG + Qdrant)
+- **Python services:** FastAPI under `services/` — auth, supplier-directory, incident-analysis, incident-manager, inventory, telemetry, reporting (Celery + Redis worker), knowledge (RAG + Qdrant), rfp (PDF intake + Celery worker, port **8017**)
 - **MCP servers:** `mcps/company-tools` — Streamable HTTP + mcpauth on port **8016**
 - **Tooling:** npm workspaces, Prettier, EditorConfig
 - **Deployment:** Vercel (separate projects per workspace)
@@ -100,7 +101,7 @@ Serves at `http://localhost:3000`.
 npm run test --workspace @brasaland/operations-toolkit
 ```
 
-GitHub Actions runs pytest across eleven service/package/MCP directories, the `data/` pipelines suite, Vitest across three npm workspaces, TypeScript typecheck across four workspaces, and a Prettier format check (see `.github/workflows/ci.yml`).
+GitHub Actions runs pytest across twelve service/package/MCP directories, the `data/` pipelines suite, Vitest across three npm workspaces, TypeScript typecheck across four workspaces, and a Prettier format check (see `.github/workflows/ci.yml`).
 
 **Run the M4 website rebuild locally (port 3002):**
 
@@ -320,6 +321,7 @@ works because all consuming workspaces use bundler-aware TypeScript resolution.
 | M4 uis/backoffice | Operations dashboard (4 sections, M2 fixture data) | Complete |
 | M4 uis/backoffice | Vercel deployment | Live |
 | M4 repo | Agent infrastructure (AGENTS.md, memory-bank/, .agents/) | Complete |
+| M9 Agentic RFP Workflow — Part 1: Intake & Routing | Upload + classify + extract + parallel dept workers + backoffice poll UI | Complete |
 
 ## License
 

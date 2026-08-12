@@ -38,7 +38,10 @@ function RfpPageContent() {
     };
   }, []);
 
-  function startPolling(ticketId: string, initial: Pick<RfpTicket, 'ticket_id' | 'rfp_id' | 'status'>) {
+  function startPolling(
+    ticketId: string,
+    initial: Pick<RfpTicket, 'ticket_id' | 'rfp_id' | 'status'>,
+  ) {
     clearPoll();
     attemptsRef.current = 0;
     setView({ status: 'polling', ticket: initial });

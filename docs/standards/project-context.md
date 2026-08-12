@@ -15,6 +15,7 @@ Thin index only. Domain narrative and token definitions live in the linked docum
 - [data/pipelines/CONTEXT-brasaland-pipeline.md](../../data/pipelines/CONTEXT-brasaland-pipeline.md)
 - [data/raw/CONTEXT-brasaland-rag.md](../../data/raw/CONTEXT-brasaland-rag.md)
 - [data/raw/CONTEXT-company.md](../../data/raw/CONTEXT-company.md)
+- [data/raw/CONTEXT-rfp.md](../../data/raw/CONTEXT-rfp.md)
 
 ## Port assignments
 
@@ -30,6 +31,7 @@ Authoritative local port table for this monorepo:
 | Telemetry API | 8013 |
 | Reporting API | 8014 |
 | Knowledge API | 8015 |
+| RFP API | 8017 |
 | Company Tools MCP | 8016 |
 | Public website (M1 http-server) | 3000 |
 | Talent pipeline tracker | 3001 |
@@ -41,7 +43,7 @@ Authoritative local port table for this monorepo:
 | Qdrant (REST) | 6333 |
 | Qdrant (gRPC) | 6334 |
 
-Reporting API (8014) ships in `services/reporting/` (FastAPI + Celery worker + Compose); backoffice exposes /reporting. Knowledge API (8015) ships in `services/knowledge/` with Qdrant; backoffice exposes /knowledge. Company Tools MCP (8016) ships in `mcps/company-tools/` (Streamable HTTP + mcpauth); the support agent reaches incidents/inventory only through it.
+Reporting API (8014) ships in `services/reporting/` (FastAPI + Celery worker + Compose); backoffice exposes /reporting. Knowledge API (8015) ships in `services/knowledge/` with Qdrant; backoffice exposes /knowledge. RFP API (8017) ships in `services/rfp/` (FastAPI + Celery worker); `POST /rfp/tickets` and `GET /rfp/tickets/{id}`; backoffice exposes /rfp. Company Tools MCP (8016) ships in `mcps/company-tools/` (Streamable HTTP + mcpauth); the support agent reaches incidents/inventory only through it.
 
 ## Live deployments
 

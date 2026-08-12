@@ -1,7 +1,9 @@
 # Brasaland RFP API (Milestone 9)
 
 Async HTTP seam for RFP PDF upload, atomic ticket create, and Celery enqueue.
-Intake graph attaches in Phase 3 — the worker task is a stub until then.
+The worker runs `run_intake` (convert → classify → extract → parallel department workers →
+synthesize), persists metadata + department sections via repository writers, and advances
+ticket status through `update_ticket_status` (`discarded` or `intake_complete`).
 
 ## Port
 
@@ -23,8 +25,16 @@ Intake graph attaches in Phase 3 — the worker task is a stub until then.
 | `REDIS_URL` | Celery broker/backend |
 | `JWT_PUBLIC_KEY` | RS256 verify (same as knowledge/inventory) |
 | `JWT_ALGORITHM` | default RS256 via auth-verify |
+| `GEN_1_BASE_URL` / `GEN_1_API_KEY` / `GEN_1_MODEL` | Primary generation tier (worker) |
+| `GEN_2_BASE_URL` / `GEN_2_API_KEY` / `GEN_2_MODEL` | Failover tier 2 |
+| `GEN_3_BASE_URL` / `GEN_3_API_KEY` / `GEN_3_MODEL` | Failover tier 3 |
+| `GENERATION_TIMEOUT_SECONDS` | Per-attempt OpenAI client timeout (default 30) |
 
 Compose also sets `PYTHONPATH=/app/data`. Uploaded PDFs land in host `data/raw/` (gitignored).
+
+## Upload hardening
+
+Multipart field name `file`. Server-side defenses: **10 MiB** cap (413), require `%PDF-` magic (400), store under `data/raw/` with a **uuid** filename (client filename never used in the path).
 
 ## Tests
 

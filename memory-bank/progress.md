@@ -821,7 +821,7 @@ docs: document sales forecasting deliverable
 | `data/eval/evaluation_report.md` | Diagnosis + MAE/RMSE + CV tables |
 | `tests/pipelines/test_regression_cv.py` | Chronological fold-order unit test |
 | `data/eval/README.md` | Eval how-to |
-| `tests/pipelines/README.md` | Expect 34 passed |
+| `tests/pipelines/README.md` | Expect 142 passed |
 | `README.md` | Evaluate entry point |
 | `memory-bank/progress.md` | This entry |
 | `data/raw/CONTEXT-brasaland.en.md` | §6 eval cross-ref bullet |
@@ -955,7 +955,7 @@ cd services/knowledge; uv run pytest
 
 **Scope:** Removed six unused pip-export `requirements.txt` files (auth, supplier-directory, inventory, incident-manager, incident-analysis, packages/shared). Rewrote active docs to uv-only: deps declared in `pyproject.toml`, locked in `uv.lock`, install via `uv sync --python 3.13`. No `pyproject.toml` / `uv.lock` / dependency changes. Historical progress rows that mention `requirements.txt` left untouched.
 
-**Verify:** `uv sync --python 3.13` + `uv run pytest` passed for auth (88), supplier-directory (40), inventory (33), incident-manager (24), incident-analysis (18), packages/shared (33); `uv run --directory data --python 3.13 pytest` passed (99).
+**Verify:** `uv sync --python 3.13` + `uv run pytest` passed for auth (88), supplier-directory (40), inventory (33), incident-manager (24), incident-analysis (18), packages/shared (33); `uv run --directory data --python 3.13 pytest` passed (142).
 
 ## DO-NOW hardening (chore/do-now-hardening)
 
@@ -1013,3 +1013,9 @@ cd services/knowledge; uv run pytest
 **Status:** Implemented locally (not committed). npm / vitest / docker / git not run in this session (operator).
 
 **Scope:** Backoffice mirrors knowledge patterns: new `lib/rfp.ts` + `lib/rfp-types.ts` (FormData upload with Bearer and no manual Content-Type; GET ticket poll) + `app/rfp/page.tsx` (InventoryAuthGuard, view-state idle|uploading|polling|done|error, bounded poll every 2500ms × 40 attempts with interval cleared on terminal/unmount). NavLinks gains RFP. `next.config.ts` rewrite `/api/rfp/:path*` → `RFP_API_ORIGIN`; `.env.example` + compose `ui` env `RFP_API_ORIGIN` / `NEXT_PUBLIC_RFP_API_URL`. Vitest in `lib/rfp.test.ts`. No new deps; rfp service/graph/other features untouched.
+
+## Milestone 9 Phase 5 — RLS prep + docs truth-up
+
+**Status:** Implemented locally (not committed). RLS script / DB / docker / commit not run in this session (operator).
+
+**Scope:** Prettier applied to the six backoffice RFP UI files (`app/rfp/page.tsx`, `lib/rfp*.ts`, `NavLinks.tsx`, `next.config.ts`) so CI `format:check` passes; `npx tsc --noEmit` in backoffice reported no RFP-file errors. [`scripts/enable_rls.py`](scripts/enable_rls.py) TABLES now includes `task_dead_letters` alongside the four RFP tables; docstring updated (script not executed). Docs truth-up: pipeline Expect **142**, root README adds `services/rfp` + twelve CI dirs + M9 Part 1 milestone row, [`docs/standards/project-context.md`](docs/standards/project-context.md) adds CONTEXT-rfp + port **8017**, [`services/rfp/README.md`](services/rfp/README.md) reflects wired `run_intake` worker + GEN_* env + upload hardening. No DB/DDL.
