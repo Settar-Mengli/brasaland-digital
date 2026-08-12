@@ -2,8 +2,13 @@
 
 import { useEffect, useRef, useState } from 'react';
 import InventoryAuthGuard from '@/app/_components/InventoryAuthGuard';
-import { getRfpTicket, uploadRfp } from '@/lib/rfp';
-import { TERMINAL_STATUSES, type RfpTicket } from '@/lib/rfp-types';
+import { getRfpTicket, triggerRfpResponse, uploadRfp } from '@/lib/rfp';
+import {
+  RESPONSE_TERMINAL_STATUSES,
+  TERMINAL_STATUSES,
+  type RfpSection,
+  type RfpTicket,
+} from '@/lib/rfp-types';
 
 const POLL_INTERVAL_MS = 2500;
 const MAX_POLL_ATTEMPTS = 40;
@@ -15,8 +20,117 @@ type ViewState =
   | { status: 'done'; ticket: RfpTicket }
   | { status: 'error'; message: string; ticket?: RfpTicket };
 
-function isTerminal(status: string): boolean {
-  return (TERMINAL_STATUSES as readonly string[]).includes(status);
+function isTerminalStatus(status: string, terminals: readonly string[]): boolean {
+  return terminals.includes(status);
+}
+
+function SectionCard({ section }: { section: RfpSection }) {
+  const evaluation = section.evaluation_results ?? null;
+  const review = evaluation?.needs_human_review === true;
+  const passed = evaluation?.overall_pass === true;
+  const pending = evaluation == null;
+
+  return (
+    <article className="mt-6 border-t border-brasaland-charcoal/10 pt-4">
+      <div className="flex flex-wrap items-baseline gap-2 mb-2">
+        <h3 className="font-semibold text-lg text-brasaland-charcoal">{section.department_id}</h3>
+        <span className="text-xs text-brasaland-charcoal/60">
+          approval: {section.approval_status ?? 'pending'}
+        </span>
+      </div>
+
+      <div className="flex flex-wrap gap-2 mb-3 text-xs font-medium">
+        {pending ? (
+          <span className="rounded-md bg-brasaland-charcoal/10 px-2 py-1 text-brasaland-charcoal/80">
+            Pending
+          </span>
+        ) : null}
+        {review ? (
+          <span
+            role="status"
+            className="rounded-md bg-brasaland-error/15 px-2 py-1 text-brasaland-error"
+          >
+            Needs human review
+          </span>
+        ) : null}
+        {!pending && passed ? (
+          <span className="rounded-md bg-brasaland-charcoal/10 px-2 py-1 text-brasaland-charcoal">
+            Passed evaluation
+          </span>
+        ) : null}
+        {evaluation?.ceo_approval_required === true ? (
+          <span className="rounded-md bg-brasaland-ember/15 px-2 py-1 text-brasaland-ember">
+            CEO approval required
+          </span>
+        ) : null}
+      </div>
+
+      {section.draft_content ? (
+        <div className="mb-3">
+          <p className="text-sm font-medium mb-1">Draft</p>
+          <pre className="whitespace-pre-wrap text-sm text-brasaland-charcoal/90 font-sans bg-brasaland-cream/40 rounded-md px-3 py-2">
+            {section.draft_content}
+          </pre>
+        </div>
+      ) : (
+        <p className="text-sm text-brasaland-charcoal/60 mb-3">No draft yet.</p>
+      )}
+
+      {evaluation ? (
+        <div className="text-sm space-y-2 text-brasaland-charcoal/90">
+          <p className="font-medium">Evaluation</p>
+          <ul className="list-disc pl-5 space-y-1">
+            <li>
+              Readability:{' '}
+              {evaluation.readability?.pass === true
+                ? 'pass'
+                : evaluation.readability?.pass === false
+                  ? 'fail'
+                  : 'n/a'}
+              {typeof evaluation.readability?.score === 'number'
+                ? ` (score ${evaluation.readability.score.toFixed(1)})`
+                : ''}
+            </li>
+            <li>
+              Relevance:{' '}
+              {evaluation.relevance?.pass === true
+                ? 'pass'
+                : evaluation.relevance?.pass === false
+                  ? 'fail'
+                  : 'n/a'}
+              {evaluation.relevance?.missing_aspects &&
+              evaluation.relevance.missing_aspects.length > 0
+                ? ` — missing: ${evaluation.relevance.missing_aspects.join('; ')}`
+                : ''}
+            </li>
+            <li>
+              Compliance:{' '}
+              {evaluation.compliance?.pass === true
+                ? 'pass'
+                : evaluation.compliance?.pass === false
+                  ? 'fail'
+                  : 'n/a'}
+              {evaluation.compliance?.rule_ids && evaluation.compliance.rule_ids.length > 0
+                ? ` — rules: ${evaluation.compliance.rule_ids.join(', ')}`
+                : ''}
+            </li>
+          </ul>
+          {evaluation.compliance?.violations && evaluation.compliance.violations.length > 0 ? (
+            <ul className="list-disc pl-5 text-brasaland-error/90">
+              {evaluation.compliance.violations.map((violation) => (
+                <li key={violation}>{violation}</li>
+              ))}
+            </ul>
+          ) : null}
+          {evaluation.feedback_for_generator ? (
+            <p className="text-brasaland-charcoal/70">
+              <span className="font-medium">Feedback:</span> {evaluation.feedback_for_generator}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+    </article>
+  );
 }
 
 function RfpPageContent() {
@@ -41,6 +155,7 @@ function RfpPageContent() {
   function startPolling(
     ticketId: string,
     initial: Pick<RfpTicket, 'ticket_id' | 'rfp_id' | 'status'>,
+    terminals: readonly string[] = TERMINAL_STATUSES,
   ) {
     clearPoll();
     attemptsRef.current = 0;
@@ -50,7 +165,7 @@ function RfpPageContent() {
       attemptsRef.current += 1;
       try {
         const ticket = await getRfpTicket(ticketId);
-        if (isTerminal(ticket.status)) {
+        if (isTerminalStatus(ticket.status, terminals)) {
           clearPoll();
           setView({ status: 'done', ticket });
           return;
@@ -90,7 +205,7 @@ function RfpPageContent() {
     setView({ status: 'uploading' });
     try {
       const uploaded = await uploadRfp(file);
-      startPolling(uploaded.ticket_id, uploaded);
+      startPolling(uploaded.ticket_id, uploaded, TERMINAL_STATUSES);
     } catch (error) {
       setView({
         status: 'error',
@@ -109,13 +224,44 @@ function RfpPageContent() {
           ? view.ticket
           : undefined;
 
+  async function onGenerateResponse() {
+    if (!liveTicket) {
+      return;
+    }
+    const current = liveTicket;
+    clearPoll();
+    setView({
+      status: 'polling',
+      ticket: {
+        ticket_id: current.ticket_id,
+        rfp_id: current.rfp_id,
+        status: current.status,
+      },
+    });
+    try {
+      const triggered = await triggerRfpResponse(current.ticket_id);
+      startPolling(triggered.ticket_id, triggered, RESPONSE_TERMINAL_STATUSES);
+    } catch (error) {
+      setView({
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Failed to start response generation.',
+        ticket: 'sections' in current ? (current as RfpTicket) : undefined,
+      });
+    }
+  }
+
+  const sections =
+    liveTicket && 'sections' in liveTicket && Array.isArray(liveTicket.sections)
+      ? liveTicket.sections
+      : undefined;
+
   return (
     <>
       <div className="mb-8">
         <h1 className="font-display text-3xl font-bold text-brasaland-charcoal">RFP intake</h1>
         <p className="text-sm text-brasaland-charcoal/60 mt-1">
           Upload a PDF RFP. The worker analyzes it and advances the ticket to intake_complete or
-          discarded.
+          discarded. After intake, generate department response drafts.
         </p>
       </div>
 
@@ -154,7 +300,7 @@ function RfpPageContent() {
 
       {view.status === 'polling' ? (
         <p role="status" className="text-sm text-brasaland-charcoal/60 mt-6">
-          Analyzing ticket {view.ticket.ticket_id}… status: {view.ticket.status}
+          Processing ticket {view.ticket.ticket_id}… status: {view.ticket.status}
         </p>
       ) : null}
 
@@ -188,7 +334,9 @@ function RfpPageContent() {
                   ? 'text-brasaland-charcoal font-semibold'
                   : liveTicket.status === 'discarded'
                     ? 'text-brasaland-error font-semibold'
-                    : 'text-brasaland-charcoal/90'
+                    : liveTicket.status === 'under_evaluation'
+                      ? 'text-brasaland-charcoal font-semibold'
+                      : 'text-brasaland-charcoal/90'
               }
             >
               {liveTicket.status}
@@ -196,6 +344,27 @@ function RfpPageContent() {
           </p>
           {liveTicket.status === 'discarded' ? (
             <p className="text-sm text-brasaland-error mt-2">This RFP was discarded.</p>
+          ) : null}
+          {liveTicket.status === 'intake_complete' ? (
+            <button
+              type="button"
+              onClick={onGenerateResponse}
+              disabled={busy}
+              className="mt-4 rounded-md bg-brasaland-ember px-4 py-2 text-sm font-medium text-brasaland-ivory disabled:opacity-60"
+            >
+              {busy ? 'Generating…' : 'Generate response'}
+            </button>
+          ) : null}
+
+          {sections && sections.length > 0 ? (
+            <div className="mt-6" aria-labelledby="rfp-sections">
+              <h2 id="rfp-sections" className="font-semibold text-xl mb-2">
+                Department sections
+              </h2>
+              {sections.map((section) => (
+                <SectionCard key={section.department_id} section={section} />
+              ))}
+            </div>
           ) : null}
         </section>
       ) : null}

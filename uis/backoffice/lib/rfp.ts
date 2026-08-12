@@ -60,3 +60,21 @@ export async function getRfpTicket(ticketId: string): Promise<RfpTicket> {
   }
   return (await response.json()) as RfpTicket;
 }
+
+/**
+ * Trigger response generation for an intake_complete ticket. Requires a Bearer JWT.
+ */
+export async function triggerRfpResponse(ticketId: string): Promise<RfpUploadResponse> {
+  const token = requireAccessToken();
+  const response = await fetch(`${getRfpBaseUrl()}/tickets/${ticketId}/response`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  handleUnauthorized(response);
+  if (!response.ok) {
+    throw new Error(await parseApiError(response));
+  }
+  return (await response.json()) as RfpUploadResponse;
+}
