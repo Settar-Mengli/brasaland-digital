@@ -14,7 +14,7 @@ vi.mock('./api-error', () => ({
 
 import { parseApiError } from './api-error';
 import { getAccessToken } from './auth';
-import { getRfpTicket, uploadRfp } from './rfp';
+import { getRfpTicket, triggerRfpResponse, uploadRfp } from './rfp';
 import { handleUnauthorized } from './session';
 
 describe('uploadRfp', () => {
@@ -133,5 +133,46 @@ describe('getRfpTicket', () => {
     await expect(getRfpTicket('missing')).rejects.toThrow('api error');
     expect(handleUnauthorized).toHaveBeenCalled();
     expect(parseApiError).toHaveBeenCalled();
+  });
+});
+
+describe('triggerRfpResponse', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+  });
+
+  it('POSTs /tickets/{id}/response with Bearer and no body Content-Type', async () => {
+    vi.stubEnv('NEXT_PUBLIC_RFP_API_URL', 'http://localhost:3003/api/rfp');
+    vi.mocked(getAccessToken).mockReturnValue('tok');
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 202,
+      json: async () => ({
+        ticket_id: 't1',
+        rfp_id: 'r1',
+        status: 'intake_complete',
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await triggerRfpResponse('t1');
+
+    expect(result).toEqual({
+      ticket_id: 't1',
+      rfp_id: 'r1',
+      status: 'intake_complete',
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:3003/api/rfp/tickets/t1/response',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { Authorization: 'Bearer tok' },
+      }),
+    );
+    const call = fetchMock.mock.calls[0]![1] as RequestInit;
+    expect(call.headers).not.toHaveProperty('Content-Type');
+    expect(call).not.toHaveProperty('body');
+    expect(handleUnauthorized).toHaveBeenCalled();
   });
 });

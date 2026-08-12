@@ -153,3 +153,61 @@ def save_department_sections(
     return rows
 
 
+def get_department_sections(
+    session: Session, ticket_id: str
+) -> list[DepartmentSection]:
+    """Return all department_section rows for a ticket."""
+    return list(
+        session.exec(
+            select(DepartmentSection).where(
+                DepartmentSection.ticket_id == ticket_id
+            )
+        ).all()
+    )
+
+
+def get_rfp_metadata(session: Session, rfp_id: str) -> RfpMetadata | None:
+    """Return the rfp_metadata row for ``rfp_id``, or None if missing."""
+    return session.get(RfpMetadata, rfp_id)
+
+
+def update_department_section(
+    session: Session,
+    *,
+    ticket_id: str,
+    department_id: str,
+    draft_content: str,
+    evaluation_results: dict[str, Any],
+) -> DepartmentSection:
+    """Update draft_content and evaluation_results for one (ticket, department) row.
+
+    Enforces a single matching row in application code (no DB unique on the pair).
+    """
+    rows = list(
+        session.exec(
+            select(DepartmentSection).where(
+                DepartmentSection.ticket_id == ticket_id,
+                DepartmentSection.department_id == department_id,
+            )
+        ).all()
+    )
+    if len(rows) == 0:
+        raise ValueError(
+            f"department_section not found: ticket_id={ticket_id!r} "
+            f"department_id={department_id!r}"
+        )
+    if len(rows) > 1:
+        raise ValueError(
+            f"multiple department_section rows for ticket_id={ticket_id!r} "
+            f"department_id={department_id!r} (count={len(rows)})"
+        )
+
+    row = rows[0]
+    row.draft_content = draft_content
+    row.evaluation_results = evaluation_results
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    return row
+
+

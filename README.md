@@ -322,6 +322,7 @@ works because all consuming workspaces use bundler-aware TypeScript resolution.
 | M4 uis/backoffice | Vercel deployment | Live |
 | M4 repo | Agent infrastructure (AGENTS.md, memory-bank/, .agents/) | Complete |
 | M9 Agentic RFP Workflow — Part 1: Intake & Routing | Upload + classify + extract + parallel dept workers + backoffice poll UI | Complete |
+| M9 Agentic RFP Workflow — Part 2: Response Generation | Dept drafts + §5 evaluators + bounded loop, POST response trigger, expanded GET + backoffice Generate UI | Complete |
 
 ## License
 
