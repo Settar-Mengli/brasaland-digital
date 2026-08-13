@@ -24,6 +24,7 @@ from pipelines.rfp_intake.models import DepartmentSection, FinalDocument, RfpMet
 from pipelines.rfp_intake.repository import (
     create_ticket,
     get_department_sections,
+    get_final_document,
     get_rfp_metadata,
     merge_evaluation_results,
     save_department_sections,
@@ -319,6 +320,28 @@ def test_save_final_document_round_trip(session: Session) -> None:
     ).one()
     assert stored.id == row.id
     assert stored.sections == sections
+
+
+def test_get_final_document_reader(session: Session) -> None:
+    rfp_id = str(uuid4())
+    ticket, _ = create_ticket(
+        session,
+        rfp_id=rfp_id,
+        content_hash=f"hash-{rfp_id}",
+        raw_pdf_path="/tmp/x.pdf",
+    )
+    assert get_final_document(session, ticket.ticket_id) is None
+    save_final_document(
+        session,
+        ticket_id=ticket.ticket_id,
+        sections=[{"department_id": "marketing", "draft_content": "m"}],
+        total_estimated_value="USD 1 / COP 1",
+    )
+    row = get_final_document(session, ticket.ticket_id)
+    assert row is not None
+    assert row.ticket_id == ticket.ticket_id
+    assert row.sections == [{"department_id": "marketing", "draft_content": "m"}]
+    assert row.total_estimated_value == "USD 1 / COP 1"
 
 
 def test_save_final_document_upsert_same_ticket(session: Session) -> None:

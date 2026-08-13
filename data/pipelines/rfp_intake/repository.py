@@ -278,6 +278,13 @@ def save_final_document(
     return existing
 
 
+def get_final_document(session: Session, ticket_id: str) -> FinalDocument | None:
+    """Return the FinalDocument for ``ticket_id``, or None if missing."""
+    return session.exec(
+        select(FinalDocument).where(FinalDocument.ticket_id == ticket_id)
+    ).first()
+
+
 def update_department_section_approval(
     session: Session,
     *,
