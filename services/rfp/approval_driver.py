@@ -30,10 +30,29 @@ from pipelines.rfp_intake.repository import (
 logger = logging.getLogger(__name__)
 
 INTERRUPT_KEY = "__interrupt__"
+_TRACE_MAX = 20
 
 
 def dept_thread_id(ticket_id: str, department: str) -> str:
     return f"rfp-{ticket_id}:{department}"
+
+
+def bounded_trace(result: Any, *, existing: list[Any] | None = None) -> list[dict]:
+    """Prefer full graph-state ``trace`` (already accumulated); else keep prior.
+
+    Graph nodes append via ``operator.add``, so ``result["trace"]`` is the
+    complete ordered history for the thread. Do not concatenate prior DB rows
+    onto that list (would duplicate). Cap at ``_TRACE_MAX``.
+    """
+    fresh: list[dict] = []
+    if isinstance(result, dict):
+        for entry in result.get("trace") or []:
+            if isinstance(entry, dict):
+                fresh.append(entry)
+    if fresh:
+        return fresh[-_TRACE_MAX:]
+    prior = [e for e in (existing or []) if isinstance(e, dict)]
+    return prior[-_TRACE_MAX:]
 
 
 def ceo_thread_id(ticket_id: str) -> str:
@@ -309,6 +328,7 @@ def _persist_regen_section(
     department_id: str,
     section: dict[str, Any],
     interrupt_id: str,
+    graph_result: dict[str, Any] | None = None,
 ) -> None:
     """Read-merge-write draft + full eval in ONE update_department_section."""
     rows = get_department_sections(session, ticket_id)
@@ -331,6 +351,10 @@ def _persist_regen_section(
         merged_eval["forced_request_changes"] = section.get("forced_request_changes")
     merged_eval.pop("needs_regen", None)
     merged_eval["interrupt_id"] = interrupt_id
+    if graph_result is not None:
+        prior = merged_eval.get("trace")
+        prior_list = prior if isinstance(prior, list) else None
+        merged_eval["trace"] = bounded_trace(graph_result, existing=prior_list)
     draft = str(section.get("draft_content") or row.draft_content or "")
     update_department_section(
         session,
@@ -396,6 +420,10 @@ def apply_section_decision(
             result = graph.invoke(None, config)
             pending = interrupts_from_result(result)
 
+    prior_trace = eval_results.get("trace")
+    prior_list = prior_trace if isinstance(prior_trace, list) else None
+    trace_patch = {"trace": bounded_trace(result, existing=prior_list)}
+
     if pending:
         new_id = first_interrupt_id(result)
         if not new_id:
@@ -407,6 +435,7 @@ def apply_section_decision(
             department_id=str(department_id),
             section=section,
             interrupt_id=new_id,
+            graph_result=result if isinstance(result, dict) else None,
         )
         return {
             "ticket_id": ticket_id,
@@ -431,7 +460,11 @@ def apply_section_decision(
             session,
             ticket_id=ticket_id,
             department_id=str(department_id),
-            patch={"interrupt_id": None, "graph_outcome": "approved"},
+            patch={
+                "interrupt_id": None,
+                "graph_outcome": "approved",
+                **trace_patch,
+            },
         )
         fin = maybe_finalize_ticket(session, ticket_id)
         ticket = get_ticket(session, ticket_id)
@@ -460,6 +493,7 @@ def apply_section_decision(
             patch={
                 "interrupt_id": None,
                 "graph_outcome": "exhausted",
+                **trace_patch,
             },
         )
         fin = maybe_finalize_ticket(session, ticket_id)

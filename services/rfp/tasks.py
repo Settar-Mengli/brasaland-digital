@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import traceback
+from datetime import UTC, datetime
 
 import config  # noqa: F401 - sys.path for data/pipelines
 from celery_app import celery_app
@@ -29,7 +30,7 @@ from pipelines.rfp_intake.approval_orchestration import (
 from pipelines.rfp_intake.arbitration import run_arbitration
 from pipelines.rfp_intake.approval_graph import build_dept_approval_graph
 from checkpointer import checkpointer_cm
-from approval_driver import dept_thread_id, first_interrupt_id
+from approval_driver import bounded_trace, dept_thread_id, first_interrupt_id
 
 logger = logging.getLogger(__name__)
 
@@ -318,6 +319,14 @@ def process_rfp_approval(self, ticket_id: str) -> dict:
                 sections[dept] = {**sections.get(dept, {}), **dict(nums)}
 
             arb_raw = run_arbitration(sections=sections, metadata=metadata)
+            logger.info(
+                "node_trace agent=run_arbitration input=departments=%s "
+                "output=triggers=%s ceo_required=%s timestamp=%s",
+                departments_needed,
+                len(arb_raw.get("triggers_fired") or []),
+                bool(arb_raw.get("ceo_approval_required")),
+                datetime.now(UTC).isoformat(),
+            )
             stamped, arbitration = apply_arbitration_stamps(sections, arb_raw)
 
             for dept in departments_needed:
@@ -371,11 +380,17 @@ def process_rfp_approval(self, ticket_id: str) -> dict:
                         raise RuntimeError(
                             f"no __interrupt__ after start for department={dept}"
                         )
+                    # Start invoke pauses in approve before the node returns —
+                    # trace is usually empty here; still persist for inspectability.
+                    start_patch: dict = {"interrupt_id": interrupt_id}
+                    start_trace = bounded_trace(result)
+                    if start_trace:
+                        start_patch["trace"] = start_trace
                     merge_evaluation_results(
                         session,
                         ticket_id=ticket_id,
                         department_id=dept,
-                        patch={"interrupt_id": interrupt_id},
+                        patch=start_patch,
                     )
 
             logger.info(

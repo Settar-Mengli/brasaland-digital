@@ -33,7 +33,7 @@ CEO interrupts over HTTP, and synthesizes `FinalDocument` → `done`.
 Ticket-level: `arbitration` (from first section eval that has it). When `status == done`,
 also `final_document` (`sections`, `total_estimated_value`, `generated_at`).
 
-`evaluation_results` may be null until Part 2 runs; after response generation it holds readability / relevance / compliance scores, `overall_pass`, loop metadata (`iterations`, `exhausted`, `needs_human_review`), and optional `ceo_approval_required`. After Part 3 start it also carries `cost` / `setup_days` / `interrupt_id` / `arbitration`.
+`evaluation_results` may be null until Part 2 runs; after response generation it holds readability / relevance / compliance scores, `overall_pass`, loop metadata (`iterations`, `exhausted`, `needs_human_review`), and optional `ceo_approval_required`. After Part 3 start it also carries `cost` / `setup_days` / `interrupt_id` / `arbitration` / bounded node `trace` (`agent`, `input`, `output`, `timestamp` per approve/regen execution).
 
 ## Part 2 response flow
 
@@ -46,7 +46,7 @@ also `final_document` (`sections`, `total_estimated_value`, `generated_at`).
 ## Part 3 approval flow
 
 1. Client calls `POST /rfp/tickets/{id}/approval` when the ticket is `under_evaluation`.
-2. Celery task `rfp.process_rfp_approval` extracts numbers, runs fixed §7 arbitration, flips to `waiting_for_approval`, starts per-dept interrupt threads (`rfp-{ticket_id}:{dept}`), persists `interrupt_id`s.
+2. Celery task `rfp.process_rfp_approval` extracts numbers, runs fixed §7 arbitration, flips to `waiting_for_approval`, starts per-dept interrupt threads (`thread_id = rfp-{ticket_id}:{dept}`; CEO uses `rfp-{ticket_id}:ceo`), persists `interrupt_id`s.
 3. Clients approve/reject via `POST .../sections/{dept}/decision` (reject→regen in-process; exhaust → `approval_status=rejected` + `graph_outcome=exhausted`).
 4. When all active depts are terminal, if `ceo_approval_required` the driver starts the CEO interrupt; otherwise synthesizes `FinalDocument` → `done`.
 5. CEO approve → synthesize → `done`; CEO reject stays `waiting_for_approval` with `ceo_decision=rejected`.
@@ -98,7 +98,7 @@ Multipart field name `file`. Server-side defenses: **10 MiB** cap (413), require
 
 ## Tests
 
-Expect **11** tests in `tests/test_upload_and_routes.py` (auth, upload hardening, idempotent enqueue, response 401/409/202, GET `sections`).
+Expect **19** tests under `services/rfp/tests/` (upload/routes, response, approval task + routes). Pipeline E2E for Parts 1→3 lives in `tests/pipelines/test_rfp_e2e_approval.py`.
 
 ```powershell
 cd services/rfp

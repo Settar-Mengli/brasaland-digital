@@ -58,6 +58,17 @@ def _coerce_extract(parsed: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+def _orch_trace(*, agent: str, input_summary: str, output_summary: str) -> None:
+    ts = datetime.now(UTC).isoformat()
+    logger.info(
+        "node_trace agent=%s input=%s output=%s timestamp=%s",
+        agent,
+        input_summary,
+        output_summary,
+        ts,
+    )
+
+
 def extract_section_numbers(
     department: str,
     section: dict[str, Any],
@@ -68,6 +79,7 @@ def extract_section_numbers(
     owner = DEPARTMENT_OWNERS.get(department, department)
     draft = str(section.get("draft_content") or "")
     key_aspects = section.get("key_aspects") or []
+    input_summary = f"dept={department} draft_len={len(draft)}"
 
     system_prompt = (
         f"You extract structured numbers from the {department} department "
@@ -92,14 +104,30 @@ def extract_section_numbers(
             user_prompt=user_prompt,
             max_tokens=256,
         )
-        return _coerce_extract(parsed if isinstance(parsed, dict) else {})
+        numbers = _coerce_extract(parsed if isinstance(parsed, dict) else {})
+        _orch_trace(
+            agent="extract_section_numbers",
+            input_summary=input_summary,
+            output_summary=(
+                f"cost={numbers.get('cost')!r} "
+                f"setup_days={numbers.get('setup_days')!r} "
+                f"price_per_cover={numbers.get('price_per_cover')!r}"
+            ),
+        )
+        return numbers
     except Exception as exc:  # noqa: BLE001 — soft-fail extract
         logger.warning(
             "approval extract %s failed: %s",
             department,
             type(exc).__name__,
         )
-        return _null_numbers()
+        numbers = _null_numbers()
+        _orch_trace(
+            agent="extract_section_numbers",
+            input_summary=input_summary,
+            output_summary=f"soft_fail={type(exc).__name__}",
+        )
+        return numbers
 
 
 def extract_all_sections(
@@ -114,6 +142,11 @@ def extract_all_sections(
         out[str(department)] = extract_section_numbers(
             str(department), dict(sec), metadata
         )
+    _orch_trace(
+        agent="extract_all_sections",
+        input_summary=f"departments={list(departments_needed)}",
+        output_summary=f"extracted={len(out)}",
+    )
     return out
 
 
@@ -136,6 +169,14 @@ def apply_arbitration_stamps(
         base = dict(merged.get(key) or {})
         base.update(dict(stamp or {}))
         merged[key] = base
+    _orch_trace(
+        agent="apply_arbitration_stamps",
+        input_summary=(
+            f"stamps={len(stamps)} "
+            f"ceo_required={bool(result.get('ceo_approval_required'))}"
+        ),
+        output_summary=f"sections={len(merged)}",
+    )
     return merged, result
 
 
@@ -159,11 +200,23 @@ def _ceo_interrupt_node(state: CeoInterruptState) -> dict[str, Any]:
     action = decision
     if isinstance(decision, dict):
         action = decision.get("action") or decision.get("decision") or decision
+    input_summary = f"ticket_id={state.get('ticket_id')} action={action!r}"
     if action in ("approve", "approved"):
+        approved_at = datetime.now(UTC).isoformat()
+        _orch_trace(
+            agent="ceo_interrupt",
+            input_summary=input_summary,
+            output_summary="ceo_decision=approved",
+        )
         return {
             "ceo_decision": "approved",
-            "ceo_approved_at": datetime.now(UTC).isoformat(),
+            "ceo_approved_at": approved_at,
         }
+    _orch_trace(
+        agent="ceo_interrupt",
+        input_summary=input_summary,
+        output_summary="ceo_decision=rejected",
+    )
     return {
         "ceo_decision": "rejected",
         "error": "CEO rejected the proposal",
@@ -205,6 +258,14 @@ def synthesize_final_document(
 ) -> dict[str, Any] | None:
     """Build FinalDocument payload per CONTEXT §2.4. No DB I/O."""
     if error or ceo_decision == "rejected":
+        _orch_trace(
+            agent="synthesize_final_document",
+            input_summary=(
+                f"ticket_id={ticket_id} ceo_decision={ceo_decision!r} "
+                f"error={bool(error)}"
+            ),
+            output_summary="skipped",
+        )
         return None
 
     meta = dict(metadata or {})
@@ -251,7 +312,7 @@ def synthesize_final_document(
         if not any("budget" in str(q).lower() for q in open_questions):
             open_questions = list(open_questions) + ["budget_range unstated"]
 
-    return {
+    doc = {
         "header": {
             "client_name": meta.get("client_name"),
             "location": meta.get("location"),
@@ -268,3 +329,12 @@ def synthesize_final_document(
         "total_estimated_value": total,
         "open_questions": open_questions,
     }
+    _orch_trace(
+        agent="synthesize_final_document",
+        input_summary=f"ticket_id={ticket_id} sections={len(doc_sections)}",
+        output_summary=(
+            f"total={total!r} ceo_line={bool(ceo_line)} "
+            f"triggers={len(doc['arbitration_outcomes']['triggers_fired'])}"
+        ),
+    )
+    return doc

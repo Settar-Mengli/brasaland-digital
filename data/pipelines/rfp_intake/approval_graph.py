@@ -23,7 +23,9 @@ P3 contracts:
 from __future__ import annotations
 
 import logging
-from typing import Any, TypedDict
+import operator
+from datetime import UTC, datetime
+from typing import Annotated, Any, TypedDict
 
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import interrupt
@@ -45,6 +47,7 @@ class DeptApprovalState(TypedDict, total=False):
     rework_count: int
     outcome: str | None
     error: str | None
+    trace: Annotated[list[dict], operator.add]
 
 
 def _null_numbers() -> dict[str, None]:
@@ -67,6 +70,24 @@ def _coerce_extract(parsed: dict[str, Any]) -> dict[str, Any]:
         except (TypeError, ValueError):
             out[key] = None
     return out
+
+
+def _trace_entry(*, agent: str, input_summary: str, output_summary: str) -> dict[str, str]:
+    ts = datetime.now(UTC).isoformat()
+    entry = {
+        "agent": agent,
+        "input": input_summary,
+        "output": output_summary,
+        "timestamp": ts,
+    }
+    logger.info(
+        "node_trace agent=%s input=%s output=%s timestamp=%s",
+        agent,
+        input_summary,
+        output_summary,
+        ts,
+    )
+    return entry
 
 
 def approve_node(state: DeptApprovalState) -> dict[str, Any]:
@@ -95,22 +116,62 @@ def approve_node(state: DeptApprovalState) -> dict[str, Any]:
         if decision.get("feedback"):
             human_feedback = str(decision.get("feedback"))
 
+    input_summary = (
+        f"dept={department} rework_count={rework_count} action={action!r}"
+    )
+
     if action == "approve":
-        return {"outcome": "approved", "section": section}
+        return {
+            "outcome": "approved",
+            "section": section,
+            "trace": [
+                _trace_entry(
+                    agent="approve",
+                    input_summary=input_summary,
+                    output_summary="outcome=approved",
+                )
+            ],
+        }
 
     if action in ("reject", "request_changes"):
         if rework_count >= ITERATION_LIMIT:
-            return {"outcome": "exhausted", "section": section}
+            return {
+                "outcome": "exhausted",
+                "section": section,
+                "trace": [
+                    _trace_entry(
+                        agent="approve",
+                        input_summary=input_summary,
+                        output_summary="outcome=exhausted",
+                    )
+                ],
+            }
         stamped = dict(section)
         stamped["needs_regen"] = True
         if human_feedback:
             stamped["human_feedback"] = human_feedback
-        return {"section": stamped}
+        return {
+            "section": stamped,
+            "trace": [
+                _trace_entry(
+                    agent="approve",
+                    input_summary=input_summary,
+                    output_summary="needs_regen=true",
+                )
+            ],
+        }
 
     return {
         "outcome": f"unknown:{action!r}",
         "section": section,
         "error": f"unknown approval decision: {action!r}",
+        "trace": [
+            _trace_entry(
+                agent="approve",
+                input_summary=input_summary,
+                output_summary=f"outcome=unknown:{action!r}",
+            )
+        ],
     }
 
 
@@ -125,6 +186,10 @@ def regen_node(state: DeptApprovalState) -> dict[str, Any]:
         str(section.get("human_feedback") or "").strip(),
     ]
     feedback = "\n".join(p for p in feedback_parts if p)
+    input_summary = (
+        f"dept={department} rework_count={rework_count} "
+        f"has_feedback={bool(feedback)}"
+    )
 
     system_prompt = (
         f"You revise the {department} department proposal section for Brasaland "
@@ -164,7 +229,17 @@ def regen_node(state: DeptApprovalState) -> dict[str, Any]:
     merged.update(numbers)
     merged.pop("needs_regen", None)
     merged.pop("forced_request_changes", None)
-    return {"section": merged, "rework_count": rework_count}
+    return {
+        "section": merged,
+        "rework_count": rework_count,
+        "trace": [
+            _trace_entry(
+                agent="regen",
+                input_summary=input_summary,
+                output_summary="regenerated draft",
+            )
+        ],
+    }
 
 
 def route_after_approve(state: DeptApprovalState) -> str:
