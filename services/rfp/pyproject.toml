@@ -16,6 +16,7 @@ dependencies = [
     "openai",
     "markitdown[pdf]",
     "textstat",
+    "langgraph-checkpoint-sqlite>=3.1.1",
 ]
 
 [tool.uv.sources]

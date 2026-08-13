@@ -323,6 +323,7 @@ works because all consuming workspaces use bundler-aware TypeScript resolution.
 | M4 repo | Agent infrastructure (AGENTS.md, memory-bank/, .agents/) | Complete |
 | M9 Agentic RFP Workflow — Part 1: Intake & Routing | Upload + classify + extract + parallel dept workers + backoffice poll UI | Complete |
 | M9 Agentic RFP Workflow — Part 2: Response Generation | Dept drafts + §5 evaluators + bounded loop, POST response trigger, expanded GET + backoffice Generate UI | Complete |
+| M9 Agentic RFP Workflow — Part 3: Approval & Completion | Per-dept SQLite checkpointer interrupts, §7 arbitration, CEO gate, FinalDocument §2.4, decision HTTP + backoffice UI | Complete |
 
 ## License
 

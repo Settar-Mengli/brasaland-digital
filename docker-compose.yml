@@ -143,6 +143,7 @@ services:
       WATCHFILES_FORCE_POLLING: 'true'
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL}
+      RFP_CHECKPOINT_PATH: ${RFP_CHECKPOINT_PATH:-/app/checkpoint/rfp.sqlite}
       JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
       JWT_ALGORITHM: ${JWT_ALGORITHM}
       PYTHONPATH: /app/data
@@ -160,6 +161,7 @@ services:
       - ./services/rfp:/app/services/rfp
       - ./data:/app/data
       - rfp_venv:/app/services/rfp/.venv
+      - rfp_checkpoint:/app/checkpoint
     depends_on:
       - redis
     restart: unless-stopped
@@ -174,6 +176,7 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL}
+      RFP_CHECKPOINT_PATH: ${RFP_CHECKPOINT_PATH:-/app/checkpoint/rfp.sqlite}
       PYTHONPATH: /app/data
       GEN_1_BASE_URL: ${GEN_1_BASE_URL}
       GEN_1_API_KEY: ${GEN_1_API_KEY}
@@ -189,6 +192,7 @@ services:
       - ./services/rfp:/app/services/rfp
       - ./data:/app/data
       - rfp_worker_venv:/app/services/rfp/.venv
+      - rfp_checkpoint:/app/checkpoint
     depends_on:
       - redis
     restart: unless-stopped
@@ -389,6 +393,7 @@ volumes:
   company_tools_mcp_venv:
   rfp_venv:
   rfp_worker_venv:
+  rfp_checkpoint:
   qdrant_storage:
   ui_node_modules:
   ui_uis_node_modules:

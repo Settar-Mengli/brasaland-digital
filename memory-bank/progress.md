@@ -1029,3 +1029,13 @@ cd services/knowledge; uv run pytest
 **Tests (this session):** pipeline `tests/pipelines/` **154** passed; `services/rfp` route tests **11** passed; backoffice `lib/rfp.test.ts` **6** passed (earlier in Part 2 UI phase).
 
 **Live smoke:** fresh-byte seed PDF → intake_complete → POST response → under_evaluation; four departments drafted in place (4 rows, not 8); **2** overall_pass / **2** needs_human_review.
+
+## Milestone 9 Part 3 — Approval & Completion
+
+**Status:** Implemented (P0–P5). P4 backoffice UI may still be uncommitted separately.
+
+**Scope:** Human-in-the-loop approval on per-department LangGraph threads (`thread_id = rfp-{ticket_id}:{dept}`, CEO `:ceo`) with SQLite `SqliteSaver` on Docker volume `rfp_checkpoint`. Ticket-level pre-pass: extract numbers → fixed §7 arbitration → stamps → `waiting_for_approval`. Dept graph: approve (interrupt) → regen → re-interrupt; exhaust at `ITERATION_LIMIT` → `approval_status=rejected` + `graph_outcome=exhausted`. CEO gate when `ceo_approval_required`; synthesize §2.4 `FinalDocument` (full `document` JSON envelope) → `done`. Node execution traceability: in-state `trace` (`Annotated[list, operator.add]`) on approve/regen with agent/input/output/timestamp; persisted under `evaluation_results.trace` (bounded); orchestration helpers log the same four fields.
+
+**Key files:** `data/pipelines/rfp_intake/approval_graph.py`, `approval_orchestration.py`, `arbitration.py`; `services/rfp/checkpointer.py`, `approval_driver.py`, `tasks.py` (`rfp.process_rfp_approval`), `routers/rfp.py` (approval / section decision / CEO); writers `save_final_document(..., document=)`, `merge_evaluation_results`, `update_department_section_approval`.
+
+**Tests:** pipeline `test_rfp_dept_approval_graph.py` (approve, reject→regen, exhaust, **parallel B-while-A**), `test_rfp_arbitration.py`, `test_rfp_approval_synthesis.py`, `test_rfp_approval_orchestration.py`, `test_rfp_e2e_approval.py` (Parts 1→3 simulated resumes, mocked LLM); service `test_approval_task.py` + `test_approval_routes.py`. Full pipelines suite **182** passed; `services/rfp` **19** passed (this session).

@@ -11,7 +11,12 @@ from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlmodel import Session, select
 
 from pipelines.rfp_intake.lifecycle import validate_transition
-from pipelines.rfp_intake.models import DepartmentSection, RfpMetadata, Ticket
+from pipelines.rfp_intake.models import (
+    DepartmentSection,
+    FinalDocument,
+    RfpMetadata,
+    Ticket,
+)
 
 
 def create_ticket(
@@ -205,6 +210,133 @@ def update_department_section(
     row = rows[0]
     row.draft_content = draft_content
     row.evaluation_results = evaluation_results
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    return row
+
+
+def _department_section_row(
+    session: Session, *, ticket_id: str, department_id: str
+) -> DepartmentSection:
+    """Load exactly one department_section for (ticket_id, department_id)."""
+    rows = list(
+        session.exec(
+            select(DepartmentSection).where(
+                DepartmentSection.ticket_id == ticket_id,
+                DepartmentSection.department_id == department_id,
+            )
+        ).all()
+    )
+    if len(rows) == 0:
+        raise ValueError(
+            f"department_section not found: ticket_id={ticket_id!r} "
+            f"department_id={department_id!r}"
+        )
+    if len(rows) > 1:
+        raise ValueError(
+            f"multiple department_section rows for ticket_id={ticket_id!r} "
+            f"department_id={department_id!r} (count={len(rows)})"
+        )
+    return rows[0]
+
+
+def save_final_document(
+    session: Session,
+    *,
+    ticket_id: str,
+    sections: list[Any],
+    total_estimated_value: str | None,
+    document: dict[str, Any],
+) -> FinalDocument:
+    """Upsert the single FinalDocument for a ticket (§2.2: one per ticket).
+
+    Persists the full §2.4 envelope in ``document``. Denormalized ``sections`` and
+    ``total_estimated_value`` are filled from that same envelope. If a row exists
+    for ``ticket_id``, update and refresh ``generated_at``; otherwise insert.
+    """
+    envelope = dict(document)
+    proj_sections = list(envelope["sections"] if "sections" in envelope else sections)
+    if "total_estimated_value" in envelope:
+        raw_total = envelope.get("total_estimated_value")
+        proj_total = str(raw_total) if raw_total is not None else None
+    else:
+        proj_total = total_estimated_value
+
+    now = datetime.now(UTC)
+    existing = session.exec(
+        select(FinalDocument).where(FinalDocument.ticket_id == ticket_id)
+    ).first()
+    if existing is None:
+        row = FinalDocument(
+            ticket_id=ticket_id,
+            sections=proj_sections,
+            total_estimated_value=proj_total,
+            document=envelope,
+            generated_at=now,
+        )
+        session.add(row)
+        session.commit()
+        session.refresh(row)
+        return row
+
+    existing.sections = proj_sections
+    existing.total_estimated_value = proj_total
+    existing.document = envelope
+    existing.generated_at = now
+    session.add(existing)
+    session.commit()
+    session.refresh(existing)
+    return existing
+
+
+def get_final_document(session: Session, ticket_id: str) -> FinalDocument | None:
+    """Return the FinalDocument for ``ticket_id``, or None if missing."""
+    return session.exec(
+        select(FinalDocument).where(FinalDocument.ticket_id == ticket_id)
+    ).first()
+
+
+def update_department_section_approval(
+    session: Session,
+    *,
+    ticket_id: str,
+    department_id: str,
+    approval_status: str,
+    approver: str | None,
+    approved_at: datetime | None,
+) -> DepartmentSection:
+    """Update approval_status, approver, and approved_at only (not draft/eval)."""
+    row = _department_section_row(
+        session, ticket_id=ticket_id, department_id=department_id
+    )
+    row.approval_status = approval_status
+    row.approver = approver
+    row.approved_at = approved_at
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    return row
+
+
+def merge_evaluation_results(
+    session: Session,
+    *,
+    ticket_id: str,
+    department_id: str,
+    patch: dict[str, Any],
+) -> DepartmentSection:
+    """Shallow-merge ``patch`` into evaluation_results without wiping P2 keys.
+
+    P2 replaces the whole dict via ``update_department_section``; P3 must use this
+    path to add keys such as cost / setup_days / interrupt_id.
+    """
+    row = _department_section_row(
+        session, ticket_id=ticket_id, department_id=department_id
+    )
+    existing = dict(row.evaluation_results or {})
+    existing.update(patch)
+    row.evaluation_results = existing
     session.add(row)
     session.commit()
     session.refresh(row)

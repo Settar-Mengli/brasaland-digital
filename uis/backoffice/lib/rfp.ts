@@ -1,7 +1,12 @@
 import { getAccessToken } from './auth';
 import { parseApiError } from './api-error';
 import { handleUnauthorized } from './session';
-import type { RfpTicket, RfpUploadResponse } from './rfp-types';
+import type {
+  RfpCeoDecisionResponse,
+  RfpSectionDecisionResponse,
+  RfpTicket,
+  RfpUploadResponse,
+} from './rfp-types';
 
 /**
  * Same-origin RFP API base (rewritten to RFP_API_ORIGIN).
@@ -77,4 +82,79 @@ export async function triggerRfpResponse(ticketId: string): Promise<RfpUploadRes
     throw new Error(await parseApiError(response));
   }
   return (await response.json()) as RfpUploadResponse;
+}
+
+/**
+ * Start approval for an under_evaluation ticket. Requires a Bearer JWT.
+ */
+export async function startRfpApproval(ticketId: string): Promise<RfpUploadResponse> {
+  const token = requireAccessToken();
+  const response = await fetch(`${getRfpBaseUrl()}/tickets/${ticketId}/approval`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  handleUnauthorized(response);
+  if (!response.ok) {
+    throw new Error(await parseApiError(response));
+  }
+  return (await response.json()) as RfpUploadResponse;
+}
+
+/**
+ * Approve or reject one department section. Requires a Bearer JWT.
+ * Omits `feedback` when absent or blank (exactOptionalPropertyTypes).
+ */
+export async function decideRfpSection(
+  ticketId: string,
+  departmentId: string,
+  action: 'approve' | 'reject' | 'request_changes',
+  feedback?: string,
+): Promise<RfpSectionDecisionResponse> {
+  const token = requireAccessToken();
+  const trimmed = feedback?.trim() ?? '';
+  const body: { action: string; feedback?: string } = { action };
+  if (trimmed.length > 0) {
+    body.feedback = trimmed;
+  }
+  const response = await fetch(
+    `${getRfpBaseUrl()}/tickets/${ticketId}/sections/${departmentId}/decision`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    },
+  );
+  handleUnauthorized(response);
+  if (!response.ok) {
+    throw new Error(await parseApiError(response));
+  }
+  return (await response.json()) as RfpSectionDecisionResponse;
+}
+
+/**
+ * CEO approve or reject. Requires a Bearer JWT.
+ */
+export async function decideRfpCeo(
+  ticketId: string,
+  action: 'approve' | 'reject',
+): Promise<RfpCeoDecisionResponse> {
+  const token = requireAccessToken();
+  const response = await fetch(`${getRfpBaseUrl()}/tickets/${ticketId}/ceo/decision`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ action }),
+  });
+  handleUnauthorized(response);
+  if (!response.ok) {
+    throw new Error(await parseApiError(response));
+  }
+  return (await response.json()) as RfpCeoDecisionResponse;
 }

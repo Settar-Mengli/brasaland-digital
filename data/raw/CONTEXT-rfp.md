@@ -29,6 +29,21 @@ Missing figures (volume/budget/diner count) → record under open_questions; NEV
 ### 2.3 Ticket lifecycle (7 statuses — same ticket P1→P3)
 analyzing → discarded | intake_complete (P1) → drafting → under_evaluation (P2) → waiting_for_approval → done (P3).
 
+### 2.4 FinalDocument format
+One FinalDocument per ticket. Rendered shape (synthesis must match):
+
+- Header: client_name, location, service_type, generated_at, ticket_id.
+- Sections in FIXED order marketing → operaciones → procurement → training (omit
+  departments not on the ticket). Each section: department id + owner from §2.1;
+  the approved draft_content; stamp `approved by {owner} at {approved_at}`.
+- Arbitration outcomes: any §7 trigger that fired (cost-vs-feasibility,
+  setup-sla-breach, ceo-threshold) and the resolution taken.
+- CEO line: only when the contract is above $50,000 USD/year —
+  `CEO approval: Mariana Restrepo, {approved_at}`.
+- total_estimated_value: dual-currency string `USD X / COP Y` (§5). DERIVED FROM
+  metadata budget_range — NOT a sum of per-section cost keys. If budget_range is
+  missing/unstated, omit the value (do not invent); record under open_questions.
+
 ## 5. Business constraints (compliance evaluator rulebook)
 - Every price in BOTH COP and USD.
 - Every proposal mentions the 3 brand pillars at least once: consistent quality, warm experience, speed of service.

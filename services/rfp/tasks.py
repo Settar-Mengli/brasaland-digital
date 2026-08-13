@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import traceback
+from datetime import UTC, datetime
 
 import config  # noqa: F401 - sys.path for data/pipelines
 from celery_app import celery_app
@@ -19,13 +20,23 @@ from pipelines.rfp_intake.repository import (
     save_rfp_metadata,
     update_department_section,
     update_ticket_status,
+    merge_evaluation_results,
 )
 from pipelines.rfp_intake.response_graph import run_response
+from pipelines.rfp_intake.approval_orchestration import (
+    apply_arbitration_stamps,
+    extract_all_sections,
+)
+from pipelines.rfp_intake.arbitration import run_arbitration
+from pipelines.rfp_intake.approval_graph import build_dept_approval_graph
+from checkpointer import checkpointer_cm
+from approval_driver import bounded_trace, dept_thread_id, first_interrupt_id
 
 logger = logging.getLogger(__name__)
 
 TASK_NAME = "rfp.process_rfp"
 TASK_NAME_RESPONSE = "rfp.process_rfp_response"
+TASK_NAME_APPROVAL = "rfp.process_rfp_approval"
 
 
 @celery_app.task(bind=True, max_retries=3, name=TASK_NAME)
@@ -231,5 +242,203 @@ def process_rfp_response(self, ticket_id: str) -> dict:
                 "ticket_id": ticket_id,
                 "status": "under_evaluation",
                 "reason": f"response failed: {type(exc).__name__}",
+            }
+
+
+@celery_app.task(bind=True, max_retries=3, name=TASK_NAME_APPROVAL)
+def process_rfp_approval(self, ticket_id: str) -> dict:
+    """Pre-pass + start per-dept approval threads; land at waiting_for_approval.
+
+    Crash before status flip → stay under_evaluation + needs_human_review flags.
+    Crash after → stay waiting_for_approval; never advance to done.
+    """
+    ensure_schema()
+    with Session(engine) as session:
+        ticket = get_ticket(session, ticket_id)
+        if ticket is None:
+            logger.error("RFP approval ticket not found: %s", ticket_id)
+            return {"ticket_id": ticket_id, "status": "not_found"}
+
+        logger.info(
+            "RFP approval received ticket_id=%s rfp_id=%s status=%s",
+            ticket.ticket_id,
+            ticket.rfp_id,
+            ticket.status,
+        )
+
+        departments_needed: list[str] = []
+        flipped = False
+        try:
+            if ticket.status != "under_evaluation":
+                raise ValueError(
+                    f"ticket must be under_evaluation to start approval "
+                    f"(current status: {ticket.status})"
+                )
+
+            metadata_row = get_rfp_metadata(session, ticket.rfp_id)
+            if metadata_row is None:
+                raise ValueError(f"rfp_metadata not found for rfp_id={ticket.rfp_id}")
+
+            departments_needed = [
+                str(d) for d in (metadata_row.departments_needed or [])
+            ]
+            metadata = {
+                "client_name": metadata_row.client_name,
+                "location": metadata_row.location,
+                "service_type": metadata_row.service_type,
+                "scope": metadata_row.scope,
+                "deadline": metadata_row.deadline,
+                "budget_range": metadata_row.budget_range,
+                "open_questions": metadata_row.open_questions,
+            }
+
+            section_rows = get_department_sections(session, ticket_id)
+            sections: dict[str, dict] = {}
+            for row in section_rows:
+                dept = str(row.department_id)
+                if dept not in departments_needed:
+                    continue
+                eval_results = dict(row.evaluation_results or {})
+                sections[dept] = {
+                    "draft_content": row.draft_content,
+                    "key_aspects": row.key_aspects,
+                    "evaluation_results": eval_results,
+                    "cost": eval_results.get("cost"),
+                    "setup_days": eval_results.get("setup_days"),
+                    "price_per_cover": eval_results.get("price_per_cover"),
+                }
+
+            numbers = extract_all_sections(sections, departments_needed, metadata)
+            for dept, nums in numbers.items():
+                merge_evaluation_results(
+                    session,
+                    ticket_id=ticket_id,
+                    department_id=dept,
+                    patch=dict(nums),
+                )
+                sections[dept] = {**sections.get(dept, {}), **dict(nums)}
+
+            arb_raw = run_arbitration(sections=sections, metadata=metadata)
+            logger.info(
+                "node_trace agent=run_arbitration input=departments=%s "
+                "output=triggers=%s ceo_required=%s timestamp=%s",
+                departments_needed,
+                len(arb_raw.get("triggers_fired") or []),
+                bool(arb_raw.get("ceo_approval_required")),
+                datetime.now(UTC).isoformat(),
+            )
+            stamped, arbitration = apply_arbitration_stamps(sections, arb_raw)
+
+            for dept in departments_needed:
+                sec = stamped.get(dept) or {}
+                stamp_patch: dict = {
+                    "arbitration": arbitration,
+                }
+                if sec.get("forced_request_changes") is not None:
+                    stamp_patch["forced_request_changes"] = sec.get(
+                        "forced_request_changes"
+                    )
+                if sec.get("arbiter_feedback") is not None:
+                    stamp_patch["arbiter_feedback"] = sec.get("arbiter_feedback")
+                for key in ("cost", "setup_days", "price_per_cover"):
+                    if key in sec:
+                        stamp_patch[key] = sec.get(key)
+                merge_evaluation_results(
+                    session,
+                    ticket_id=ticket_id,
+                    department_id=dept,
+                    patch=stamp_patch,
+                )
+                sections[dept] = {
+                    **(sections.get(dept) or {}),
+                    **{k: v for k, v in stamp_patch.items() if k != "arbitration"},
+                    "arbitration": arbitration,
+                }
+
+            update_ticket_status(session, ticket_id, "waiting_for_approval")
+            flipped = True
+
+            with checkpointer_cm() as saver:
+                graph = build_dept_approval_graph(saver)
+                for dept in departments_needed:
+                    sec = dict(sections.get(dept) or {})
+                    result = graph.invoke(
+                        {
+                            "department": dept,
+                            "section": sec,
+                            "rework_count": 0,
+                            "outcome": None,
+                        },
+                        {
+                            "configurable": {
+                                "thread_id": dept_thread_id(ticket_id, dept)
+                            }
+                        },
+                    )
+                    interrupt_id = first_interrupt_id(result)
+                    if not interrupt_id:
+                        raise RuntimeError(
+                            f"no __interrupt__ after start for department={dept}"
+                        )
+                    # Start invoke pauses in approve before the node returns —
+                    # trace is usually empty here; still persist for inspectability.
+                    start_patch: dict = {"interrupt_id": interrupt_id}
+                    start_trace = bounded_trace(result)
+                    if start_trace:
+                        start_patch["trace"] = start_trace
+                    merge_evaluation_results(
+                        session,
+                        ticket_id=ticket_id,
+                        department_id=dept,
+                        patch=start_patch,
+                    )
+
+            logger.info(
+                "RFP waiting_for_approval ticket_id=%s departments=%s",
+                ticket_id,
+                departments_needed,
+            )
+            return {
+                "ticket_id": ticket_id,
+                "status": "waiting_for_approval",
+                "departments": departments_needed,
+            }
+        except Exception as exc:  # noqa: BLE001 — never leave stuck / never done
+            logger.error(
+                "RFP approval crashed ticket_id=%s flipped=%s: %s\n%s",
+                ticket_id,
+                flipped,
+                type(exc).__name__,
+                traceback.format_exc(),
+            )
+            flag = {
+                "needs_human_review": True,
+                "error": str(exc),
+                "approval_error": type(exc).__name__,
+            }
+            for department_id in departments_needed:
+                try:
+                    merge_evaluation_results(
+                        session,
+                        ticket_id=ticket_id,
+                        department_id=str(department_id),
+                        patch=flag,
+                    )
+                except Exception:  # noqa: BLE001 — best-effort
+                    logger.warning(
+                        "RFP approval crash recovery skip dept=%s ticket_id=%s",
+                        department_id,
+                        ticket_id,
+                    )
+            if not flipped:
+                return {
+                    "ticket_id": ticket_id,
+                    "status": "under_evaluation",
+                    "reason": f"approval failed: {type(exc).__name__}",
+                }
+            return {
+                "ticket_id": ticket_id,
+                "status": "waiting_for_approval",
+                "reason": f"approval failed: {type(exc).__name__}",
             }
 
