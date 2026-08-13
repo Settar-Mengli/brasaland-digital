@@ -137,6 +137,9 @@ class FinalDocument(SQLModel, table=True):
     total_estimated_value: Optional[str] = Field(
         default=None, sa_column=Column(Text, nullable=True)
     )
+    document: Optional[dict[str, Any]] = Field(
+        default=None, sa_column=Column(JSON, nullable=True)
+    )
     generated_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
         sa_column=Column(DateTime, nullable=False),

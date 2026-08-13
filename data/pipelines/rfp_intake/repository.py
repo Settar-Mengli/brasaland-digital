@@ -247,12 +247,22 @@ def save_final_document(
     ticket_id: str,
     sections: list[Any],
     total_estimated_value: str | None,
+    document: dict[str, Any],
 ) -> FinalDocument:
     """Upsert the single FinalDocument for a ticket (§2.2: one per ticket).
 
-    If a row exists for ``ticket_id``, update sections, total_estimated_value, and
-    refresh ``generated_at``. Otherwise insert.
+    Persists the full §2.4 envelope in ``document``. Denormalized ``sections`` and
+    ``total_estimated_value`` are filled from that same envelope. If a row exists
+    for ``ticket_id``, update and refresh ``generated_at``; otherwise insert.
     """
+    envelope = dict(document)
+    proj_sections = list(envelope["sections"] if "sections" in envelope else sections)
+    if "total_estimated_value" in envelope:
+        raw_total = envelope.get("total_estimated_value")
+        proj_total = str(raw_total) if raw_total is not None else None
+    else:
+        proj_total = total_estimated_value
+
     now = datetime.now(UTC)
     existing = session.exec(
         select(FinalDocument).where(FinalDocument.ticket_id == ticket_id)
@@ -260,8 +270,9 @@ def save_final_document(
     if existing is None:
         row = FinalDocument(
             ticket_id=ticket_id,
-            sections=sections,
-            total_estimated_value=total_estimated_value,
+            sections=proj_sections,
+            total_estimated_value=proj_total,
+            document=envelope,
             generated_at=now,
         )
         session.add(row)
@@ -269,8 +280,9 @@ def save_final_document(
         session.refresh(row)
         return row
 
-    existing.sections = sections
-    existing.total_estimated_value = total_estimated_value
+    existing.sections = proj_sections
+    existing.total_estimated_value = proj_total
+    existing.document = envelope
     existing.generated_at = now
     session.add(existing)
     session.commit()

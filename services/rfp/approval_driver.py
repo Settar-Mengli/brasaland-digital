@@ -211,6 +211,7 @@ def synthesize_and_complete(
         ticket_id=ticket_id,
         sections=list(payload.get("sections") or []),
         total_estimated_value=payload.get("total_estimated_value"),
+        document=payload,
     )
     update_ticket_status(session, ticket_id, "done")
     return {
@@ -288,6 +289,8 @@ def maybe_finalize_ticket(session: Session, ticket_id: str) -> dict[str, Any]:
 def serialize_final_document(row: Any) -> dict[str, Any] | None:
     if row is None:
         return None
+    if isinstance(row.document, dict) and row.document:
+        return dict(row.document)
     return {
         "ticket_id": row.ticket_id,
         "sections": row.sections,

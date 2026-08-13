@@ -304,15 +304,38 @@ def test_save_final_document_round_trip(session: Session) -> None:
         {"department_id": "marketing", "draft_content": "m"},
         {"department_id": "operaciones", "draft_content": "o"},
     ]
+    document = {
+        "header": {
+            "client_name": "Acme",
+            "location": "Bogotá",
+            "service_type": "catering",
+            "generated_at": "2026-01-01T00:00:00+00:00",
+            "ticket_id": ticket.ticket_id,
+        },
+        "sections": sections,
+        "arbitration_outcomes": {"triggers_fired": [], "resolutions": []},
+        "ceo_line": "CEO approval: Mariana Restrepo, 2026-01-01T00:00:00+00:00",
+        "total_estimated_value": "USD 60000 / COP 240000000",
+        "open_questions": [],
+    }
     row = save_final_document(
         session,
         ticket_id=ticket.ticket_id,
         sections=sections,
         total_estimated_value="USD 60000 / COP 240000000",
+        document=document,
     )
     assert row.ticket_id == ticket.ticket_id
     assert row.sections == sections
     assert row.total_estimated_value == "USD 60000 / COP 240000000"
+    assert row.document == document
+    assert row.document is not None
+    assert row.document["header"]["client_name"] == "Acme"
+    assert row.document["ceo_line"] is not None
+    assert row.document["arbitration_outcomes"] == {
+        "triggers_fired": [],
+        "resolutions": [],
+    }
     assert row.generated_at is not None
 
     stored = session.exec(
@@ -320,6 +343,7 @@ def test_save_final_document_round_trip(session: Session) -> None:
     ).one()
     assert stored.id == row.id
     assert stored.sections == sections
+    assert stored.document == document
 
 
 def test_get_final_document_reader(session: Session) -> None:
@@ -331,17 +355,41 @@ def test_get_final_document_reader(session: Session) -> None:
         raw_pdf_path="/tmp/x.pdf",
     )
     assert get_final_document(session, ticket.ticket_id) is None
+    sections = [{"department_id": "marketing", "draft_content": "m"}]
+    document = {
+        "header": {
+            "client_name": "Acme",
+            "location": "Medellín",
+            "service_type": "catering",
+            "generated_at": "2026-02-01T00:00:00+00:00",
+            "ticket_id": ticket.ticket_id,
+        },
+        "sections": sections,
+        "arbitration_outcomes": {
+            "triggers_fired": [{"id": "ceo-threshold"}],
+            "resolutions": ["ceo_gate"],
+        },
+        "ceo_line": "CEO approval: Mariana Restrepo, 2026-02-01T00:00:00+00:00",
+        "total_estimated_value": "USD 1 / COP 1",
+        "open_questions": [],
+    }
     save_final_document(
         session,
         ticket_id=ticket.ticket_id,
-        sections=[{"department_id": "marketing", "draft_content": "m"}],
+        sections=sections,
         total_estimated_value="USD 1 / COP 1",
+        document=document,
     )
     row = get_final_document(session, ticket.ticket_id)
     assert row is not None
     assert row.ticket_id == ticket.ticket_id
-    assert row.sections == [{"department_id": "marketing", "draft_content": "m"}]
+    assert row.sections == sections
     assert row.total_estimated_value == "USD 1 / COP 1"
+    assert row.document == document
+    assert row.document is not None
+    assert "header" in row.document
+    assert row.document["ceo_line"].startswith("CEO approval:")
+    assert row.document["arbitration_outcomes"]["triggers_fired"]
 
 
 def test_save_final_document_upsert_same_ticket(session: Session) -> None:
@@ -352,24 +400,43 @@ def test_save_final_document_upsert_same_ticket(session: Session) -> None:
         content_hash=f"hash-{rfp_id}",
         raw_pdf_path="/tmp/x.pdf",
     )
+    first_doc = {
+        "header": {"ticket_id": ticket.ticket_id, "client_name": "A"},
+        "sections": [{"department_id": "marketing", "draft_content": "v1"}],
+        "arbitration_outcomes": {"triggers_fired": [], "resolutions": []},
+        "ceo_line": None,
+        "total_estimated_value": "USD 10000 / COP 40000000",
+        "open_questions": [],
+    }
     first = save_final_document(
         session,
         ticket_id=ticket.ticket_id,
         sections=[{"department_id": "marketing", "draft_content": "v1"}],
         total_estimated_value="USD 10000 / COP 40000000",
+        document=first_doc,
     )
     first_id = first.id
     first_generated = first.generated_at
 
+    second_doc = {
+        "header": {"ticket_id": ticket.ticket_id, "client_name": "B"},
+        "sections": [{"department_id": "marketing", "draft_content": "v2"}],
+        "arbitration_outcomes": {"triggers_fired": [], "resolutions": []},
+        "ceo_line": "CEO approval: Mariana Restrepo, 2026-03-01T00:00:00+00:00",
+        "total_estimated_value": "USD 75000 / COP 300000000",
+        "open_questions": [],
+    }
     second = save_final_document(
         session,
         ticket_id=ticket.ticket_id,
         sections=[{"department_id": "marketing", "draft_content": "v2"}],
         total_estimated_value="USD 75000 / COP 300000000",
+        document=second_doc,
     )
     assert second.id == first_id
     assert second.sections == [{"department_id": "marketing", "draft_content": "v2"}]
     assert second.total_estimated_value == "USD 75000 / COP 300000000"
+    assert second.document == second_doc
     assert second.generated_at >= first_generated
 
     all_rows = session.exec(
@@ -378,6 +445,7 @@ def test_save_final_document_upsert_same_ticket(session: Session) -> None:
     assert len(all_rows) == 1
     assert all_rows[0].sections == [{"department_id": "marketing", "draft_content": "v2"}]
     assert all_rows[0].total_estimated_value == "USD 75000 / COP 300000000"
+    assert all_rows[0].document == second_doc
 
 
 def test_update_department_section_approval_check_values(

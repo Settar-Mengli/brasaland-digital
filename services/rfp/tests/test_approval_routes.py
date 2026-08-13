@@ -384,6 +384,25 @@ def test_get_enrichment_fields(client) -> None:
             ticket_id=ticket_id,
             sections=[{"department_id": "marketing", "draft_content": "final"}],
             total_estimated_value="USD 1 / COP 1",
+            document={
+                "header": {
+                    "client_name": "Acme",
+                    "location": "Bogotá",
+                    "service_type": "catering",
+                    "generated_at": "2026-01-02T00:00:00+00:00",
+                    "ticket_id": ticket_id,
+                },
+                "sections": [
+                    {"department_id": "marketing", "draft_content": "final"}
+                ],
+                "arbitration_outcomes": {
+                    "triggers_fired": [],
+                    "resolutions": [],
+                },
+                "ceo_line": "CEO approval: Mariana Restrepo, 2026-01-02T00:00:00+00:00",
+                "total_estimated_value": "USD 1 / COP 1",
+                "open_questions": [],
+            },
         )
         update_ticket_status(session, ticket_id, "done")
 
@@ -397,3 +416,6 @@ def test_get_enrichment_fields(client) -> None:
     assert body["arbitration"]["ceo_approval_required"] is True
     assert body["final_document"]["total_estimated_value"] == "USD 1 / COP 1"
     assert body["final_document"]["sections"][0]["draft_content"] == "final"
+    assert body["final_document"]["header"]["client_name"] == "Acme"
+    assert body["final_document"]["ceo_line"].startswith("CEO approval:")
+    assert "arbitration_outcomes" in body["final_document"]
