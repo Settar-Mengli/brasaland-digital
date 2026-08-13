@@ -43,7 +43,7 @@ Compliance §5 rules are loaded at runtime from `data/raw/CONTEXT-rfp.md` (headi
 | Variable | Purpose |
 | --- | --- |
 | `DATABASE_URL` | Supabase/Postgres (brasaland-m5) or SQLite for tests |
-| `REDIS_URL` | Celery broker/backend |
+| `REDIS_URL` | Celery broker/backend + LangGraph Redis checkpointer |
 | `JWT_PUBLIC_KEY` | RS256 verify (same as knowledge/inventory) |
 | `JWT_ALGORITHM` | default RS256 via auth-verify |
 | `GEN_1_BASE_URL` / `GEN_1_API_KEY` / `GEN_1_MODEL` | Primary generation tier (worker) |
@@ -52,6 +52,27 @@ Compliance §5 rules are loaded at runtime from `data/raw/CONTEXT-rfp.md` (headi
 | `GENERATION_TIMEOUT_SECONDS` | Per-attempt OpenAI client timeout (default 30) |
 
 Compose also sets `PYTHONPATH=/app/data`. Uploaded PDFs land in host `data/raw/` (gitignored).
+
+## Checkpointer
+
+Part 3 persists LangGraph interrupt/resume state with `langgraph-checkpoint-redis`
+(`RedisSaver`). The SQLAlchemy engine stays on `psycopg2-binary` / `DATABASE_URL`;
+the checkpointer is separate and reads `REDIS_URL` (the shared compose Redis used
+by Celery).
+
+Use `RedisSaver.from_conn_string` via `checkpointer_cm()` in `checkpointer.py` — it
+is a **context manager**. Enter it per graph operation
+(`with checkpointer_cm() as saver: ...`); do not cache a process-global saver.
+Run `python -m checkpointer` (or `run_setup()`) once so the saver can create its
+indexes (calls `FT.INFO`).
+
+The compose `redis` service must be `redis/redis-stack-server` (RediSearch +
+RedisJSON). Plain `redis:7-alpine` cannot serve those modules.
+
+Compose mounts separate named volumes `rfp_venv` and `rfp_worker_venv` over
+`.venv`. After adding or changing the saver stack, refresh **both** volumes so the
+FastAPI container (resume) and the Celery worker (initial run) both have the
+packages.
 
 ## Upload hardening
 
