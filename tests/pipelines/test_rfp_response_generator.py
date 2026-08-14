@@ -11,6 +11,7 @@ _data_str = str(_DATA_ROOT)
 if _data_str not in sys.path:
     sys.path.insert(0, _data_str)
 
+from pipelines.rfp_intake.draft_prompt import DRAFT_PROSE_STYLE_RULES
 from pipelines.rfp_intake.response_graph import marketing_worker
 
 _PASSING_DRAFT = (
@@ -52,3 +53,39 @@ def test_worker_returns_passing_draft_on_first_iteration() -> None:
     assert evaluation["iterations"] == 1
     assert evaluation["exhausted"] is False
     assert evaluation["needs_human_review"] is False
+
+
+def test_worker_prompt_uses_style_rules_and_fenced_metadata() -> None:
+    state = {
+        "departments_needed": ["marketing"],
+        "metadata": {
+            "client_name": "Sunset Bay",
+            "location": None,
+            "budget_range": "",
+            "open_questions": [],
+        },
+        "input_sections": [
+            {
+                "department_id": "marketing",
+                "key_aspects": ["brand exclusivity"],
+            }
+        ],
+    }
+    with patch(
+        "pipelines.rfp_intake.response_graph.generate_json",
+        return_value={"draft_content": _PASSING_DRAFT},
+    ) as mocked:
+        marketing_worker(state)  # type: ignore[arg-type]
+
+    kwargs = mocked.call_args.kwargs
+    system_prompt = kwargs["system_prompt"]
+    user_prompt = kwargs["user_prompt"]
+    assert DRAFT_PROSE_STYLE_RULES in system_prompt
+    assert '{"draft_content": str}' in system_prompt
+    assert "<<<METADATA>>>" in user_prompt
+    assert "<<<END METADATA>>>" in user_prompt
+    assert "Sunset Bay" in user_prompt
+    assert "None" not in user_prompt
+    assert "null" not in user_prompt
+    assert "client_name" not in user_prompt
+    assert "- brand exclusivity" in user_prompt

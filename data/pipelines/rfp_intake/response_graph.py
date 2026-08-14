@@ -8,6 +8,11 @@ from typing import Annotated, Any, Callable, TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
+from pipelines.rfp_intake.draft_prompt import (
+    DRAFT_PROSE_STYLE_RULES,
+    format_key_aspects_for_prompt,
+    format_metadata_for_prompt,
+)
 from pipelines.rfp_intake.generation import generate_json
 from pipelines.rfp_intake.graph import ALL_DEPARTMENTS, DEPARTMENT_OWNERS
 from pipelines.rfp_intake.response_evaluators import (
@@ -15,6 +20,7 @@ from pipelines.rfp_intake.response_evaluators import (
     compliance_requirements_prompt,
     evaluate_all,
 )
+
 logger = logging.getLogger(__name__)
 
 
@@ -38,18 +44,6 @@ def bootstrap_node(state: ResponseState) -> dict[str, Any]:
 def join_node(state: ResponseState) -> dict[str, Any]:
     """Passthrough join after parallel department workers."""
     return {}
-
-
-def _metadata_subset(metadata: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "client_name": metadata.get("client_name"),
-        "location": metadata.get("location"),
-        "service_type": metadata.get("service_type"),
-        "scope": metadata.get("scope"),
-        "deadline": metadata.get("deadline"),
-        "budget_range": metadata.get("budget_range"),
-        "open_questions": metadata.get("open_questions"),
-    }
 
 
 def _key_aspects_for(department: str, input_sections: list[dict] | None) -> list[str]:
@@ -77,7 +71,6 @@ def make_worker(department: str) -> Callable[[ResponseState], dict[str, Any]]:
             budget_range = str(budget_range)
 
         owner = DEPARTMENT_OWNERS.get(department, department)
-        relevant = _metadata_subset(metadata)
         feedback = ""
         draft = ""
         evaluation: dict[str, Any] = evaluate_all(
@@ -89,12 +82,13 @@ def make_worker(department: str) -> Callable[[ResponseState], dict[str, Any]]:
                 f"You draft the {department} department proposal section for Brasaland "
                 f"(owner: {owner}). Never invent absent figures. Respond with JSON only: "
                 '{"draft_content": str}.\n\n'
+                f"{DRAFT_PROSE_STYLE_RULES}\n\n"
                 "Compliance requirements (your section will be automatically checked "
                 f"against these):\n{compliance_requirements_prompt()}"
             )
             user_parts = [
-                f"Metadata extracts:\n{relevant}",
-                f"Key aspects to cover:\n{key_aspects}",
+                f"Metadata extracts:\n{format_metadata_for_prompt(metadata)}",
+                f"Key aspects to cover:\n{format_key_aspects_for_prompt(key_aspects)}",
             ]
             if feedback:
                 user_parts.append(f"Prior evaluator feedback to address:\n{feedback}")

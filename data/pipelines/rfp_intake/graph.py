@@ -10,6 +10,7 @@ from typing import Annotated, Any, Literal, TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
+from pipelines.rfp_intake.draft_prompt import format_metadata_for_prompt
 from pipelines.rfp_intake.generation import clean_markdown_artifacts, generate_json
 
 logger = logging.getLogger(__name__)
@@ -243,23 +244,18 @@ def _department_worker(department: str, state: IntakeState) -> dict[str, Any]:
         return {"department_sections": []}
 
     metadata = state.get("metadata") or {}
-    relevant = {
-        "client_name": metadata.get("client_name"),
-        "location": metadata.get("location"),
-        "service_type": metadata.get("service_type"),
-        "scope": metadata.get("scope"),
-        "deadline": metadata.get("deadline"),
-        "budget_range": metadata.get("budget_range"),
-        "open_questions": metadata.get("open_questions"),
-    }
     try:
         parsed = generate_json(
             system_prompt=(
                 f"You extract key aspects for the {department} department reviewing "
                 "this Brasaland RFP. Never invent absent figures. Respond with JSON only: "
-                '{"key_aspects": [str]}.'
+                '{"key_aspects": [str]}. '
+                "key_aspects must be short topical phrases (e.g. brand exclusivity), "
+                "never Client: or Location: labeled lines or null/not stated."
             ),
-            user_prompt=f"Metadata extracts:\n{relevant}",
+            user_prompt=(
+                f"Metadata extracts:\n{format_metadata_for_prompt(dict(metadata))}"
+            ),
             max_tokens=800,
         )
         aspects = parsed.get("key_aspects") or []
