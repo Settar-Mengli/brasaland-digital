@@ -62,7 +62,7 @@ def test_generate_json_parses_canned_completion(monkeypatch: pytest.MonkeyPatch)
 
 
 def test_generate_json_no_tiers_raises(monkeypatch: pytest.MonkeyPatch) -> None:
-    for i in (1, 2, 3):
+    for i in range(1, 6):
         monkeypatch.delenv(f"GEN_{i}_API_KEY", raising=False)
     with pytest.raises(RuntimeError, match="no generation provider configured"):
         gen.generate_json("sys", "user")
@@ -75,3 +75,77 @@ def test_tier_skip_when_key_without_url(monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.delenv("GEN_2_API_KEY", raising=False)
     monkeypatch.delenv("GEN_3_API_KEY", raising=False)
     assert gen._rfp_generation_tiers() == []
+
+
+def test_tiers_stop_at_gap_skips_later_numbers(monkeypatch: pytest.MonkeyPatch) -> None:
+    """GEN_2 absent stops discovery; GEN_3 is not attempted (stop-at-gap)."""
+    monkeypatch.setenv("GEN_1_API_KEY", "key-1")
+    monkeypatch.setenv("GEN_1_BASE_URL", "https://api.groq.com/openai/v1")
+    monkeypatch.setenv("GEN_1_MODEL", "model-1")
+    monkeypatch.delenv("GEN_2_API_KEY", raising=False)
+    monkeypatch.setenv("GEN_3_API_KEY", "key-3")
+    monkeypatch.setenv("GEN_3_BASE_URL", "https://api.example.com/v1")
+    monkeypatch.setenv("GEN_3_MODEL", "model-3")
+    tiers = gen._rfp_generation_tiers()
+    assert [t[0] for t in tiers] == [1]
+    assert tiers[0][2] == "key-1"
+
+
+def test_tiers_include_gen_4_when_contiguous(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("GEN_1_API_KEY", "k1")
+    monkeypatch.setenv("GEN_1_BASE_URL", "https://a.example/v1")
+    monkeypatch.setenv("GEN_1_MODEL", "m1")
+    monkeypatch.setenv("GEN_2_API_KEY", "k2")
+    monkeypatch.setenv("GEN_2_BASE_URL", "https://b.example/v1")
+    monkeypatch.setenv("GEN_2_MODEL", "m2")
+    monkeypatch.setenv("GEN_3_API_KEY", "k3")
+    monkeypatch.setenv("GEN_3_BASE_URL", "https://c.example/v1")
+    monkeypatch.setenv("GEN_3_MODEL", "m3")
+    monkeypatch.setenv("GEN_4_API_KEY", "k4")
+    monkeypatch.setenv("GEN_4_BASE_URL", "https://api.mistral.ai/v1")
+    monkeypatch.setenv("GEN_4_MODEL", "mistral-small")
+    monkeypatch.delenv("GEN_5_API_KEY", raising=False)
+    tiers = gen._rfp_generation_tiers()
+    assert [t[0] for t in tiers] == [1, 2, 3, 4]
+    assert tiers[3][1] == "https://api.mistral.ai/v1"
+
+
+def test_generate_json_fails_over_to_gen_4(monkeypatch: pytest.MonkeyPatch) -> None:
+    for i in (1, 2, 3, 4):
+        monkeypatch.setenv(f"GEN_{i}_API_KEY", f"key-{i}")
+        monkeypatch.setenv(f"GEN_{i}_BASE_URL", f"https://tier{i}.example/v1")
+        monkeypatch.setenv(f"GEN_{i}_MODEL", f"model-{i}")
+    monkeypatch.delenv("GEN_5_API_KEY", raising=False)
+
+    calls: list[str] = []
+
+    class FakeOpenAI:
+        def __init__(self, **kwargs: Any) -> None:
+            self.base_url = kwargs["base_url"]
+            self.api_key = kwargs["api_key"]
+            assert kwargs["max_retries"] == 0
+
+        @property
+        def chat(self) -> Any:
+            return self
+
+        @property
+        def completions(self) -> Any:
+            return self
+
+        def create(self, **_kwargs: Any) -> Any:
+            calls.append(self.api_key)
+            if self.api_key != "key-4":
+                raise RuntimeError(f"tier failed: {self.api_key}")
+            fake_message = MagicMock()
+            fake_message.content = '{"ok": true, "tier": 4}'
+            fake_completion = MagicMock()
+            fake_completion.choices = [MagicMock(message=fake_message)]
+            return fake_completion
+
+    monkeypatch.setattr("openai.OpenAI", FakeOpenAI)
+    result = gen.generate_json("sys", "user")
+    assert result == {"ok": True, "tier": 4}
+    assert calls == ["key-1", "key-2", "key-3", "key-4"]

@@ -22,18 +22,30 @@ _FENCE_RE = re.compile(
 
 def _provider_label(base_url: str) -> str:
     host = (urlparse(base_url).hostname or "").lower()
-    for token in ("groq", "cerebras", "generativelanguage"):
+    for token in ("groq", "cerebras", "generativelanguage", "mistral"):
         if token in host:
             return token
     return host.split(".")[0] if host else "unknown"
 
 
 def _rfp_generation_tiers() -> list[tuple[int, str, str, str]]:
-    """Return qualifying (index, base_url, api_key, model) tiers in priority order."""
+    """Return qualifying (index, base_url, api_key, model) tiers in priority order.
+
+    Discovers ``GEN_N_*`` sequentially from N=1. Continues while
+    ``GEN_N_API_KEY`` is set in the environment (blank values skip that tier).
+    Stops at the first N where ``GEN_N_API_KEY`` is entirely absent — a gap
+    (e.g. GEN_1 set, GEN_2 absent, GEN_3 set) means GEN_3 is never attempted.
+    Independent of ``pipelines.rag._generation_tiers`` (RFP isolation).
+    """
     tiers: list[tuple[int, str, str, str]] = []
-    for i in (1, 2, 3):
-        api_key = (os.environ.get(f"GEN_{i}_API_KEY") or "").strip()
+    i = 1
+    while True:
+        raw_key = os.environ.get(f"GEN_{i}_API_KEY")
+        if raw_key is None:
+            break
+        api_key = raw_key.strip()
         if not api_key:
+            i += 1
             continue
         base_url = (os.environ.get(f"GEN_{i}_BASE_URL") or "").strip()
         model = (os.environ.get(f"GEN_{i}_MODEL") or "").strip()
@@ -42,8 +54,10 @@ def _rfp_generation_tiers() -> list[tuple[int, str, str, str]]:
                 "RFP generation tier %s skipped: API key set but missing base_url or model",
                 i,
             )
+            i += 1
             continue
         tiers.append((i, base_url, api_key, model))
+        i += 1
     return tiers
 
 
