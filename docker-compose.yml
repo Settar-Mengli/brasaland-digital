@@ -156,6 +156,9 @@ services:
       GEN_3_BASE_URL: ${GEN_3_BASE_URL}
       GEN_3_API_KEY: ${GEN_3_API_KEY}
       GEN_3_MODEL: ${GEN_3_MODEL}
+      GEN_4_BASE_URL: ${GEN_4_BASE_URL}
+      GEN_4_API_KEY: ${GEN_4_API_KEY}
+      GEN_4_MODEL: ${GEN_4_MODEL}
       GENERATION_TIMEOUT_SECONDS: ${GENERATION_TIMEOUT_SECONDS:-30}
     volumes:
       - ./services/rfp:/app/services/rfp
@@ -187,6 +190,9 @@ services:
       GEN_3_BASE_URL: ${GEN_3_BASE_URL}
       GEN_3_API_KEY: ${GEN_3_API_KEY}
       GEN_3_MODEL: ${GEN_3_MODEL}
+      GEN_4_BASE_URL: ${GEN_4_BASE_URL}
+      GEN_4_API_KEY: ${GEN_4_API_KEY}
+      GEN_4_MODEL: ${GEN_4_MODEL}
       GENERATION_TIMEOUT_SECONDS: ${GENERATION_TIMEOUT_SECONDS:-30}
     volumes:
       - ./services/rfp:/app/services/rfp
@@ -291,6 +297,9 @@ services:
       GEN_3_BASE_URL: ${GEN_3_BASE_URL}
       GEN_3_API_KEY: ${GEN_3_API_KEY}
       GEN_3_MODEL: ${GEN_3_MODEL}
+      GEN_4_BASE_URL: ${GEN_4_BASE_URL}
+      GEN_4_API_KEY: ${GEN_4_API_KEY}
+      GEN_4_MODEL: ${GEN_4_MODEL}
       GENERATION_TIMEOUT_SECONDS: ${GENERATION_TIMEOUT_SECONDS:-30}
       EMBED_MODEL_ID: ${EMBED_MODEL_ID:-BAAI/bge-small-en-v1.5}
       JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}

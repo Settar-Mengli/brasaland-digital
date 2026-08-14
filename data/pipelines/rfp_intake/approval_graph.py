@@ -30,6 +30,7 @@ from typing import Annotated, Any, TypedDict
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import interrupt
 
+from pipelines.rfp_intake.draft_prompt import DRAFT_PROSE_STYLE_RULES
 from pipelines.rfp_intake.generation import generate_json
 from pipelines.rfp_intake.graph import DEPARTMENT_OWNERS
 from pipelines.rfp_intake.response_evaluators import ITERATION_LIMIT
@@ -193,10 +194,14 @@ def regen_node(state: DeptApprovalState) -> dict[str, Any]:
 
     system_prompt = (
         f"You revise the {department} department proposal section for Brasaland "
-        f"(owner: {owner}). Address the feedback. Never invent absent figures — "
-        "use null when a number is not stated. Respond with JSON only: "
+        f"(owner: {owner}). Address the feedback.\n\n"
+        f"{DRAFT_PROSE_STYLE_RULES}\n\n"
+        "Respond with JSON only: "
         '{"draft_content": str, "cost": number|null, "setup_days": number|null, '
-        '"price_per_cover": number|null}.'
+        '"price_per_cover": number|null}. '
+        "For the JSON fields cost, setup_days, and price_per_cover only, use JSON "
+        "null when that number is not stated in the revised draft. Do not put the "
+        "words null, None, or not stated inside draft_content."
     )
     user_prompt = (
         f"Prior draft:\n{section.get('draft_content') or ''}\n\n"

@@ -43,6 +43,8 @@ also `final_document` (`sections`, `total_estimated_value`, `generated_at`).
 4. On loop exhaust, the section keeps its last draft and sets `needs_human_review` / `exhausted` **inside** `evaluation_results` (ticket is never discarded for response failures).
 5. Sections are updated in place by `(ticket_id, department_id)`; status advances to `under_evaluation`.
 
+Department drafts are client-facing prose. Metadata is interpolated as a fenced `<<<METADATA>>>` block with empty/`None`/sentinel values omitted (fence delimiters stripped from values). Missing figures are not verbalized as `null` or `not stated`. Part 3 regen uses JSON `null` only on the `cost` / `setup_days` / `price_per_cover` fields, not inside `draft_content`.
+
 ## Part 3 approval flow
 
 1. Client calls `POST /rfp/tickets/{id}/approval` when the ticket is `under_evaluation`.

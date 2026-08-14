@@ -108,7 +108,8 @@ def compliance_requirements_prompt() -> str:
         "- Do not name any competitor.\n"
         "- Do not promise setup or delivery in under 10 business days.\n"
         "- Never invent figures not present in the metadata; if a needed figure is "
-        "missing, say so rather than inventing it."
+        "missing, acknowledge the gap in natural client language "
+        '(e.g. "final figure to be confirmed"); never write null, None, or not stated.'
     )
 
 

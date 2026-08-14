@@ -27,6 +27,7 @@ from typing import Any, TypedDict
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import interrupt
 
+from pipelines.rfp_intake.draft_prompt import format_key_aspects_for_prompt
 from pipelines.rfp_intake.generation import generate_json
 from pipelines.rfp_intake.graph import ALL_DEPARTMENTS, DEPARTMENT_OWNERS
 
@@ -78,7 +79,7 @@ def extract_section_numbers(
     _ = metadata  # reserved for future prompt context
     owner = DEPARTMENT_OWNERS.get(department, department)
     draft = str(section.get("draft_content") or "")
-    key_aspects = section.get("key_aspects") or []
+    key_aspects = format_key_aspects_for_prompt(section.get("key_aspects") or [])
     input_summary = f"dept={department} draft_len={len(draft)}"
 
     system_prompt = (
@@ -91,7 +92,8 @@ def extract_section_numbers(
         "cost = this section's economic/cost estimate if stated. "
         "setup_days = promised setup/delivery business days if stated. "
         "price_per_cover = implied per-cover price if stated "
-        "(primarily operaciones; others usually null)."
+        "(primarily operaciones; others usually null). "
+        'Phrases like "to be confirmed" are not numbers — emit JSON null.'
     )
     user_prompt = (
         f"Department: {department}\n"

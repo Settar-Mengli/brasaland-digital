@@ -20,15 +20,25 @@ function RfpTicketResumeContent() {
   const [pipelineBusy, setPipelineBusy] = useState(false);
 
   const loadTicket = useCallback(async (id: string) => {
-    setState({ status: 'loading' });
+    let preserved: RfpTicket | undefined;
+    setState((prev) => {
+      if (prev.status === 'ready') {
+        preserved = prev.ticket;
+      } else if (prev.status === 'error') {
+        preserved = prev.ticket;
+      }
+      return { status: 'loading' };
+    });
     try {
       const ticket = await getRfpTicket(id);
       setState({ status: 'ready', ticket });
     } catch (error) {
-      setState({
-        status: 'error',
-        message: error instanceof Error ? error.message : 'Failed to load ticket.',
-      });
+      const message = error instanceof Error ? error.message : 'Failed to load ticket.';
+      if (preserved) {
+        setState({ status: 'error', message, ticket: preserved });
+      } else {
+        setState({ status: 'error', message });
+      }
     }
   }, []);
 
@@ -101,6 +111,8 @@ function RfpTicketResumeContent() {
     }
   }
 
+  const actionsDisabled = state.status === 'error';
+
   return (
     <>
       <div className="mb-6 max-w-2xl">
@@ -122,12 +134,26 @@ function RfpTicketResumeContent() {
       ) : null}
 
       {state.status === 'error' ? (
-        <p
+        <div
           role="alert"
-          className="text-sm text-brasaland-error bg-brasaland-error/10 rounded-md px-3 py-2"
+          className="mb-4 max-w-2xl rounded-md bg-brasaland-error/10 px-3 py-3 text-sm text-brasaland-error"
         >
-          {state.message}
-        </p>
+          <p className="font-medium">{state.message}</p>
+          <p className="mt-1 text-brasaland-charcoal/70">
+            Ticket actions are paused. Reload the ticket to continue.
+          </p>
+          {ticketId ? (
+            <button
+              type="button"
+              onClick={() => {
+                void loadTicket(ticketId);
+              }}
+              className="mt-3 rounded-md bg-brasaland-ember px-4 py-2 text-sm font-medium text-brasaland-ivory"
+            >
+              Reload ticket
+            </button>
+          ) : null}
+        </div>
       ) : null}
 
       {(() => {
@@ -144,6 +170,7 @@ function RfpTicketResumeContent() {
           <RfpTicketView
             ticket={ticketForView}
             pipelineBusy={pipelineBusy}
+            actionsDisabled={actionsDisabled}
             onTicketChange={(ticket) => setState({ status: 'ready', ticket })}
             onError={(message, ticket) => setState({ status: 'error', message, ticket })}
             onGenerateResponse={() => {

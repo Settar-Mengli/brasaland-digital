@@ -8,6 +8,6 @@ Pytest suite for weekly location-performance ETL helpers, job runner coordinatio
 uv run --directory data --python 3.13 pytest
 ```
 
-Expect **156** passed.
+Expect **196** passed.
 
 The command uses the `data/` uv project because that environment owns the pipeline dependencies; `data/pyproject.toml` sets `testpaths` to `../tests/pipelines`.

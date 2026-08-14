@@ -130,3 +130,75 @@ def test_setup_recreates_collection_and_upserts(tmp_path: Path) -> None:
 def test_query_empty_question_raises() -> None:
     with pytest.raises(ValueError):
         query("   ")
+
+
+def test_generation_tiers_stop_at_gap(monkeypatch: pytest.MonkeyPatch) -> None:
+    """GEN_2 absent stops discovery; GEN_3 is not attempted (stop-at-gap)."""
+    from pipelines import rag
+
+    monkeypatch.setenv("GEN_1_API_KEY", "key-1")
+    monkeypatch.setenv("GEN_1_BASE_URL", "https://api.groq.com/openai/v1")
+    monkeypatch.setenv("GEN_1_MODEL", "model-1")
+    monkeypatch.delenv("GEN_2_API_KEY", raising=False)
+    monkeypatch.setenv("GEN_3_API_KEY", "key-3")
+    monkeypatch.setenv("GEN_3_BASE_URL", "https://api.example.com/v1")
+    monkeypatch.setenv("GEN_3_MODEL", "model-3")
+    tiers = rag._generation_tiers()
+    assert [t[0] for t in tiers] == [1]
+
+
+def test_generation_tiers_include_gen_4_when_contiguous(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from pipelines import rag
+
+    for i in (1, 2, 3, 4):
+        monkeypatch.setenv(f"GEN_{i}_API_KEY", f"k{i}")
+        monkeypatch.setenv(f"GEN_{i}_BASE_URL", f"https://t{i}.example/v1")
+        monkeypatch.setenv(f"GEN_{i}_MODEL", f"m{i}")
+    monkeypatch.delenv("GEN_5_API_KEY", raising=False)
+    tiers = rag._generation_tiers()
+    assert [t[0] for t in tiers] == [1, 2, 3, 4]
+
+
+def test_generate_fails_over_to_gen_4(monkeypatch: pytest.MonkeyPatch) -> None:
+    from typing import Any
+
+    from pipelines import rag
+
+    for i in (1, 2, 3, 4):
+        monkeypatch.setenv(f"GEN_{i}_API_KEY", f"key-{i}")
+        monkeypatch.setenv(f"GEN_{i}_BASE_URL", f"https://tier{i}.example/v1")
+        monkeypatch.setenv(f"GEN_{i}_MODEL", f"model-{i}")
+    monkeypatch.delenv("GEN_5_API_KEY", raising=False)
+
+    calls: list[str] = []
+
+    class FakeOpenAI:
+        def __init__(self, **kwargs: Any) -> None:
+            self.api_key = kwargs["api_key"]
+            assert kwargs["max_retries"] == 0
+            assert kwargs["timeout"] == rag.GENERATION_TIMEOUT_SECONDS
+
+        @property
+        def chat(self) -> Any:
+            return self
+
+        @property
+        def completions(self) -> Any:
+            return self
+
+        def create(self, **_kwargs: Any) -> Any:
+            calls.append(self.api_key)
+            if self.api_key != "key-4":
+                raise RuntimeError(f"tier failed: {self.api_key}")
+            fake_message = MagicMock()
+            fake_message.content = "answer from tier 4"
+            fake_completion = MagicMock()
+            fake_completion.choices = [MagicMock(message=fake_message)]
+            return fake_completion
+
+    monkeypatch.setattr("openai.OpenAI", FakeOpenAI)
+    answer = rag._generate("q?", [])
+    assert answer == "answer from tier 4"
+    assert calls == ["key-1", "key-2", "key-3", "key-4"]

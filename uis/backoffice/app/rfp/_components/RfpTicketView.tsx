@@ -10,6 +10,8 @@ import {
   type RfpTicket,
 } from '@/lib/rfp-types';
 
+const ACTIONS_DISABLED_HINT = 'Reload the ticket to continue';
+
 export type SectionCardProps = {
   section: RfpSection;
   decisionBusy?: boolean;
@@ -179,13 +181,17 @@ export function SectionCard({ section, decisionBusy, onApprove, onReject }: Sect
 
 function CeoGatePanel({
   busy,
+  disabled,
   onApprove,
   onReject,
 }: {
   busy: boolean;
+  disabled?: boolean;
   onApprove: () => void;
   onReject: () => void;
 }) {
+  const controlsOff = busy || disabled === true;
+  const hint = disabled === true ? ACTIONS_DISABLED_HINT : undefined;
   return (
     <section
       aria-labelledby="rfp-ceo-gate"
@@ -202,7 +208,8 @@ function CeoGatePanel({
         <button
           type="button"
           onClick={onApprove}
-          disabled={busy}
+          disabled={controlsOff}
+          title={hint}
           className="rounded-md bg-brasaland-ember px-4 py-2 text-sm font-medium text-brasaland-ivory disabled:opacity-60"
         >
           {busy ? 'Working…' : 'Approve as CEO'}
@@ -210,7 +217,8 @@ function CeoGatePanel({
         <button
           type="button"
           onClick={onReject}
-          disabled={busy}
+          disabled={controlsOff}
+          title={hint}
           className="rounded-md border border-brasaland-charcoal/30 px-4 py-2 text-sm font-medium text-brasaland-charcoal disabled:opacity-60"
         >
           Reject as CEO
@@ -340,6 +348,8 @@ export type RfpTicketViewProps = {
   onTicketChange: (ticket: RfpTicket) => void;
   onError?: (message: string, ticket: RfpTicket) => void;
   pipelineBusy?: boolean;
+  /** When true, pipeline and decision controls are disabled (read-only resume after error). */
+  actionsDisabled?: boolean;
   onGenerateResponse?: () => void;
   onStartApproval?: () => void;
   showResumeLink?: boolean;
@@ -354,6 +364,7 @@ export function RfpTicketView({
   onTicketChange,
   onError,
   pipelineBusy,
+  actionsDisabled = false,
   onGenerateResponse,
   onStartApproval,
   showResumeLink,
@@ -364,7 +375,8 @@ export function RfpTicketView({
   const finalDocument =
     ticket.status === 'done' && ticket.final_document ? ticket.final_document : null;
   const decisionBusy = busyDept !== null;
-  const controlsBusy = pipelineBusy === true || decisionBusy;
+  const controlsBusy = pipelineBusy === true || decisionBusy || actionsDisabled === true;
+  const actionHint = actionsDisabled === true ? ACTIONS_DISABLED_HINT : undefined;
 
   async function refreshTicket() {
     const next = await getRfpTicket(ticket.ticket_id);
@@ -470,6 +482,10 @@ export function RfpTicketView({
           type="button"
           onClick={onGenerateResponse}
           disabled={controlsBusy}
+          title={actionHint}
+          aria-label={
+            actionsDisabled === true ? `Generate response — ${ACTIONS_DISABLED_HINT}` : undefined
+          }
           className="mt-4 rounded-md bg-brasaland-ember px-4 py-2 text-sm font-medium text-brasaland-ivory disabled:opacity-60"
         >
           {pipelineBusy === true ? 'Generating…' : 'Generate response'}
@@ -480,6 +496,10 @@ export function RfpTicketView({
           type="button"
           onClick={onStartApproval}
           disabled={controlsBusy}
+          title={actionHint}
+          aria-label={
+            actionsDisabled === true ? `Start approval — ${ACTIONS_DISABLED_HINT}` : undefined
+          }
           className="mt-4 rounded-md bg-brasaland-ember px-4 py-2 text-sm font-medium text-brasaland-ivory disabled:opacity-60"
         >
           {pipelineBusy === true ? 'Starting…' : 'Start approval'}
@@ -494,7 +514,7 @@ export function RfpTicketView({
           {sections.map((section) => {
             const cardProps: SectionCardProps = {
               section,
-              decisionBusy: busyDept === section.department_id,
+              decisionBusy: busyDept === section.department_id || actionsDisabled === true,
             };
             if (section.awaiting_decision === true) {
               cardProps.onApprove = () => {
@@ -512,6 +532,7 @@ export function RfpTicketView({
       {showCeoGate ? (
         <CeoGatePanel
           busy={busyDept === 'ceo'}
+          disabled={actionsDisabled === true}
           onApprove={() => {
             void onCeoDecide('approve');
           }}

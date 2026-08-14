@@ -15,6 +15,7 @@ if _data_str not in sys.path:
 from pipelines.rfp_intake.approval_orchestration import (
     apply_arbitration_stamps,
     extract_all_sections,
+    extract_section_numbers,
     synthesize_final_document,
 )
 from pipelines.rfp_intake.arbitration import run_arbitration
@@ -28,6 +29,32 @@ def _gen(system_prompt: str, user_prompt: str, **_k) -> dict[str, Any]:
     if "Department: marketing" in user_prompt:
         return {"cost": None, "setup_days": 7, "price_per_cover": None}
     return {"cost": None, "setup_days": None, "price_per_cover": None}
+
+
+def test_extract_prompt_does_not_dump_key_aspects_list_repr() -> None:
+    captured: dict[str, str] = {}
+
+    def _capture(system_prompt: str, user_prompt: str, **_k) -> dict[str, Any]:
+        captured["user"] = user_prompt
+        return {"cost": None, "setup_days": None, "price_per_cover": None}
+
+    with patch(
+        "pipelines.rfp_intake.approval_orchestration.generate_json",
+        side_effect=_capture,
+    ):
+        extract_section_numbers(
+            "marketing",
+            {
+                "draft_content": "prior marketing draft",
+                "key_aspects": ["brand exclusivity", "co-branded offer"],
+            },
+        )
+
+    user_prompt = captured["user"]
+    assert "- brand exclusivity" in user_prompt
+    assert "- co-branded offer" in user_prompt
+    assert "[" not in user_prompt
+    assert "]" not in user_prompt
 
 
 def test_extract_all_and_arbitration_stamps_forced_depts() -> None:
