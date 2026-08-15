@@ -55,7 +55,7 @@ Password-reset email delivery is never sent to Resend in tests. API tests monkey
 | Measured package | `auth/` only (`security`, `service`, `repository`, `refresh_repository`, `db`, `email_sender`, `types`) |
 | `app.py`         | Exercised by TestClient tests but **not** included in the coverage denominator    |
 | Threshold        | `fail_under = 70`                                                                 |
-| Current total    | **~97%** (343/355 statements)                                                     |
+| Current total    | **~96%** (369/383 statements)                                                     |
 
 Per-file coverage (last run):
 
@@ -74,7 +74,7 @@ Regenerate the report with `uv run pytest`.
 
 ## Test catalog
 
-**88 tests** across 9 files.
+**99 tests** across 9 files.
 
 ### `tests/test_security.py` (8)
 
@@ -128,12 +128,17 @@ Regenerate the report with `uv run pytest`.
 - Refresh token carries `type: "refresh"` claim.
 - Password reset revokes the user's refresh tokens (H4).
 
-### `tests/test_api.py` (29)
+### `tests/test_api.py` (40)
 
 - Register + `/auth/me`; 401 without or with invalid token.
 - Login success and wrong password.
+- Self-registration gate: `POST /auth/register` returns 403 unless `AUTH_ALLOW_SELF_REGISTER` is true (tests enable it via an autouse fixture).
 - RBAC: normal user cannot update/delete another user.
-- Email hidden for other users in list; `is_admin` cannot be escalated via PUT.
+- `GET /users` is admin-only (403 for normal users; admin sees emails); `GET /users/{id}` is self-or-admin.
+- `POST /users` is admin-only and can mint admins via `is_admin`; 401 without a token.
+- Access tokens carry an `is_admin` claim.
+- Bootstrap admin: seeded on startup only when the store is empty and both env vars are set; skipped otherwise.
+- `is_admin` cannot be escalated via PUT.
 - Duplicate-email update handling; `hashed_password` never in responses.
 - Post-merge error constants: `EMAIL_ALREADY_REGISTERED`, `USER_NOT_FOUND`.
 - Inactive user receives 401 on protected routes.

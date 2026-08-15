@@ -19,6 +19,9 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY}
       RESET_EMAIL_FROM: ${RESET_EMAIL_FROM}
       RESET_LINK_BASE_URL: ${RESET_LINK_BASE_URL}
+      AUTH_ALLOW_SELF_REGISTER: ${AUTH_ALLOW_SELF_REGISTER:-false}
+      AUTH_BOOTSTRAP_ADMIN_EMAIL: ${AUTH_BOOTSTRAP_ADMIN_EMAIL:-}
+      AUTH_BOOTSTRAP_ADMIN_PASSWORD: ${AUTH_BOOTSTRAP_ADMIN_PASSWORD:-}
     volumes:
       - ./services/auth:/app/services/auth
       - ./packages:/app/packages

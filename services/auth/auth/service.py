@@ -64,6 +64,11 @@ def _refresh_token_expire_minutes() -> int:
     return int(os.environ.get("REFRESH_TOKEN_EXPIRE_MINUTES", "10080"))
 
 
+def self_registration_enabled() -> bool:
+    raw = os.environ.get("AUTH_ALLOW_SELF_REGISTER", "false")
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _refresh_token_expired(expires_at: str) -> bool:
     expire_dt = datetime.fromisoformat(expires_at)
     if expire_dt.tzinfo is None:
@@ -168,6 +173,17 @@ def register_user(
     )
 
 
+def ensure_bootstrap_admin() -> UserRecord | None:
+    """Seed a first admin from env, only when the user store is empty."""
+    email = os.environ.get("AUTH_BOOTSTRAP_ADMIN_EMAIL", "").strip()
+    password = os.environ.get("AUTH_BOOTSTRAP_ADMIN_PASSWORD", "")
+    if not email or not password:
+        return None
+    if list_users():
+        return None
+    return register_user(email, password, is_admin=True)
+
+
 def authenticate_user(email: str, password: str) -> UserRecord | None:
     user = get_user_by_email(_normalize_email(email))
     if user is None:
@@ -178,7 +194,13 @@ def authenticate_user(email: str, password: str) -> UserRecord | None:
 
 
 def issue_access_token(user: UserRecord) -> str:
-    return create_access_token({"sub": str(user["id"]), "user_id": user["id"]})
+    return create_access_token(
+        {
+            "sub": str(user["id"]),
+            "user_id": user["id"],
+            "is_admin": bool(user["is_admin"]),
+        }
+    )
 
 
 def issue_refresh_token(user: UserRecord, expires_minutes: int | None = None) -> str:

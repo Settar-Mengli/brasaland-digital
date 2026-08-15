@@ -42,3 +42,11 @@ def jwt_settings(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("JWT_ALGORITHM", "RS256")
     monkeypatch.setenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")
     monkeypatch.setenv("RESET_TOKEN_EXPIRE_MINUTES", "30")
+
+
+@pytest.fixture(autouse=True)
+def registration_policy(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tests exercise open self-registration unless a test overrides the gate."""
+    monkeypatch.setenv("AUTH_ALLOW_SELF_REGISTER", "true")
+    monkeypatch.delenv("AUTH_BOOTSTRAP_ADMIN_EMAIL", raising=False)
+    monkeypatch.delenv("AUTH_BOOTSTRAP_ADMIN_PASSWORD", raising=False)

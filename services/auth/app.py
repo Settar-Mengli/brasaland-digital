@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated
 
@@ -17,6 +19,7 @@ from auth.service import (
     build_update_fields,
     can_modify_user,
     delete_user,
+    ensure_bootstrap_admin,
     get_user,
     issue_token_pair,
     list_all_users,
@@ -26,6 +29,7 @@ from auth.service import (
     resolve_active_user,
     revoke_refresh_token,
     rotate_refresh_token,
+    self_registration_enabled,
     update_profile,
     update_user,
 )
@@ -41,7 +45,16 @@ logger = logging.getLogger(__name__)
 
 STATIC_DIR = Path(__file__).parent / "static"
 
-app = FastAPI(title="Brasaland Auth Service")
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    seeded = ensure_bootstrap_admin()
+    if seeded is not None:
+        logger.info("Bootstrap admin seeded: %s", seeded["email"])
+    yield
+
+
+app = FastAPI(title="Brasaland Auth Service", lifespan=lifespan)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
@@ -49,6 +62,8 @@ FORGOT_PASSWORD_MESSAGE = "If that email is registered, a reset link has been se
 EMAIL_ALREADY_REGISTERED = "Email already registered"
 USER_NOT_FOUND = "User not found"
 INVALID_REFRESH_TOKEN = "Invalid or expired refresh token"
+SELF_REGISTRATION_DISABLED = "Self-registration is disabled"
+ADMIN_REQUIRED = "Admin privileges required"
 
 
 class UserRegister(BaseModel):
@@ -57,6 +72,10 @@ class UserRegister(BaseModel):
     name: str = ""
     phone: str = ""
     address: str = ""
+
+
+class UserCreate(UserRegister):
+    is_admin: bool = False
 
 
 class UserUpdate(BaseModel):
@@ -145,6 +164,17 @@ def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> UserRecor
     return user
 
 
+def require_admin(
+    current_user: Annotated[UserRecord, Depends(get_current_user)],
+) -> UserRecord:
+    if not current_user["is_admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=ADMIN_REQUIRED,
+        )
+    return current_user
+
+
 def _token_response(access_token: str, refresh_token: str) -> TokenResponse:
     return TokenResponse(
         access_token=access_token,
@@ -155,6 +185,11 @@ def _token_response(access_token: str, refresh_token: str) -> TokenResponse:
 
 @app.post("/auth/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 def auth_register(body: UserRegister) -> TokenResponse:
+    if not self_registration_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=SELF_REGISTRATION_DISABLED,
+        )
     try:
         user = register_user(
             body.email,
@@ -251,13 +286,14 @@ def put_profile_me(
 
 @app.post("/users", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def create_user(
-    body: UserRegister,
-    current_user: Annotated[UserRecord, Depends(get_current_user)],
+    body: UserCreate,
+    current_user: Annotated[UserRecord, Depends(require_admin)],
 ) -> UserResponse:
     try:
         user = register_user(
             body.email,
             body.password,
+            is_admin=body.is_admin,
             name=body.name,
             phone=body.phone,
             address=body.address,
@@ -269,7 +305,7 @@ def create_user(
 
 @app.get("/users", response_model=list[UserResponse])
 def list_users(
-    current_user: Annotated[UserRecord, Depends(get_current_user)],
+    current_user: Annotated[UserRecord, Depends(require_admin)],
 ) -> list[UserResponse]:
     return [_to_response(user, current_user) for user in list_all_users()]
 
@@ -279,6 +315,8 @@ def read_user(
     user_id: int,
     current_user: Annotated[UserRecord, Depends(get_current_user)],
 ) -> UserResponse:
+    if not can_modify_user(current_user, user_id):
+        raise HTTPException(status_code=403, detail="Not allowed to view this user")
     try:
         user = get_user(user_id)
     except UserNotFoundError as error:
