@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from datetime import date
+from typing import Annotated
 
-from fastapi import APIRouter, Query
+from brasaland_auth_verify.deps import get_current_user_uuid
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
 
 from models import (
@@ -44,7 +46,10 @@ def get_latest_pipeline_run() -> PipelineRunResponse:
     response_model=TaskAcceptedResponse,
     status_code=202,
 )
-def post_pipeline_run(body: TriggerPipelineRunBody | None = None) -> JSONResponse:
+def post_pipeline_run(
+    _user: Annotated[str, Depends(get_current_user_uuid)],
+    body: TriggerPipelineRunBody | None = None,
+) -> JSONResponse:
     week_start = body.week_start if body is not None else None
     week_arg = week_start.isoformat() if week_start is not None else None
     async_result = run_pipeline_task.delay(week_arg)

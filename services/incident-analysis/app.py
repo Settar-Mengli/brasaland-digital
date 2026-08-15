@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from io import StringIO
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from brasaland_auth_verify.deps import get_current_user_uuid
+from brasaland_auth_verify.verify import ensure_jwt_configured
+from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
@@ -14,7 +18,14 @@ from incident_analysis.types import AnalysisResult
 
 STATIC_DIR = Path(__file__).parent / "static"
 
-app = FastAPI(title="Brasaland Incident Analysis")
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    ensure_jwt_configured()
+    yield
+
+
+app = FastAPI(title="Brasaland Incident Analysis", lifespan=lifespan)
 
 _last_analysis: AnalysisResult | None = None
 
@@ -59,6 +70,7 @@ async def read_index() -> FileResponse:
 
 @app.post("/api/incidents/analyze")
 async def analyze_incidents(
+    _user: Annotated[str, Depends(get_current_user_uuid)],
     file: UploadFile | None = File(default=None),
 ) -> dict[str, Any]:
     global _last_analysis
@@ -88,7 +100,9 @@ async def analyze_incidents(
 
 
 @app.get("/api/incidents/results/export")
-async def export_results() -> Response:
+async def export_results(
+    _user: Annotated[str, Depends(get_current_user_uuid)],
+) -> Response:
     if _last_analysis is None:
         raise HTTPException(
             status_code=404,

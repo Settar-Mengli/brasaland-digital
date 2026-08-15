@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
-from fastapi import FastAPI, HTTPException, Query
+from brasaland_auth_verify.deps import get_current_user_uuid
+from brasaland_auth_verify.verify import ensure_jwt_configured
+from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -23,7 +27,14 @@ from supplier_directory.constants import VALID_CATEGORIES
 
 STATIC_DIR = Path(__file__).parent / "static"
 
-app = FastAPI(title="Brasaland Supplier Directory")
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    ensure_jwt_configured()
+    yield
+
+
+app = FastAPI(title="Brasaland Supplier Directory", lifespan=lifespan)
 
 
 class SupplierCreate(BaseModel):
@@ -88,7 +99,10 @@ def _create_payload(body: SupplierCreate) -> SupplierInput:
 
 
 @app.post("/suppliers", response_model=SupplierResponse, status_code=201)
-def create_supplier(body: SupplierCreate) -> SupplierResponse:
+def create_supplier(
+    body: SupplierCreate,
+    _user: Annotated[str, Depends(get_current_user_uuid)],
+) -> SupplierResponse:
     try:
         record = create(_create_payload(body))
     except SupplierValidationError as error:
@@ -98,6 +112,7 @@ def create_supplier(body: SupplierCreate) -> SupplierResponse:
 
 @app.get("/suppliers", response_model=list[SupplierResponse])
 def list_all_suppliers(
+    _user: Annotated[str, Depends(get_current_user_uuid)],
     country: Literal["Colombia", "USA"] | None = Query(default=None),
     category: str | None = Query(default=None),
 ) -> list[SupplierResponse]:
@@ -111,7 +126,10 @@ def list_all_suppliers(
 
 
 @app.get("/suppliers/{supplier_id}", response_model=SupplierResponse)
-def get_supplier_by_id(supplier_id: int) -> SupplierResponse:
+def get_supplier_by_id(
+    supplier_id: int,
+    _user: Annotated[str, Depends(get_current_user_uuid)],
+) -> SupplierResponse:
     record = get_supplier(supplier_id)
     if record is None:
         raise HTTPException(status_code=404, detail="Supplier not found")
@@ -122,6 +140,7 @@ def get_supplier_by_id(supplier_id: int) -> SupplierResponse:
 def patch_supplier_rate(
     supplier_id: int,
     body: SupplierRateUpdate,
+    _user: Annotated[str, Depends(get_current_user_uuid)],
 ) -> SupplierResponse:
     try:
         record = update_rate(supplier_id, body.rate_per_unit)
@@ -136,6 +155,7 @@ def patch_supplier_rate(
 def patch_supplier_status(
     supplier_id: int,
     body: SupplierStatusUpdate,
+    _user: Annotated[str, Depends(get_current_user_uuid)],
 ) -> SupplierResponse:
     try:
         record = update_status(supplier_id, body.status)
@@ -147,7 +167,10 @@ def patch_supplier_status(
 
 
 @app.delete("/suppliers/{supplier_id}", status_code=204)
-def remove_supplier(supplier_id: int) -> Response:
+def remove_supplier(
+    supplier_id: int,
+    _user: Annotated[str, Depends(get_current_user_uuid)],
+) -> Response:
     if not delete_supplier(supplier_id):
         raise HTTPException(status_code=404, detail="Supplier not found")
     return Response(status_code=204)

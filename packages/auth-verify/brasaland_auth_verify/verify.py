@@ -16,6 +16,11 @@ def _require_public_key() -> str:
     return key
 
 
+def ensure_jwt_configured() -> None:
+    """Fail fast at process start when the verify key is missing."""
+    _require_public_key()
+
+
 def _algorithm() -> str:
     return os.environ.get("JWT_ALGORITHM", "RS256")
 

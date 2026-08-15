@@ -9,9 +9,9 @@ FIXTURE_PATH = Path(__file__).parent / "fixtures" / "incidents_100.csv"
 
 
 @pytest.fixture
-def client() -> TestClient:
+def client(auth_headers: dict[str, str]) -> TestClient:
     app_module._last_analysis = None
-    with TestClient(app_module.app) as test_client:
+    with TestClient(app_module.app, headers=auth_headers) as test_client:
         yield test_client
 
 

@@ -66,8 +66,11 @@ services:
       WATCHFILES_FORCE_POLLING: 'true'
       DATABASE_URL: ${DATABASE_URL}
       TELEMETRY_ENDPOINT: http://telemetry:8013/telemetry/events
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
     volumes:
       - ./services/telemetry:/app/services/telemetry
+      - ./packages:/app/packages
       - telemetry_venv:/app/services/telemetry/.venv
     restart: unless-stopped
     networks:
@@ -84,10 +87,13 @@ services:
       WATCHFILES_FORCE_POLLING: 'true'
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
       PYTHONPATH: /app/data
     volumes:
       - ./services/reporting:/app/services/reporting
       - ./data:/app/data
+      - ./packages:/app/packages
       - reporting_venv:/app/services/reporting/.venv
     restart: unless-stopped
     networks:
@@ -220,6 +226,8 @@ services:
     environment:
       WATCHFILES_FORCE_POLLING: 'true'
       DATABASE_URL: ${DATABASE_URL}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
     volumes:
       - ./services/incident-manager:/app/services/incident-manager
       - ./packages:/app/packages
@@ -239,6 +247,8 @@ services:
       - '8000:8000'
     environment:
       WATCHFILES_FORCE_POLLING: 'true'
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
     volumes:
       - ./services/incident-analysis:/app/services/incident-analysis
       - ./packages:/app/packages
@@ -258,6 +268,8 @@ services:
       - '8001:8001'
     environment:
       WATCHFILES_FORCE_POLLING: 'true'
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
     volumes:
       - ./services/supplier-directory:/app/services/supplier-directory
       - ./packages:/app/packages

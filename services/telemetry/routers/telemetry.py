@@ -4,7 +4,10 @@ import logging
 import time
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Query
+from typing import Annotated
+
+from brasaland_auth_verify.deps import get_current_user_uuid, get_optional_user_uuid
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import ValidationError
 
 from allowlists import validate_event_properties
@@ -17,9 +20,13 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/telemetry")
 
+MAX_EVENTS_PER_REQUEST = 50
+ANONYMOUS_USER_ID = "anonymous"
+
 
 @router.get("/report")
 def get_report(
+    _user: Annotated[str, Depends(get_current_user_uuid)],
     start_date: str | None = Query(default=None),
     end_date: str | None = Query(default=None),
 ) -> dict[str, object]:
@@ -32,13 +39,25 @@ def get_report(
 
 
 @router.post("/events", response_model=IngestResponse)
-def ingest_events(body: EventsIngestBody) -> IngestResponse:
+def ingest_events(
+    body: EventsIngestBody,
+    user_uuid: Annotated[str | None, Depends(get_optional_user_uuid)],
+) -> IngestResponse:
+    if len(body.events) > MAX_EVENTS_PER_REQUEST:
+        raise HTTPException(
+            status_code=400,
+            detail=f"At most {MAX_EVENTS_PER_REQUEST} events per request",
+        )
+
     received = len(body.events)
     pending_rows: list[dict[str, object]] = []
+    resolved_user_id = user_uuid if user_uuid is not None else ANONYMOUS_USER_ID
 
     for index, raw_event in enumerate(body.events):
         try:
-            event = TelemetryEvent.model_validate(raw_event)
+            event = TelemetryEvent.model_validate(raw_event).model_copy(
+                update={"userId": resolved_user_id}
+            )
         except ValidationError as error:
             logger.warning(
                 "Rejected telemetry event at index %d (envelope): %s",

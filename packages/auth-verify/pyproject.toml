@@ -9,12 +9,14 @@ description = "Verify-only RS256 JWT validation for Brasaland Python services."
 requires-python = ">=3.11"
 dependencies = [
     "python-jose[cryptography]==3.3.0",
+    "fastapi>=0.115,<1",
 ]
 
 [dependency-groups]
 dev = [
     "pytest==8.3.5",
     "cryptography>=49.0.0",
+    "httpx==0.28.1",
 ]
 
 [tool.setuptools.packages.find]
