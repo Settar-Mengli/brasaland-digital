@@ -44,4 +44,10 @@ celery_app.conf.update(
     task_acks_late=True,
     timezone="UTC",
     enable_utc=True,
+    task_default_queue="rfp",
+    task_routes={
+        "rfp.process_rfp": {"queue": "rfp"},
+        "rfp.process_rfp_response": {"queue": "rfp"},
+        "rfp.process_rfp_approval": {"queue": "rfp"},
+    },
 )

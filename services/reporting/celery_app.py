@@ -44,4 +44,8 @@ celery_app.conf.update(
     task_acks_late=True,
     timezone="UTC",
     enable_utc=True,
+    task_default_queue="reporting",
+    task_routes={
+        "reporting.run_pipeline_task": {"queue": "reporting"},
+    },
 )
