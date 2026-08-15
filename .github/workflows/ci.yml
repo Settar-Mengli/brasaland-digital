@@ -116,3 +116,33 @@ jobs:
         run: npm ci
       - name: Check formatting
         run: npm run format:check
+
+  celery-routing:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: '3.13'
+      - name: Sync reporting deps
+        run: uv sync --python 3.13
+        working-directory: services/reporting
+      - name: Sync rfp deps
+        run: uv sync --python 3.13
+        working-directory: services/rfp
+      - name: Prove queue isolation on real Redis
+        env:
+          REDIS_URL: redis://localhost:6379/0
+          CELERY_ISOLATION_ALLOW_FLUSH: '1'
+        run: uv run --python 3.13 python ../../scripts/test_celery_queue_isolation.py
+        working-directory: services/reporting

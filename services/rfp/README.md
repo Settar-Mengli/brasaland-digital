@@ -75,6 +75,24 @@ Compliance §5 rules are loaded at runtime from `data/raw/CONTEXT-rfp.md` (headi
 
 Compose also sets `PYTHONPATH=/app/data`. Uploaded PDFs land in host `data/raw/` (gitignored).
 
+## Celery queues
+
+`rfp-worker` binds `-Q rfp`. The app sets `task_default_queue="rfp"` and `task_routes` for `rfp.process_rfp`, `rfp.process_rfp_response`, and `rfp.process_rfp_approval`. It does not consume the default `celery` queue (or reporting's `reporting` queue).
+
+```powershell
+docker compose up -d rfp-worker
+docker compose stop rfp-worker
+```
+
+Host worker (if not Compose) must pass `-Q rfp`:
+
+```powershell
+cd services/rfp
+uv run --python 3.13 celery -A celery_app.celery_app worker --loglevel=INFO --pool=solo -Q rfp
+```
+
+CI job `celery-routing` runs [../../scripts/test_celery_queue_isolation.py](../../scripts/test_celery_queue_isolation.py) against a disposable Redis (FLUSHDB; never the Compose broker).
+
 ## Checkpointer
 
 Part 3 persists LangGraph interrupt/resume state with `langgraph-checkpoint-sqlite`
