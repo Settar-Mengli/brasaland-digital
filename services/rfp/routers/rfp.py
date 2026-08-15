@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from typing import Annotated, Any, Literal
+from uuid import uuid4
 
+from brasaland_auth_verify.deps import get_verified_claims
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlmodel import Session
-from uuid import uuid4
 
 from approval_driver import (
     apply_ceo_decision,
@@ -16,7 +17,7 @@ from approval_driver import (
     serialize_final_document,
 )
 from database import get_db
-from dependencies import get_current_user_uuid
+from dependencies import require_ticket_access
 from pipelines.rfp_intake.repository import (
     create_ticket,
     get_department_sections,
@@ -38,12 +39,24 @@ class CeoDecisionBody(BaseModel):
     action: Literal["approve", "reject"]
 
 
+def _caller_uuid(claims: dict[str, Any]) -> str:
+    user_id = claims.get("user_id", claims.get("sub"))
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return str(user_id)
+
+
 @router.post("/tickets", status_code=202)
 async def post_ticket(
     file: Annotated[UploadFile, File()],
     session: Annotated[Session, Depends(get_db)],
-    _user_uuid: Annotated[str, Depends(get_current_user_uuid)],
+    claims: Annotated[dict[str, Any], Depends(get_verified_claims)],
 ) -> JSONResponse:
+    owner_uuid = _caller_uuid(claims)
     path, content_hash = await save_upload(file)
     rfp_id = uuid4().hex
     ticket, created = create_ticket(
@@ -51,6 +64,7 @@ async def post_ticket(
         rfp_id=rfp_id,
         content_hash=content_hash,
         raw_pdf_path=str(path),
+        owner_user_uuid=owner_uuid,
     )
     if created:
         process_rfp.delay(ticket.ticket_id)
@@ -68,7 +82,7 @@ async def post_ticket(
 def post_ticket_response(
     ticket_id: str,
     session: Annotated[Session, Depends(get_db)],
-    _user_uuid: Annotated[str, Depends(get_current_user_uuid)],
+    claims: Annotated[dict[str, Any], Depends(get_verified_claims)],
 ) -> JSONResponse:
     ticket = get_ticket(session, ticket_id)
     if ticket is None:
@@ -76,6 +90,7 @@ def post_ticket_response(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="ticket not found",
         )
+    require_ticket_access(ticket, claims)
     if ticket.status != "intake_complete":
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -99,7 +114,7 @@ def post_ticket_response(
 def post_ticket_approval(
     ticket_id: str,
     session: Annotated[Session, Depends(get_db)],
-    _user_uuid: Annotated[str, Depends(get_current_user_uuid)],
+    claims: Annotated[dict[str, Any], Depends(get_verified_claims)],
 ) -> JSONResponse:
     ticket = get_ticket(session, ticket_id)
     if ticket is None:
@@ -107,6 +122,7 @@ def post_ticket_approval(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="ticket not found",
         )
+    require_ticket_access(ticket, claims)
     if ticket.status != "under_evaluation":
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -132,7 +148,7 @@ def post_section_decision(
     department_id: str,
     body: SectionDecisionBody,
     session: Annotated[Session, Depends(get_db)],
-    _user_uuid: Annotated[str, Depends(get_current_user_uuid)],
+    claims: Annotated[dict[str, Any], Depends(get_verified_claims)],
 ) -> dict[str, Any]:
     """Resume one department approval interrupt (approve / reject / request_changes).
 
@@ -140,6 +156,13 @@ def post_section_decision(
     - plain string action when no feedback
     - ``{action, feedback}`` dict when feedback is present (feeds human_feedback → regen)
     """
+    ticket = get_ticket(session, ticket_id)
+    if ticket is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="ticket not found",
+        )
+    require_ticket_access(ticket, claims)
     try:
         return apply_section_decision(
             session,
@@ -170,8 +193,15 @@ def post_ceo_decision(
     ticket_id: str,
     body: CeoDecisionBody,
     session: Annotated[Session, Depends(get_db)],
-    _user_uuid: Annotated[str, Depends(get_current_user_uuid)],
+    claims: Annotated[dict[str, Any], Depends(get_verified_claims)],
 ) -> dict[str, Any]:
+    ticket = get_ticket(session, ticket_id)
+    if ticket is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="ticket not found",
+        )
+    require_ticket_access(ticket, claims)
     try:
         return apply_ceo_decision(
             session,
@@ -199,7 +229,7 @@ def post_ceo_decision(
 def get_ticket_status(
     ticket_id: str,
     session: Annotated[Session, Depends(get_db)],
-    _user_uuid: Annotated[str, Depends(get_current_user_uuid)],
+    claims: Annotated[dict[str, Any], Depends(get_verified_claims)],
 ) -> dict[str, Any]:
     ticket = get_ticket(session, ticket_id)
     if ticket is None:
@@ -207,6 +237,7 @@ def get_ticket_status(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="ticket not found",
         )
+    require_ticket_access(ticket, claims)
     sections = get_department_sections(session, ticket_id)
     arbitration: dict[str, Any] | None = None
     section_payloads: list[dict[str, Any]] = []

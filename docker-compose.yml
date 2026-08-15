@@ -172,6 +172,7 @@ services:
     volumes:
       - ./services/rfp:/app/services/rfp
       - ./data:/app/data
+      - ./packages:/app/packages
       - rfp_venv:/app/services/rfp/.venv
       - rfp_checkpoint:/app/checkpoint
     depends_on:
@@ -206,6 +207,7 @@ services:
     volumes:
       - ./services/rfp:/app/services/rfp
       - ./data:/app/data
+      - ./packages:/app/packages
       - rfp_worker_venv:/app/services/rfp/.venv
       - rfp_checkpoint:/app/checkpoint
     depends_on:

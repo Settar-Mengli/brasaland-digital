@@ -18,9 +18,9 @@ os.environ.setdefault("DATABASE_URL", "sqlite://")
 
 import config  # noqa: F401
 import pipelines.rfp_intake.models as rfp_models  # noqa: F401
+from brasaland_auth_verify.deps import get_verified_claims
 from app import app
 from database import get_db
-from dependencies import get_current_user_uuid
 from pipelines.rfp_intake.repository import (
     create_ticket,
     get_department_sections,
@@ -64,7 +64,11 @@ def _db_and_auth(tmp_path: Path) -> Generator[None, None, None]:
             yield session
 
     app.dependency_overrides[get_db] = override_get_db
-    app.dependency_overrides[get_current_user_uuid] = lambda: "42"
+    app.dependency_overrides[get_verified_claims] = lambda: {
+        "user_id": 42,
+        "sub": "42",
+        "is_admin": False,
+    }
 
     with patch("upload.DATA_RAW", tmp_path / "raw"):
         yield
@@ -91,6 +95,7 @@ def _seed_waiting(
             rfp_id="rfp-dec",
             content_hash="hash-dec",
             raw_pdf_path="/tmp/d.pdf",
+            owner_user_uuid="42",
         )
         save_rfp_metadata(
             session,
@@ -145,6 +150,7 @@ def test_post_approval_202(client) -> None:
             rfp_id="rfp-appr-http",
             content_hash="hash-appr-http",
             raw_pdf_path="/tmp/a.pdf",
+            owner_user_uuid="42",
         )
         save_rfp_metadata(
             session,

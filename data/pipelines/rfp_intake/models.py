@@ -36,6 +36,10 @@ class Ticket(SQLModel, table=True):
     status: str = Field(sa_column=Column(Text, nullable=False))
     raw_pdf_path: str = Field(sa_column=Column(Text, nullable=False))
     content_hash: str = Field(sa_column=Column(Text, nullable=False))
+    owner_user_uuid: Optional[str] = Field(
+        default=None,
+        sa_column=Column(Text, nullable=True, index=True),
+    )
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
         sa_column=Column(DateTime, nullable=False),

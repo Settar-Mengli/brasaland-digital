@@ -60,6 +60,7 @@ def _seed_under_evaluation(session: Session) -> str:
         rfp_id="rfp-appr",
         content_hash="hash-appr",
         raw_pdf_path="/tmp/a.pdf",
+        owner_user_uuid="42",
     )
     save_rfp_metadata(
         session,
