@@ -1,12 +1,10 @@
 """HTTP routes for RFP ticket upload and row-status poll."""
 
-from __future__ import annotations
-
 from typing import Annotated, Any, Literal
 from uuid import uuid4
 
 from brasaland_auth_verify.deps import get_verified_claims
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlmodel import Session
@@ -24,6 +22,7 @@ from pipelines.rfp_intake.repository import (
     get_final_document,
     get_ticket,
 )
+from rate_limit import RFP_UPLOAD_RATE_LIMIT, limiter
 from tasks import process_rfp, process_rfp_approval, process_rfp_response
 from upload import save_upload
 
@@ -51,7 +50,9 @@ def _caller_uuid(claims: dict[str, Any]) -> str:
 
 
 @router.post("/tickets", status_code=202)
+@limiter.limit(RFP_UPLOAD_RATE_LIMIT)
 async def post_ticket(
+    request: Request,
     file: Annotated[UploadFile, File()],
     session: Annotated[Session, Depends(get_db)],
     claims: Annotated[dict[str, Any], Depends(get_verified_claims)],

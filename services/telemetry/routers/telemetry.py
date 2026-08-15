@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import logging
 import time
 from datetime import UTC, datetime
@@ -7,11 +5,12 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 from brasaland_auth_verify.deps import get_current_user_uuid, get_optional_user_uuid
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from pydantic import ValidationError
 
 from allowlists import validate_event_properties
 from models import EventsIngestBody, IngestResponse, TelemetryEvent
+from rate_limit import INGEST_RATE_LIMIT, limiter
 from report_service import get_report_payload
 from repository import bulk_insert_events
 from row_builder import build_event_row
@@ -39,8 +38,10 @@ def get_report(
 
 
 @router.post("/events", response_model=IngestResponse)
+@limiter.limit(INGEST_RATE_LIMIT)
 def ingest_events(
-    body: EventsIngestBody,
+    request: Request,
+    body: Annotated[EventsIngestBody, Body()],
     user_uuid: Annotated[str | None, Depends(get_optional_user_uuid)],
 ) -> IngestResponse:
     if len(body.events) > MAX_EVENTS_PER_REQUEST:

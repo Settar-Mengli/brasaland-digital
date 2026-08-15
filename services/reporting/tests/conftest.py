@@ -184,3 +184,17 @@ def upsert_weekly_location_row(
                 "computed_at": datetime.now(timezone.utc),
             },
         )
+
+
+@pytest.fixture(autouse=True)
+def disable_rate_limits() -> Generator[None, None, None]:
+    from app import app
+
+    limiter = getattr(app.state, "limiter", None)
+    if limiter is None:
+        yield
+        return
+    was = limiter.enabled
+    limiter.enabled = False
+    yield
+    limiter.enabled = was

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from io import StringIO
@@ -7,14 +5,18 @@ from pathlib import Path
 from typing import Annotated, Any
 
 from brasaland_auth_verify.deps import get_verified_claims
+from brasaland_auth_verify.surface import fastapi_docs_kwargs
 from brasaland_auth_verify.verify import ensure_jwt_configured
-from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from incident_analysis import export_summary_csv, run_analysis
 from incident_analysis.loader import CsvStructureError
 from incident_analysis.types import AnalysisResult
+from rate_limit import ANALYZE_RATE_LIMIT, limiter
 from result_store import result_store
 
 STATIC_DIR = Path(__file__).parent / "static"
@@ -29,7 +31,13 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     yield
 
 
-app = FastAPI(title="Brasaland Incident Analysis", lifespan=lifespan)
+app = FastAPI(
+    title="Brasaland Incident Analysis",
+    lifespan=lifespan,
+    **fastapi_docs_kwargs(),
+)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 def _serialize_result(result: AnalysisResult) -> dict[str, Any]:
@@ -78,9 +86,11 @@ async def read_index() -> FileResponse:
 
 
 @app.post("/api/incidents/analyze")
+@limiter.limit(ANALYZE_RATE_LIMIT)
 async def analyze_incidents(
+    request: Request,
     claims: Annotated[dict[str, Any], Depends(get_verified_claims)],
-    file: UploadFile | None = File(default=None),
+    file: Annotated[UploadFile | None, File()] = None,
 ) -> dict[str, Any]:
     owner_uuid, _is_admin = _caller_identity(claims)
 

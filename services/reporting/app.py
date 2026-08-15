@@ -5,10 +5,14 @@ import os
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
+from brasaland_auth_verify.surface import fastapi_docs_kwargs
 from brasaland_auth_verify.verify import ensure_jwt_configured
 from fastapi import FastAPI
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 import config  # noqa: F401 — sys.path for data/pipelines + .env
+from rate_limit import limiter
 from routers.reporting import router as reporting_router
 from routers.tasks import router as tasks_router
 
@@ -35,7 +39,13 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     yield
 
 
-app = FastAPI(title="Brasaland Reporting API", lifespan=lifespan)
+app = FastAPI(
+    title="Brasaland Reporting API",
+    lifespan=lifespan,
+    **fastapi_docs_kwargs(),
+)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.include_router(reporting_router)
 app.include_router(tasks_router)
 

@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Annotated, Literal
 
 from brasaland_auth_verify.deps import get_current_user_uuid
+from brasaland_auth_verify.surface import fastapi_docs_kwargs
 from brasaland_auth_verify.verify import ensure_jwt_configured
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, Response
@@ -34,7 +35,11 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     yield
 
 
-app = FastAPI(title="Brasaland Supplier Directory", lifespan=lifespan)
+app = FastAPI(
+    title="Brasaland Supplier Directory",
+    lifespan=lifespan,
+    **fastapi_docs_kwargs(),
+)
 
 
 class SupplierCreate(BaseModel):

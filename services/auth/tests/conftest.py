@@ -50,3 +50,18 @@ def registration_policy(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AUTH_ALLOW_SELF_REGISTER", "true")
     monkeypatch.delenv("AUTH_BOOTSTRAP_ADMIN_EMAIL", raising=False)
     monkeypatch.delenv("AUTH_BOOTSTRAP_ADMIN_PASSWORD", raising=False)
+
+
+@pytest.fixture(autouse=True)
+def disable_rate_limits() -> None:
+    from app import app
+
+    limiter = getattr(app.state, "limiter", None)
+    if limiter is not None:
+        was = limiter.enabled
+        limiter.enabled = False
+        yield
+        limiter.enabled = was
+    else:
+        yield
+

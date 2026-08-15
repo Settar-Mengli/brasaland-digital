@@ -7,6 +7,7 @@ dependencies = [
     "fastapi==0.115.12",
     "uvicorn[standard]==0.34.3",
     "python-multipart==0.0.20",
+    "slowapi>=0.1.10",
 ]
 
 [tool.uv.sources]

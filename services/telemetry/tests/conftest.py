@@ -133,3 +133,17 @@ def client(auth_headers: dict[str, str]) -> Generator[Any, None, None]:
         app, raise_server_exceptions=False, headers=auth_headers
     ) as test_client:
         yield test_client
+
+
+@pytest.fixture(autouse=True)
+def disable_rate_limits() -> Generator[None, None, None]:
+    from app import app
+
+    limiter = getattr(app.state, "limiter", None)
+    if limiter is None:
+        yield
+        return
+    was = limiter.enabled
+    limiter.enabled = False
+    yield
+    limiter.enabled = was

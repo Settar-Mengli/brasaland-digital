@@ -1,16 +1,17 @@
-from __future__ import annotations
-
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, HTTPException, Response, status
+from brasaland_auth_verify.surface import fastapi_docs_kwargs
+from fastapi import Body, Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.responses import FileResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr, Field
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from auth.email_sender import send_password_reset_email
 from auth.security import TokenError
@@ -40,6 +41,7 @@ from auth.types import (
     UserNotFoundError,
     UserRecord,
 )
+from rate_limit import AUTH_RATE_LIMIT, limiter
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +56,13 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     yield
 
 
-app = FastAPI(title="Brasaland Auth Service", lifespan=lifespan)
+app = FastAPI(
+    title="Brasaland Auth Service",
+    lifespan=lifespan,
+    **fastapi_docs_kwargs(),
+)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
@@ -184,7 +192,11 @@ def _token_response(access_token: str, refresh_token: str) -> TokenResponse:
 
 
 @app.post("/auth/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-def auth_register(body: UserRegister) -> TokenResponse:
+@limiter.limit(AUTH_RATE_LIMIT)
+def auth_register(
+    request: Request,
+    body: Annotated[UserRegister, Body()],
+) -> TokenResponse:
     if not self_registration_enabled():
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -204,7 +216,9 @@ def auth_register(body: UserRegister) -> TokenResponse:
 
 
 @app.post("/auth/login", response_model=TokenResponse)
+@limiter.limit(AUTH_RATE_LIMIT)
 def auth_login(
+    request: Request,
     form: Annotated[OAuth2PasswordRequestForm, Depends()],
 ) -> TokenResponse:
     user = authenticate_user(form.username, form.password)
@@ -218,7 +232,11 @@ def auth_login(
 
 
 @app.post("/auth/refresh", response_model=TokenResponse)
-def auth_refresh(body: RefreshRequest) -> TokenResponse:
+@limiter.limit(AUTH_RATE_LIMIT)
+def auth_refresh(
+    request: Request,
+    body: Annotated[RefreshRequest, Body()],
+) -> TokenResponse:
     try:
         access_token, refresh_token = rotate_refresh_token(body.refresh_token)
     except InvalidRefreshTokenError as error:

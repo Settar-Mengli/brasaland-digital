@@ -22,6 +22,20 @@ def clear_result_store() -> None:
     result_store.clear()
 
 
+@pytest.fixture(autouse=True)
+def disable_rate_limits() -> None:
+    from app import app
+
+    limiter = getattr(app.state, "limiter", None)
+    if limiter is None:
+        yield
+        return
+    was = limiter.enabled
+    limiter.enabled = False
+    yield
+    limiter.enabled = was
+
+
 @pytest.fixture
 def access_token() -> str:
     return mint_access_token(_PRIVATE_PEM, user_id=1)
