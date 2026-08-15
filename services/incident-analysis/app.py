@@ -6,7 +6,7 @@ from io import StringIO
 from pathlib import Path
 from typing import Annotated, Any
 
-from brasaland_auth_verify.deps import get_current_user_uuid
+from brasaland_auth_verify.deps import get_verified_claims
 from brasaland_auth_verify.verify import ensure_jwt_configured
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse, Response
@@ -15,8 +15,12 @@ from fastapi.staticfiles import StaticFiles
 from incident_analysis import export_summary_csv, run_analysis
 from incident_analysis.loader import CsvStructureError
 from incident_analysis.types import AnalysisResult
+from result_store import result_store
 
 STATIC_DIR = Path(__file__).parent / "static"
+
+RESULT_NOT_FOUND = "Analysis result not found"
+NOT_ALLOWED_TO_EXPORT = "Not allowed to export this analysis result"
 
 
 @asynccontextmanager
@@ -26,8 +30,6 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="Brasaland Incident Analysis", lifespan=lifespan)
-
-_last_analysis: AnalysisResult | None = None
 
 
 def _serialize_result(result: AnalysisResult) -> dict[str, Any]:
@@ -63,6 +65,13 @@ def _map_analysis_error(error: Exception) -> HTTPException:
     return HTTPException(status_code=400, detail="Invalid CSV structure")
 
 
+def _caller_identity(claims: dict[str, Any]) -> tuple[str, bool]:
+    user_id = claims.get("user_id", claims.get("sub"))
+    if user_id is None:
+        raise HTTPException(status_code=401, detail="Could not validate credentials")
+    return str(user_id), bool(claims.get("is_admin"))
+
+
 @app.get("/")
 async def read_index() -> FileResponse:
     return FileResponse(STATIC_DIR / "index.html")
@@ -70,10 +79,10 @@ async def read_index() -> FileResponse:
 
 @app.post("/api/incidents/analyze")
 async def analyze_incidents(
-    _user: Annotated[str, Depends(get_current_user_uuid)],
+    claims: Annotated[dict[str, Any], Depends(get_verified_claims)],
     file: UploadFile | None = File(default=None),
 ) -> dict[str, Any]:
-    global _last_analysis
+    owner_uuid, _is_admin = _caller_identity(claims)
 
     if file is None or not file.filename:
         raise HTTPException(status_code=400, detail="No file uploaded")
@@ -95,21 +104,26 @@ async def analyze_incidents(
             detail="Analysis failed",
         ) from error
 
-    _last_analysis = result
-    return _serialize_result(result)
+    stored = result_store.store(owner_uuid, result)
+    payload = _serialize_result(result)
+    payload["result_id"] = stored.result_id
+    return payload
 
 
-@app.get("/api/incidents/results/export")
+@app.get("/api/incidents/results/{result_id}/export")
 async def export_results(
-    _user: Annotated[str, Depends(get_current_user_uuid)],
+    result_id: str,
+    claims: Annotated[dict[str, Any], Depends(get_verified_claims)],
 ) -> Response:
-    if _last_analysis is None:
-        raise HTTPException(
-            status_code=404,
-            detail="No analysis available yet",
-        )
+    requester_uuid, is_admin = _caller_identity(claims)
+    stored = result_store.get(result_id)
+    if stored is None:
+        raise HTTPException(status_code=404, detail=RESULT_NOT_FOUND)
 
-    csv_content = export_summary_csv(_last_analysis)
+    if stored.owner_user_uuid != requester_uuid and not is_admin:
+        raise HTTPException(status_code=403, detail=NOT_ALLOWED_TO_EXPORT)
+
+    csv_content = export_summary_csv(stored.result)
     return Response(
         content=csv_content,
         media_type="text/csv",

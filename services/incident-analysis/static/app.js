@@ -179,6 +179,8 @@ function renderSummary(data) {
   downloadButton.disabled = false;
 }
 
+let lastResultId = null;
+
 async function analyzeFile() {
   if (!selectedFile) {
     showError('Please choose a CSV file before analyzing.');
@@ -204,6 +206,7 @@ async function analyzeFile() {
       return;
     }
 
+    lastResultId = payload.result_id || null;
     renderSummary(payload);
   } catch (_error) {
     showError('Unable to reach the analysis service. Please try again.');
@@ -215,8 +218,15 @@ async function analyzeFile() {
 async function handleDownload() {
   clearError();
 
+  if (!lastResultId) {
+    showError('No analysis available yet. Run an analysis first.');
+    return;
+  }
+
   try {
-    const response = await fetch('/api/incidents/results/export');
+    const response = await fetch(
+      `/api/incidents/results/${encodeURIComponent(lastResultId)}/export`,
+    );
 
     if (!response.ok) {
       let message = 'No analysis available yet. Run an analysis first.';

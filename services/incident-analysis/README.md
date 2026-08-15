@@ -75,8 +75,8 @@ Open **http://127.0.0.1:8000/** , upload `incidents-brasaland.csv`, click **Anal
 
 | Method | Path | Description |
 | --- | --- | --- |
-| `POST` | `/api/incidents/analyze` | Upload CSV (`multipart/form-data`, field `file`) → JSON summary |
-| `GET` | `/api/incidents/results/export` | Download the last analysis as `incident-summary.csv` |
+| `POST` | `/api/incidents/analyze` | Upload CSV (`multipart/form-data`, field `file`) → JSON summary + `result_id` (JWT required) |
+| `GET` | `/api/incidents/results/{result_id}/export` | Download that analysis as `incident-summary.csv` (owner or admin JWT) |
 
 ![Web interface](../../docs/screenshots/web-ui.png)
 
@@ -101,7 +101,7 @@ From `services/incident-analysis/`:
 uv run pytest
 ```
 
-**18 tests** cover validator rules, metric edge cases, API endpoints, and a golden fixture. The golden test loads the 100-row sample and asserts:
+**25 tests** cover validator rules, metric edge cases, API endpoints, owner-scoped exports, and a golden fixture. The golden test loads the 100-row sample and asserts:
 
 - **100** total records — **96** valid, **4** invalid
 - Average satisfaction (closed, scored): **3.46**
@@ -112,5 +112,5 @@ uv run pytest
 ## Notes
 
 - **Data vs. UI language:** Spanish incident descriptions and fixed category codes in the CSV are preserved as-is; all code, console labels, API messages, and documentation are in English.
-- **Export state:** The API stores the last analysis in memory (`_last_analysis`). It resets when the server restarts.
+- **Export state:** Analyze stores each result under a generated `result_id`, stamped with the caller's JWT identity and a TTL (`ANALYSIS_RESULT_TTL_SECONDS`, default 3600). Export requires that result id and allows only the owner or an admin.
 - **Windows console:** The CLI reconfigures stdout/stderr to UTF-8 so box-drawing characters and accented text render correctly in PowerShell and cmd.
