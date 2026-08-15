@@ -310,6 +310,8 @@ services:
     environment:
       WATCHFILES_FORCE_POLLING: 'true'
       EXPOSE_DOCS: ${EXPOSE_DOCS:-}
+      RATE_LIMIT_AGENT_QUERY: ${RATE_LIMIT_AGENT_QUERY:-10/minute}
+      RATE_LIMIT_KNOWLEDGE_QUERY: ${RATE_LIMIT_KNOWLEDGE_QUERY:-20/minute}
       PYTHONPATH: /app/data
       QDRANT_URL: http://qdrant:6333
       REDIS_URL: ${REDIS_URL}

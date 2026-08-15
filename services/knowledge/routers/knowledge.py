@@ -1,13 +1,12 @@
 """HTTP routes for Brasaland knowledge-base Q&A."""
 
-from __future__ import annotations
-
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from dependencies import get_current_user_uuid
+from rate_limit import KNOWLEDGE_QUERY_RATE_LIMIT, limiter
 
 router = APIRouter(prefix="/knowledge")
 
@@ -21,8 +20,10 @@ class KnowledgeQueryResponse(BaseModel):
 
 
 @router.post("/query", response_model=KnowledgeQueryResponse)
+@limiter.limit(KNOWLEDGE_QUERY_RATE_LIMIT)
 def post_query(
-    body: KnowledgeQueryRequest,
+    request: Request,
+    body: Annotated[KnowledgeQueryRequest, Body()],
     _user_uuid: Annotated[str, Depends(get_current_user_uuid)],
 ) -> KnowledgeQueryResponse:
     question = body.question.strip()

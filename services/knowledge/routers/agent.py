@@ -1,10 +1,8 @@
 """HTTP routes for the LangGraph support agent."""
 
-from __future__ import annotations
-
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 
 from dependencies import (
@@ -13,6 +11,7 @@ from dependencies import (
     oauth2_scheme,
     require_admin,
 )
+from rate_limit import AGENT_QUERY_RATE_LIMIT, limiter
 
 router = APIRouter(prefix="/agent")
 
@@ -29,8 +28,10 @@ class AgentQueryResponse(BaseModel):
 
 
 @router.post("/query", response_model=AgentQueryResponse)
+@limiter.limit(AGENT_QUERY_RATE_LIMIT)
 def post_agent_query(
-    body: AgentQueryRequest,
+    request: Request,
+    body: Annotated[AgentQueryRequest, Body()],
     user_uuid: Annotated[str, Depends(get_current_user_uuid)],
     access_token: Annotated[str, Depends(oauth2_scheme)],
 ) -> AgentQueryResponse:
