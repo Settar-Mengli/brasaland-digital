@@ -138,6 +138,7 @@ services:
     volumes:
       - ./services/reporting:/app/services/reporting
       - ./data:/app/data
+      - ./packages:/app/packages
       - reporting_worker_venv:/app/services/reporting/.venv
     depends_on:
       - redis
