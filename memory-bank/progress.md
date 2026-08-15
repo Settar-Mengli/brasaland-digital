@@ -1070,3 +1070,16 @@ cd services/knowledge; uv run pytest
 - No silent route fixes after the sweep — allowlist is explicit for public auth, telemetry ingest, and the Phase-2 open GETs that remain intentionally public where listed.
 
 **Consumer-facing knobs:** root `.env.example` documents `AUTH_ALLOW_SELF_REGISTER`, bootstrap admin envs, `EXPOSE_DOCS`, and `RATE_LIMIT_*` overrides. Service READMEs note owner/ACL/rate-limit/docs behavior where callers need it.
+
+## Isolate Celery queues (pre-deploy blocker) — `feature/isolate-celery-queues`
+
+**Status:** Closed on branch tip. Named queues `reporting` and `rfp`; workers no longer share Celery's default `celery` queue (the collision that stalled rfp-worker).
+
+**What closed:**
+
+- **Routing:** Each service's `celery_app.py` sets `task_default_queue` and explicit `task_routes` (`reporting.run_pipeline_task` → `reporting`; `rfp.process_rfp` / `process_rfp_response` / `process_rfp_approval` → `rfp`). Compose `reporting-worker` / `rfp-worker` bind `-Q reporting` / `-Q rfp`. `.delay()` call sites unchanged.
+- **Proof (CI):** Job `celery-routing` runs `scripts/test_celery_queue_isolation.py` against a disposable Redis (real broker; FLUSHDB opt-in). Three directions: broker placement (not `celery`), rfp worker ignores a reporting task, reporting worker ignores an rfp task. Verdict is queue depth plus that worker's log (not shared-Redis `AsyncResult`).
+- **Proof (live smoke):** On Compose, both workers booted isolated (`queues: reporting` with only `reporting.run_pipeline_task`; `queues: rfp` with only the three `rfp.*` tasks). JWT enqueue on both API routes confirmed each task was consumed only by its own worker.
+- **Separate fix during smoke:** `d493979` `fix(compose): mount packages into reporting-worker so auth-verify path dep resolves` — reporting-worker was the only auth-verify `uv run` service missing `./packages:/app/packages`; crash-loop on force-recreate. Own commit, not folded into the queue change.
+
+**Out of this arc:** `--concurrency=1` (SQLite checkpointer band-aid), Redis DB split, Flower changes.

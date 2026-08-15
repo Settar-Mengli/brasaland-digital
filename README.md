@@ -133,14 +133,23 @@ npm run dev --workspace @brasaland/backoffice
 
    Services communicate over the named network `brasaland-dev` using Docker DNS names (service names on the compose network). Your browser uses host-published ports on `localhost`. Canonical ports: [docs/standards/project-context.md](docs/standards/project-context.md#port-assignments).
 
-**Reporting Celery worker:** Compose service `reporting-worker` runs `celery -A celery_app.celery_app worker` using the reporting image. Start/stop independently:
+**Celery workers:** Reporting and RFP no longer share Celery's default `celery` queue. Compose binds each worker to a named queue (`-Q reporting`, `-Q rfp`); `task_routes` / `task_default_queue` on each app publish to that queue. Start/stop independently:
 
 ```bash
 docker compose up -d reporting-worker
 docker compose stop reporting-worker
+docker compose up -d rfp-worker
+docker compose stop rfp-worker
 ```
 
-Set `REDIS_URL` in the root `.env` (see `.env.example`). Inside Compose use `redis://redis:6379/0`; on the host use `redis://localhost:6379/0`. Flower reads the same URL via `CELERY_BROKER_URL`.
+Host workers must pass the same `-Q` (otherwise they consume `celery` and steal the other service's tasks):
+
+```bash
+celery -A celery_app.celery_app worker --loglevel=INFO -Q reporting
+celery -A celery_app.celery_app worker --loglevel=INFO -Q rfp
+```
+
+CI job `celery-routing` runs [scripts/test_celery_queue_isolation.py](scripts/test_celery_queue_isolation.py) against a disposable Redis (not the Compose broker). Set `REDIS_URL` in the root `.env` (see `.env.example`). Inside Compose use `redis://redis:6379/0`; on the host use `redis://localhost:6379/0`. Flower reads the same URL via `CELERY_BROKER_URL`.
 
 The backoffice and incident-manager UIs proxy API calls through Next.js rewrites to backend service names inside the `ui` container; `NEXT_PUBLIC_*` URLs still point at same-origin localhost UI ports.
 

@@ -96,7 +96,7 @@ docker compose up --build redis flower reporting reporting-worker
 | --- | --- |
 | `redis` | Broker + result backend (`noeviction`) |
 | `reporting` | FastAPI API |
-| `reporting-worker` | Celery worker (same reporting image; own `reporting_worker_venv`) |
+| `reporting-worker` | Celery worker on queue `reporting` (`-Q reporting`; same reporting image; own `reporting_worker_venv`) |
 | `flower` | Task monitor. Canonical ports: [../../docs/standards/project-context.md](../../docs/standards/project-context.md#port-assignments). (`CELERY_BROKER_URL` ← `REDIS_URL`) |
 
 **Start / stop worker:**
@@ -106,15 +106,17 @@ docker compose up -d reporting-worker
 docker compose stop reporting-worker
 ```
 
-Compose passes `DATABASE_URL` and `REDIS_URL`, mounts `./services/reporting` plus `./data`.
+Compose passes `DATABASE_URL` and `REDIS_URL`, mounts `./services/reporting`, `./data`, and `./packages`. The worker command is `-Q reporting`; the default Celery queue `celery` is not used. Routing is `task_default_queue` + `task_routes` in `celery_app.py`.
+
+CI job `celery-routing` runs [../../scripts/test_celery_queue_isolation.py](../../scripts/test_celery_queue_isolation.py) against a disposable Redis (FLUSHDB; never the Compose broker).
 
 ### Optional Windows host worker
 
-If running the worker on the Windows host (not Compose), Celery’s prefork pool is unsupported — use solo:
+If running the worker on the Windows host (not Compose), Celery’s prefork pool is unsupported — use solo, and bind the named queue:
 
 ```powershell
 cd services/reporting
-uv run --python 3.13 celery -A celery_app.celery_app worker --loglevel=INFO --pool=solo
+uv run --python 3.13 celery -A celery_app.celery_app worker --loglevel=INFO --pool=solo -Q reporting
 ```
 
 Prefer the Linux Compose worker for day-to-day work.
