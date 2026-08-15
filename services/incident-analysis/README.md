@@ -75,8 +75,10 @@ Open **http://127.0.0.1:8000/** , upload `incidents-brasaland.csv`, click **Anal
 
 | Method | Path | Description |
 | --- | --- | --- |
-| `POST` | `/api/incidents/analyze` | Upload CSV (`multipart/form-data`, field `file`) → JSON summary + `result_id` (JWT required) |
+| `POST` | `/api/incidents/analyze` | Upload CSV (`multipart/form-data`, field `file`) → JSON summary + `result_id` (JWT required; rate-limited via `RATE_LIMIT_ANALYZE`, default `10/minute`) |
 | `GET` | `/api/incidents/results/{result_id}/export` | Download that analysis as `incident-summary.csv` (owner or admin JWT) |
+
+Docs/OpenAPI only when `EXPOSE_DOCS=1`.
 
 ![Web interface](../../docs/screenshots/web-ui.png)
 

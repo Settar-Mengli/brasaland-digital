@@ -17,12 +17,14 @@ CEO interrupts over HTTP, and synthesizes `FinalDocument` → `done`.
 | Method | Path | Auth | Notes |
 | --- | --- | --- | --- |
 | `GET` | `/` | none | `{"service":"rfp","status":"ok"}` |
-| `POST` | `/rfp/tickets` | JWT Bearer | multipart PDF → **202** `{ticket_id, rfp_id, status}` |
-| `POST` | `/rfp/tickets/{ticket_id}/response` | JWT Bearer | requires `status == intake_complete` (**409** otherwise); enqueues `process_rfp_response` → **202** `{ticket_id, rfp_id, status}` |
-| `POST` | `/rfp/tickets/{ticket_id}/approval` | JWT Bearer | requires `status == under_evaluation` (**409** otherwise); enqueues `process_rfp_approval` → **202** |
-| `POST` | `/rfp/tickets/{ticket_id}/sections/{department_id}/decision` | JWT Bearer | requires `waiting_for_approval`; body `{action, feedback?}` → **200** |
-| `POST` | `/rfp/tickets/{ticket_id}/ceo/decision` | JWT Bearer | requires `waiting_for_approval` + `ceo_approval_required`; body `{action}` → **200** |
-| `GET` | `/rfp/tickets/{ticket_id}` | JWT Bearer | ticket **row** status poll (not Celery AsyncResult) plus `sections[]` |
+| `POST` | `/rfp/tickets` | JWT Bearer (owner stamped; rate-limited) | multipart PDF → **202** `{ticket_id, rfp_id, status}`; sets `owner_user_uuid` from the caller |
+| `POST` | `/rfp/tickets/{ticket_id}/response` | JWT Bearer (owner or admin) | requires `status == intake_complete` (**409** otherwise); enqueues `process_rfp_response` → **202** `{ticket_id, rfp_id, status}` |
+| `POST` | `/rfp/tickets/{ticket_id}/approval` | JWT Bearer (owner or admin) | requires `status == under_evaluation` (**409** otherwise); enqueues `process_rfp_approval` → **202** |
+| `POST` | `/rfp/tickets/{ticket_id}/sections/{department_id}/decision` | JWT Bearer (owner or admin) | requires `waiting_for_approval`; body `{action, feedback?}` → **200** |
+| `POST` | `/rfp/tickets/{ticket_id}/ceo/decision` | JWT Bearer (owner or admin) | requires `waiting_for_approval` + `ceo_approval_required`; body `{action}` → **200** |
+| `GET` | `/rfp/tickets/{ticket_id}` | JWT Bearer (owner or admin) | ticket **row** status poll (not Celery AsyncResult) plus `sections[]` |
+
+**Owner ACL:** every ticket route after create requires the caller to be the ticket `owner_user_uuid` or an admin (`is_admin`). Tickets with a NULL owner deny non-admins (**403**). Upload is rate-limited (`RATE_LIMIT_RFP_UPLOAD`, default `10/minute`). Interactive docs/OpenAPI only when `EXPOSE_DOCS=1`.
 
 ### GET payload (expanded)
 
@@ -64,6 +66,8 @@ Compliance §5 rules are loaded at runtime from `data/raw/CONTEXT-rfp.md` (headi
 | `RFP_CHECKPOINT_PATH` | LangGraph SQLite checkpointer DB path (default `/app/checkpoint/rfp.sqlite`) |
 | `JWT_PUBLIC_KEY` | RS256 verify (same as knowledge/inventory) |
 | `JWT_ALGORITHM` | default RS256 via auth-verify |
+| `EXPOSE_DOCS` | When `1`/`true`, serves `/docs` and OpenAPI; default off |
+| `RATE_LIMIT_RFP_UPLOAD` | SlowAPI limit for `POST /rfp/tickets` (default `10/minute`) |
 | `GEN_1_BASE_URL` / `GEN_1_API_KEY` / `GEN_1_MODEL` | Primary generation tier (worker) |
 | `GEN_2_BASE_URL` / `GEN_2_API_KEY` / `GEN_2_MODEL` | Failover tier 2 |
 | `GEN_3_BASE_URL` / `GEN_3_API_KEY` / `GEN_3_MODEL` | Failover tier 3 |
@@ -93,6 +97,16 @@ tickets.
 Compose also mounts separate named volumes `rfp_venv` and `rfp_worker_venv` over
 `.venv`. After adding or changing the saver stack, refresh **both** volumes so both
 containers have the packages.
+
+## Owner column (Lane-2)
+
+Nullable `ticket.owner_user_uuid` is **not** applied by Alembic. Operators add it once with:
+
+```powershell
+uv run --directory services/rfp python ../../scripts/add_rfp_ticket_owner_column.py
+```
+
+(Use `--dry-run` first against live `DATABASE_URL`.) Existing rows stay NULL until re-uploaded or manually backfilled; NULL owner ⇒ non-admin access is denied.
 
 ## Upload hardening
 

@@ -83,17 +83,19 @@ Open **http://127.0.0.1:8013/docs**
 
 ## API
 
-| Method | Path | Body | Success |
-| --- | --- | --- | --- |
-| `POST` | `/telemetry/events` | `{"events": [<envelope>, ...]}` | **200** `{"received": N, "stored": M, "rejected": R}` |
+| Method | Path | Auth | Body | Success |
+| --- | --- | --- | --- | --- |
+| `POST` | `/telemetry/events` | **Public** (Bearer optional; rate-limited) | `{"events": [<envelope>, ...]}` | **200** `{"received": N, "stored": M, "rejected": R}` |
 
 `received == stored + rejected` always. Duplicate `eventId` values count toward `rejected` (`ON CONFLICT DO NOTHING`). Wrong top-level shape returns **422**.
 
+**Ingest stays public by design:** browsers and unauthenticated clients may POST events. When a Bearer access token is present, stored `context.userId` is **server-derived from the JWT** (client-supplied `userId` is not trusted). Ingest is rate-limited (`RATE_LIMIT_TELEMETRY_INGEST`, default `60/minute`). Docs/OpenAPI only when `EXPOSE_DOCS=1`.
+
 ### Report
 
-| Method | Path | Query params | Success |
-| --- | --- | --- | --- |
-| `GET` | `/telemetry/report` | Optional `start_date`, `end_date` (ISO 8601 UTC) | **200** report JSON |
+| Method | Path | Auth | Query params | Success |
+| --- | --- | --- | --- | --- |
+| `GET` | `/telemetry/report` | Bearer JWT required | Optional `start_date`, `end_date` (ISO 8601 UTC) | **200** report JSON |
 
 Default period when both params are omitted: last **7 days** UTC (`start = now - 7d`, `end = now`). Provide **both** params or **neither** — supplying only one returns **422**.
 

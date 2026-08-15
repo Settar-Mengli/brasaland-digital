@@ -70,14 +70,16 @@ Open **http://127.0.0.1:8001/** — filter suppliers, register new ones, update 
 
 ## API endpoints
 
+All supplier routes require a Bearer access JWT (`brasaland-auth-verify`). Docs/OpenAPI only when `EXPOSE_DOCS=1`.
+
 | Method | Path | Success | Error responses | Description |
 | --- | --- | --- | --- | --- |
-| `POST` | `/suppliers` | `201` + supplier JSON | `422` validation failures | Register a supplier |
-| `GET` | `/suppliers` | `200` + list | `422` if `category` query is invalid | List suppliers; optional `country` and `category` filters |
-| `GET` | `/suppliers/{id}` | `200` + supplier JSON | `404` | Get one supplier by id |
-| `PATCH` | `/suppliers/{id}/rate` | `200` + updated supplier | `404`, `422` | Update `rate_per_unit` (must be > 0) |
-| `PATCH` | `/suppliers/{id}/status` | `200` + updated supplier | `404`, `422` | Set `active` or `suspended` |
-| `DELETE` | `/suppliers/{id}` | `204` empty body | `404` | Remove a supplier (prefer suspension for ops) |
+| `POST` | `/suppliers` | `201` + supplier JSON | `401`, `422` validation failures | Register a supplier |
+| `GET` | `/suppliers` | `200` + list | `401`, `422` if `category` query is invalid | List suppliers; optional `country` and `category` filters |
+| `GET` | `/suppliers/{id}` | `200` + supplier JSON | `401`, `404` | Get one supplier by id |
+| `PATCH` | `/suppliers/{id}/rate` | `200` + updated supplier | `401`, `404`, `422` | Update `rate_per_unit` (must be > 0) |
+| `PATCH` | `/suppliers/{id}/status` | `200` + updated supplier | `401`, `404`, `422` | Set `active` or `suspended` |
+| `DELETE` | `/suppliers/{id}` | `204` empty body | `401`, `404` | Remove a supplier (prefer suspension for ops) |
 
 Static assets are served at `/static/`; `GET /` returns the web UI.
 

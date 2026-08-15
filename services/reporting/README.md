@@ -1,8 +1,10 @@
 # Brasaland Reporting API
 
 Exposes the **Weekly Location Cost & Waste Report** produced by the Prefect ETL under
-`data/pipelines/`. No authentication on these routes (same convention as
-inventory/telemetry GETs; H3 auth arc later).
+`data/pipelines/`. All `/reporting/*` and `/tasks/{task_id}` routes require a Bearer
+access JWT (`brasaland-auth-verify`). Pipeline enqueue is rate-limited
+(`RATE_LIMIT_REPORTING_ENQUEUE`, default `10/minute`). Docs/OpenAPI only when
+`EXPOSE_DOCS=1`.
 
 Contract: [`data/pipelines/CONTEXT-brasaland-pipeline.md`](../../data/pipelines/CONTEXT-brasaland-pipeline.md)
 and [`data/pipelines/PIPELINE_DESIGN.md`](../../data/pipelines/PIPELINE_DESIGN.md).
@@ -41,12 +43,12 @@ inside this service’s venv.
 
 ## Endpoints
 
-| Method | Path | Behavior |
-| --- | --- | --- |
-| `GET` | `/reporting/weekly-location-performance` | Optional `week_start`; default = latest computed week; CONTEXT §6 JSON |
-| `GET` | `/reporting/pipeline-runs/latest` | Metadata of the most recent `pipeline_runs` row (structured null object when none exist — never a bare null body) |
-| `POST` | `/reporting/pipeline-runs` | Enqueues Celery `run_pipeline_task`; returns **202** `{"task_id": "..."}` immediately |
-| `GET` | `/tasks/{task_id}` | Celery `AsyncResult` status: `pending` \| `started` \| `success` \| `failure` (+ `result` when terminal) |
+| Method | Path | Auth | Behavior |
+| --- | --- | --- | --- |
+| `GET` | `/reporting/weekly-location-performance` | Bearer JWT | Optional `week_start`; default = latest computed week; CONTEXT §6 JSON |
+| `GET` | `/reporting/pipeline-runs/latest` | Bearer JWT | Metadata of the most recent `pipeline_runs` row (structured null object when none exist — never a bare null body) |
+| `POST` | `/reporting/pipeline-runs` | Bearer JWT (rate-limited) | Enqueues Celery `run_pipeline_task`; returns **202** `{"task_id": "..."}` immediately |
+| `GET` | `/tasks/{task_id}` | Bearer JWT | Celery `AsyncResult` status: `pending` \| `started` \| `success` \| `failure` (+ `result` when terminal) |
 
 ### Async POST + poll
 

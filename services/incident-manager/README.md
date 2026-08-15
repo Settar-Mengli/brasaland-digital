@@ -161,13 +161,15 @@ uv run python scripts/seed_incidents.py path\to\incidents.csv
 
 ## API endpoints
 
+All `/api/incidents*` routes require a Bearer access JWT (`brasaland-auth-verify`). Docs/OpenAPI only when `EXPOSE_DOCS=1`.
+
 | Method | Path | Description | Success | Errors |
 | --- | --- | --- | --- | --- |
-| `POST` | `/api/incidents` | Create incident | **201** + body | **400** field errors; **500** generic |
-| `GET` | `/api/incidents` | List incidents (optional `status`, `origin`, `branch`, `category` query filters) | **200** array (empty OK) | **400** invalid filter values; **500** |
-| `GET` | `/api/incidents/summary` | Aggregated counts by status, category, origin, branch | **200** (zeros on empty DB) | **500** |
-| `GET` | `/api/incidents/{id}` | Single incident by numeric `id` | **200** | **404** not found; **500** |
-| `PATCH` | `/api/incidents/{id}/status` | Body: `{ "status": "..." }` — lifecycle transition | **200** + updated body | **400** illegal transition or invalid status; **404**; **500** |
+| `POST` | `/api/incidents` | Create incident | **201** + body | **401**; **400** field errors; **500** generic |
+| `GET` | `/api/incidents` | List incidents (optional `status`, `origin`, `branch`, `category` query filters) | **200** array (empty OK) | **401**; **400** invalid filter values; **500** |
+| `GET` | `/api/incidents/summary` | Aggregated counts by status, category, origin, branch | **200** (zeros on empty DB) | **401**; **500** |
+| `GET` | `/api/incidents/{id}` | Single incident by numeric `id` | **200** | **401**; **404** not found; **500** |
+| `PATCH` | `/api/incidents/{id}/status` | Body: `{ "status": "..." }` — lifecycle transition | **200** + updated body | **401**; **400** illegal transition or invalid status; **404**; **500** |
 
 ## Error handling
 
