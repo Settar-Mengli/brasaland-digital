@@ -21,7 +21,7 @@ GOLD_LINE = "Gold (50+ points): 15% permanent discount and early access to the s
 
 
 def _node_names(run_id: str) -> list[str]:
-    trace = get_trace(run_id)
+    trace = get_trace(run_id, requester_user_uuid="42", is_admin=True)
     assert trace is not None
     return [step["node"] for step in trace["nodes"]]
 
@@ -39,7 +39,7 @@ def test_eval_empty_question_skips_retrieve() -> None:
     assert "generate_answer_node" not in names
     assert "refuse_no_context" not in names
     # MemorySaver requires thread_id on every path including empty.
-    assert get_trace(run_id) is not None
+    assert get_trace(run_id, requester_user_uuid="42", is_admin=True) is not None
 
 
 def test_eval_no_context_refuses_without_generate() -> None:
@@ -57,7 +57,7 @@ def test_eval_no_context_refuses_without_generate() -> None:
     assert "refuse_no_context" in names
     assert "generate_answer_node" not in names
 
-    trace = get_trace(run_id)
+    trace = get_trace(run_id, requester_user_uuid="42", is_admin=True)
     assert trace is not None
     assert trace["final"]["answer"] == REFUSAL_ANSWER
 
@@ -105,7 +105,7 @@ def test_eval_answer_grounded_in_kb() -> None:
     assert "generate_answer_node" in names
     assert "refuse_no_context" not in names
 
-    trace = get_trace(run_id)
+    trace = get_trace(run_id, requester_user_uuid="42", is_admin=True)
     assert trace is not None
     context = trace["final"]["context"]
     assert context, "trace must carry retrieved context"
@@ -165,7 +165,7 @@ def test_eval_ticket_status_uses_tool_not_rag() -> None:
     assert "compose_answer" in names
     assert "route_sources" in names
 
-    trace = get_trace(run_id)
+    trace = get_trace(run_id, requester_user_uuid="42", is_admin=True)
     assert trace is not None
     assert trace["final"]["route"] == "tool"
     assert trace["final"]["sources_ran"] == ["ticket_lookup"]
@@ -205,7 +205,7 @@ def test_eval_kb_question_uses_rag_not_tool() -> None:
     assert "lookup_ticket" not in names
     assert "generate_answer_node" in names
 
-    trace = get_trace(run_id)
+    trace = get_trace(run_id, requester_user_uuid="42", is_admin=True)
     assert trace is not None
     assert trace["final"]["route"] == "rag"
     assert trace["final"]["sources_ran"] == ["retrieve_context"]
@@ -238,7 +238,7 @@ def test_eval_ticket_tool_unavailable_honest_fallback() -> None:
     assert "lookup_ticket" in names
     assert "compose_answer" in names
 
-    trace = get_trace(run_id)
+    trace = get_trace(run_id, requester_user_uuid="42", is_admin=True)
     assert trace is not None
     lookup_step = next(s for s in trace["nodes"] if s["node"] == "lookup_ticket")
     assert lookup_step["ok"] is False
@@ -277,7 +277,7 @@ def test_eval_ticket_resolves_via_source_incident_id_after_404() -> None:
     assert "lookup_ticket" in names
     assert "retrieve_context" not in names
 
-    trace = get_trace(run_id)
+    trace = get_trace(run_id, requester_user_uuid="42", is_admin=True)
     assert trace is not None
     assert trace["final"]["route"] == "tool"
     assert trace["final"]["sources_ran"] == ["ticket_lookup"]
@@ -328,7 +328,7 @@ def test_eval_alphanumeric_ticket_routes_tool_only() -> None:
     assert "retrieve_context" not in names
     assert "compose_answer" in names
 
-    trace = get_trace(run_id)
+    trace = get_trace(run_id, requester_user_uuid="42", is_admin=True)
     assert trace is not None
     assert trace["final"]["route"] == "tool"
     assert trace["final"]["sources_ran"] == ["ticket_lookup"]
@@ -366,7 +366,7 @@ def test_eval_alphanumeric_ref_skips_by_id_matches_source() -> None:
     assert "lookup_ticket" in names
     assert "retrieve_context" not in names
 
-    trace = get_trace(run_id)
+    trace = get_trace(run_id, requester_user_uuid="42", is_admin=True)
     assert trace is not None
     assert trace["final"]["route"] == "tool"
     assert trace["final"]["sources_ran"] == ["ticket_lookup"]
@@ -401,7 +401,7 @@ def test_eval_numeric_ticket_resolves_by_id() -> None:
     assert "error" not in result
     assert "in_progress" in result["answer"]
 
-    trace = get_trace(run_id)
+    trace = get_trace(run_id, requester_user_uuid="42", is_admin=True)
     assert trace is not None
     assert trace["final"]["route"] == "tool"
     assert trace["final"]["sources_ran"] == ["ticket_lookup"]

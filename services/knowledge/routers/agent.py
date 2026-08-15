@@ -7,7 +7,12 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
-from dependencies import get_current_user_uuid, oauth2_scheme
+from dependencies import (
+    get_current_user_uuid,
+    get_verified_claims,
+    oauth2_scheme,
+    require_admin,
+)
 
 router = APIRouter(prefix="/agent")
 
@@ -54,11 +59,16 @@ def post_agent_query(
 @router.get("/trace/{run_id}")
 def get_agent_trace(
     run_id: str,
-    _user_uuid: Annotated[str, Depends(get_current_user_uuid)],
+    claims: Annotated[dict[str, Any], Depends(get_verified_claims)],
 ) -> dict[str, Any]:
     from pipelines.support_agent import get_trace
 
-    trace = get_trace(run_id)
+    user_uuid = str(claims.get("user_id", claims.get("sub")))
+    trace = get_trace(
+        run_id,
+        requester_user_uuid=user_uuid,
+        is_admin=bool(claims.get("is_admin")),
+    )
     if trace is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -79,19 +89,21 @@ def get_agent_guardrails_summary(
 
 @router.get("/memory")
 def get_agent_memory(
-    _user_uuid: Annotated[str, Depends(get_current_user_uuid)],
+    user_uuid: Annotated[str, Depends(get_current_user_uuid)],
     location: Annotated[str | None, Query()] = None,
     category: Annotated[str | None, Query()] = None,
 ) -> dict[str, Any]:
     from pipelines.memory_store import read_memory
 
-    entries = read_memory(location=location, category=category)
+    entries = read_memory(
+        user_id=user_uuid, location=location, category=category
+    )
     return {"entries": entries}
 
 
 @router.get("/memory/audit")
 def get_agent_memory_audit(
-    _user_uuid: Annotated[str, Depends(get_current_user_uuid)],
+    _admin_uuid: Annotated[str, Depends(require_admin)],
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
 ) -> dict[str, Any]:
     from pipelines.memory_store import list_audit

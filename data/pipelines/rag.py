@@ -485,8 +485,13 @@ def apply_self_correction_fail_closed(
 
 
 def _load_memory_for_prompt(
-    question: str, chunks: list[dict[str, Any]]
+    question: str,
+    chunks: list[dict[str, Any]],
+    *,
+    user_id: str | None = None,
 ) -> list[dict[str, Any]]:
+    if not user_id:
+        return []
     try:
         from pipelines.memory_store import (
             filter_memory_against_chunks,
@@ -496,7 +501,11 @@ def _load_memory_for_prompt(
     except Exception:  # noqa: BLE001
         return []
     location = guess_location_from_text(question)
-    entries = read_memory(location=location) if location else read_memory()
+    entries = (
+        read_memory(user_id=user_id, location=location)
+        if location
+        else read_memory(user_id=user_id)
+    )
     filtered = filter_memory_against_chunks(entries, chunks)
     return list(filtered)
 
@@ -607,12 +616,13 @@ def generate_answer_structured(
     chunks: list[dict[str, Any]],
     *,
     memory_entries: list[dict[str, Any]] | None = None,
+    user_id: str | None = None,
 ) -> dict[str, Any]:
     """One LLM call returning answer + optional memory_proposal (agent path)."""
     entries = (
         memory_entries
         if memory_entries is not None
-        else _load_memory_for_prompt(question, chunks)
+        else _load_memory_for_prompt(question, chunks, user_id=user_id)
     )
     raw = _generate(
         question, chunks, memory_entries=entries, structured=True
