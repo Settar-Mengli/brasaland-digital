@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
+from brasaland_auth_verify.surface import fastapi_docs_kwargs
 from fastapi import FastAPI
 from sqlmodel import SQLModel
 
@@ -16,7 +17,11 @@ async def lifespan(_app: FastAPI):
     yield
 
 
-app = FastAPI(title="Brasaland Inventory API", lifespan=lifespan)
+app = FastAPI(
+    title="Brasaland Inventory API",
+    lifespan=lifespan,
+    **fastapi_docs_kwargs(),
+)
 app.include_router(inventory_router)
 
 

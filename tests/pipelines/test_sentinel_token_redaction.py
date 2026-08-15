@@ -62,7 +62,7 @@ def test_sentinel_token_absent_from_trace_checkpoint_and_logs(caplog) -> None:
         )
 
     run_id = result["run_id"]
-    trace = get_trace(run_id)
+    trace = get_trace(run_id, requester_user_uuid="42", is_admin=True)
     assert trace is not None
     assert not _contains_sentinel(trace), "sentinel leaked into get_trace"
 

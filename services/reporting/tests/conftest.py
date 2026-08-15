@@ -23,9 +23,15 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from brasaland_auth_verify.testing import generate_rsa_keypair, mint_access_token
+
+_PRIVATE_PEM, _PUBLIC_PEM = generate_rsa_keypair()
+
 os.environ.setdefault("DATABASE_URL", "sqlite://")
 # Dummy broker URL for Celery import safety — tests never connect to Redis.
 os.environ.setdefault("REDIS_URL", "redis://127.0.0.1:6379/0")
+os.environ.setdefault("JWT_PUBLIC_KEY", _PUBLIC_PEM)
+os.environ.setdefault("JWT_ALGORITHM", "RS256")
 
 import config  # noqa: F401 — data/ on sys.path
 import database
@@ -100,12 +106,27 @@ def sqlite_db() -> Generator[None, None, None]:
     pipeline_db_models.TaskDeadLetter.__table__.schema = "reporting"
 
 
+@pytest.fixture(autouse=True)
+def jwt_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("JWT_PUBLIC_KEY", _PUBLIC_PEM)
+    monkeypatch.setenv("JWT_ALGORITHM", "RS256")
+
+
 @pytest.fixture
-async def asgi_client() -> httpx.AsyncClient:
+def access_token() -> str:
+    return mint_access_token(_PRIVATE_PEM, user_id=1)
+
+
+@pytest.fixture
+async def asgi_client(access_token: str) -> httpx.AsyncClient:
     from app import app
 
     transport = ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+    async with httpx.AsyncClient(
+        transport=transport,
+        base_url="http://testserver",
+        headers={"Authorization": f"Bearer {access_token}"},
+    ) as client:
         yield client
 
 
@@ -163,3 +184,17 @@ def upsert_weekly_location_row(
                 "computed_at": datetime.now(timezone.utc),
             },
         )
+
+
+@pytest.fixture(autouse=True)
+def disable_rate_limits() -> Generator[None, None, None]:
+    from app import app
+
+    limiter = getattr(app.state, "limiter", None)
+    if limiter is None:
+        yield
+        return
+    was = limiter.enabled
+    limiter.enabled = False
+    yield
+    limiter.enabled = was

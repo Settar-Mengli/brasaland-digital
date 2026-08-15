@@ -17,6 +17,7 @@ dependencies = [
     "markitdown[pdf]",
     "textstat",
     "langgraph-checkpoint-sqlite>=3.1.1",
+    "slowapi>=0.1.10",
 ]
 
 [tool.uv.sources]

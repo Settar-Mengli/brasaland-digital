@@ -1,10 +1,10 @@
 """HTTP routes for weekly location performance and pipeline run control."""
 
-from __future__ import annotations
-
 from datetime import date
+from typing import Annotated
 
-from fastapi import APIRouter, Query
+from brasaland_auth_verify.deps import get_current_user_uuid
+from fastapi import APIRouter, Body, Depends, Query, Request
 from fastapi.responses import JSONResponse
 
 from models import (
@@ -17,6 +17,7 @@ from pipelines.api import (
     query_latest_pipeline_run,
     query_weekly_location_performance,
 )
+from rate_limit import ENQUEUE_RATE_LIMIT, limiter
 from tasks import run_pipeline_task
 
 router = APIRouter(prefix="/reporting")
@@ -44,7 +45,12 @@ def get_latest_pipeline_run() -> PipelineRunResponse:
     response_model=TaskAcceptedResponse,
     status_code=202,
 )
-def post_pipeline_run(body: TriggerPipelineRunBody | None = None) -> JSONResponse:
+@limiter.limit(ENQUEUE_RATE_LIMIT)
+def post_pipeline_run(
+    request: Request,
+    _user: Annotated[str, Depends(get_current_user_uuid)],
+    body: Annotated[TriggerPipelineRunBody | None, Body()] = None,
+) -> JSONResponse:
     week_start = body.week_start if body is not None else None
     week_arg = week_start.isoformat() if week_start is not None else None
     async_result = run_pipeline_task.delay(week_arg)

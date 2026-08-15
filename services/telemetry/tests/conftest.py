@@ -17,7 +17,13 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from brasaland_auth_verify.testing import generate_rsa_keypair, mint_access_token
+
+_PRIVATE_PEM, _PUBLIC_PEM = generate_rsa_keypair()
+
 os.environ["DATABASE_URL"] = "sqlite://"
+os.environ.setdefault("JWT_PUBLIC_KEY", _PUBLIC_PEM)
+os.environ.setdefault("JWT_ALGORITHM", "RS256")
 
 import database
 import db_models  # noqa: F401
@@ -38,6 +44,22 @@ def _set_sqlite_pragma(dbapi_connection: Any, connection_record: Any) -> None:
 
 
 database.engine = _test_engine
+
+
+@pytest.fixture(autouse=True)
+def jwt_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("JWT_PUBLIC_KEY", _PUBLIC_PEM)
+    monkeypatch.setenv("JWT_ALGORITHM", "RS256")
+
+
+@pytest.fixture
+def access_token() -> str:
+    return mint_access_token(_PRIVATE_PEM, user_id=7)
+
+
+@pytest.fixture
+def auth_headers(access_token: str) -> dict[str, str]:
+    return {"Authorization": f"Bearer {access_token}"}
 
 
 @pytest.fixture(autouse=True)
@@ -102,10 +124,26 @@ def sample_event(**overrides: object) -> dict[str, Any]:
 
 
 @pytest.fixture
-def client() -> Generator[Any, None, None]:
+def client(auth_headers: dict[str, str]) -> Generator[Any, None, None]:
     from fastapi.testclient import TestClient
 
     from app import app
 
-    with TestClient(app, raise_server_exceptions=False) as test_client:
+    with TestClient(
+        app, raise_server_exceptions=False, headers=auth_headers
+    ) as test_client:
         yield test_client
+
+
+@pytest.fixture(autouse=True)
+def disable_rate_limits() -> Generator[None, None, None]:
+    from app import app
+
+    limiter = getattr(app.state, "limiter", None)
+    if limiter is None:
+        yield
+        return
+    was = limiter.enabled
+    limiter.enabled = False
+    yield
+    limiter.enabled = was

@@ -7,7 +7,8 @@ Routing is a deterministic heuristic on the question alone (LLM router later).
 Traces are stored in-process under ``TRACES``.
 
 Guardrails: ``input_guardrails`` (pre-route) and ``output_guardrails`` (pre-END).
-``session_id`` travels only via ``config["configurable"]`` (never AgentState).
+``session_id``, Bearer token, and ``user_id`` travel only via
+``config["configurable"]`` (never AgentState / MemorySaver).
 """
 
 from __future__ import annotations
@@ -100,7 +101,6 @@ class AgentState(TypedDict):
     route: RouteKind | None
     tool_result: dict[str, Any] | None
     sources_ran: list[str]
-    user_id: str | None
     guardrail_blocked: bool
     memory_proposal: dict[str, Any] | None
     memory_decision: str | None
@@ -122,6 +122,15 @@ def _append_trace(run_id: str, node: str, **payload: Any) -> None:
 def _session_id_from_config(config: RunnableConfig) -> str | None:
     configurable = config.get("configurable") or {}
     raw = configurable.get("session_id")
+    if raw is None:
+        return None
+    text = str(raw).strip()
+    return text or None
+
+
+def _user_id_from_config(config: RunnableConfig) -> str | None:
+    configurable = config.get("configurable") or {}
+    raw = configurable.get("user_id")
     if raw is None:
         return None
     text = str(raw).strip()
@@ -327,7 +336,8 @@ def resolve_memory(
             "category": category,
             "summary": summary,
             "proposal_id": pending.get("proposal_id"),
-        }
+        },
+        user_id=_user_id_from_config(config) or "anonymous",
     )
     outcome = "edited" if decision == "edit" else "approved"
     if not result["ok"]:
@@ -529,11 +539,17 @@ def refuse_no_context(state: AgentState) -> dict[str, Any]:
     return {"answer": REFUSAL_ANSWER, "sources_ran": sources_ran}
 
 
-def generate_answer_node(state: AgentState) -> dict[str, Any]:
+def generate_answer_node(
+    state: AgentState, config: RunnableConfig
+) -> dict[str, Any]:
     run_id = state["run_id"]
     context = state.get("context") or []
     prompt_chunks = [{k: v for k, v in c.items() if k != "_score"} for c in context]
-    structured = generate_answer_structured(state["question"], prompt_chunks)
+    structured = generate_answer_structured(
+        state["question"],
+        prompt_chunks,
+        user_id=_user_id_from_config(config),
+    )
     answer = structured["answer"]
     proposal = structured.get("memory_proposal")
     sources_ran = ["retrieve_context"]
@@ -589,7 +605,7 @@ def lookup_ticket_node(
             error=structural["reason"],
             incident_ids=[],
             incident_count=0,
-            user_id=state.get("user_id"),
+            user_id=_user_id_from_config(config),
             guardrail=True,
             failure_type="structural",
         )
@@ -610,12 +626,14 @@ def lookup_ticket_node(
         error=result.get("error"),
         incident_ids=[row["id"] for row in result.get("incidents") or []],
         incident_count=len(result.get("incidents") or []),
-        user_id=state.get("user_id"),
+        user_id=_user_id_from_config(config),
     )
     return {"tool_result": payload}
 
 
-def compose_answer(state: AgentState) -> dict[str, Any]:
+def compose_answer(
+    state: AgentState, config: RunnableConfig
+) -> dict[str, Any]:
     """Finalize tool-only and both routes. Never invents ticket status."""
     run_id = state["run_id"]
     route = state.get("route") or "tool"
@@ -625,6 +643,7 @@ def compose_answer(state: AgentState) -> dict[str, Any]:
     context = state.get("context") or []
     sources_ran: list[str] = []
     proposal: dict[str, Any] | None = None
+    memory_user = _user_id_from_config(config)
 
     tool_text = format_ticket_answer(incidents) if tool_ok and incidents else ""
 
@@ -642,7 +661,7 @@ def compose_answer(state: AgentState) -> dict[str, Any]:
                 {k: v for k, v in c.items() if k != "_score"} for c in context
             ]
             structured = generate_answer_structured(
-                state["question"], prompt_chunks
+                state["question"], prompt_chunks, user_id=memory_user
             )
             rag_text = structured["answer"]
             proposal = structured.get("memory_proposal")
@@ -656,7 +675,7 @@ def compose_answer(state: AgentState) -> dict[str, Any]:
                 {k: v for k, v in c.items() if k != "_score"} for c in context
             ]
             structured = generate_answer_structured(
-                state["question"], prompt_chunks
+                state["question"], prompt_chunks, user_id=memory_user
             )
             rag_text = structured["answer"]
             proposal = structured.get("memory_proposal")
@@ -769,14 +788,20 @@ def _route_after_lookup(
     return "compose_answer"
 
 
-def _memory_available_for_question(question: str) -> bool:
+def _memory_available_for_question(
+    question: str, *, user_id: str | None
+) -> bool:
     """True when persistent memory has entries relevant to the question."""
+    if not user_id:
+        return False
     try:
         from pipelines.memory_store import guess_location_from_text, read_memory
     except Exception:  # noqa: BLE001
         return False
     location = guess_location_from_text(question)
-    entries = read_memory(location=location) if location else []
+    entries = (
+        read_memory(user_id=user_id, location=location) if location else []
+    )
     return bool(entries)
 
 
@@ -788,7 +813,13 @@ def _route_after_retrieve(
     if state.get("context"):
         return "generate_answer_node"
     # Empty RAG: still generate when location memory can answer (hours, etc.).
-    if _memory_available_for_question(state.get("question") or ""):
+    from langgraph.config import get_config
+
+    cfg: RunnableConfig = get_config() or {}
+    if _memory_available_for_question(
+        state.get("question") or "",
+        user_id=_user_id_from_config(cfg),
+    ):
         return "generate_answer_node"
     return "refuse_no_context"
 
@@ -869,10 +900,20 @@ def _build_graph():
 COMPILED_GRAPH = _build_graph()
 
 
-def get_trace(run_id: str) -> dict[str, Any] | None:
-    """Return the structured trace for a completed (or in-progress) run."""
+def get_trace(
+    run_id: str,
+    *,
+    requester_user_uuid: str,
+    is_admin: bool = False,
+) -> dict[str, Any] | None:
+    """Return a trace when the requester owns it (or is admin)."""
     trace = TRACES.get(run_id)
     if trace is None:
+        return None
+    owner = trace.get("owner_user_uuid")
+    if is_admin:
+        return dict(trace)
+    if owner is None or str(owner) != str(requester_user_uuid):
         return None
     return dict(trace)
 
@@ -896,7 +937,7 @@ def invoke_support_agent(
 ) -> dict[str, Any]:
     """Run the compiled graph. Always passes thread_id for MemorySaver.
 
-    ``access_token`` and ``session_id`` are passed only via
+    ``access_token``, ``session_id``, and ``user_id`` are passed only via
     ``config["configurable"]`` — never as AgentState fields (not checkpointed).
     Guardrail ledger key is the explicit ``session_id`` when provided, otherwise
     an ephemeral per-call UUID (never ``user_id``).
@@ -905,11 +946,19 @@ def invoke_support_agent(
     sanitized generation failures). On empty question returns ``{"run_id", "error"}``.
     """
     rid = run_id or str(uuid.uuid4())
-    TRACES[rid] = {"run_id": rid, "nodes": [], "final": None}
+    uid = str(user_id).strip() if user_id is not None else None
+    TRACES[rid] = {
+        "run_id": rid,
+        "owner_user_uuid": uid,
+        "nodes": [],
+        "final": None,
+    }
     sid = (session_id or str(uuid.uuid4())).strip()
     configurable: dict[str, Any] = {"thread_id": rid, "session_id": sid}
     if access_token is not None:
         configurable["access_token"] = access_token
+    if uid is not None:
+        configurable["user_id"] = uid
     config = {"configurable": configurable}
     initial: AgentState = {
         "question": question or "",
@@ -920,7 +969,6 @@ def invoke_support_agent(
         "route": None,
         "tool_result": None,
         "sources_ran": [],
-        "user_id": user_id,
         "guardrail_blocked": False,
         "memory_proposal": None,
         "memory_decision": None,
@@ -961,7 +1009,6 @@ def invoke_support_agent(
         "error": error,
         "route": route,
         "sources_ran": sources_ran,
-        "user_id": final.get("user_id"),
         "guardrail_blocked": bool(final.get("guardrail_blocked")),
         "memory_proposal": memory_proposal,
         "memory_decision": final.get("memory_decision"),

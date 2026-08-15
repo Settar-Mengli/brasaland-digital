@@ -63,6 +63,11 @@ Copy from [`.env.example`](.env.example) and set real values locally in `.env` (
 | `RESEND_API_KEY` | [Resend](https://resend.com) API key for reset emails | `replace-with-your-resend-api-key` in example |
 | `RESET_EMAIL_FROM` | Sender address for reset emails | `onboarding@resend.dev` (Resend sandbox) |
 | `RESET_LINK_BASE_URL` | Base URL for links in email (no trailing slash) | `http://127.0.0.1:8002` |
+| `AUTH_ALLOW_SELF_REGISTER` | When `true`, `POST /auth/register` is open; when unset/`false`, register returns **403** | `false` |
+| `AUTH_BOOTSTRAP_ADMIN_EMAIL` | If set with password and no admin exists yet, creates the first admin user on startup | empty |
+| `AUTH_BOOTSTRAP_ADMIN_PASSWORD` | Password for bootstrap admin (min 8); ignored unless email is set | empty |
+| `EXPOSE_DOCS` | When `1`/`true`, serves `/docs` and OpenAPI; default off | unset |
+| `RATE_LIMIT_AUTH` | SlowAPI limit for login / register / refresh | `5/minute` |
 
 Generate an RSA keypair for RS256 signing:
 
@@ -79,7 +84,7 @@ Start the server:
 uvicorn app:app --reload --port 8002
 ```
 
-Interactive API docs: **http://127.0.0.1:8002/docs**
+Interactive API docs (only when `EXPOSE_DOCS=1`): **http://127.0.0.1:8002/docs**
 
 Password-reset pages (public):
 
@@ -130,15 +135,15 @@ Refresh tokens carry `type: "refresh"` and cannot be used as Bearer access token
 | --- | --- | --- | --- | --- | --- |
 | `POST` | `/auth/forgot-password` | Public | `200` + message (always) | `422` validation | Request reset link; **enumeration-safe** — identical response whether email exists; email sent only when registered |
 | `POST` | `/auth/reset-password` | Public | `200` + message | `400` invalid/expired/used token, `422` validation | Set new password with token from email; **single-use** |
-| `POST` | `/auth/register` | Public | `201` + access + refresh tokens | `400` duplicate email, `422` validation | Sign up (`email` + `password` min 8; optional `name`/`phone`/`address`); returns token pair so the new user is logged in immediately |
-| `POST` | `/auth/login` | Public | `200` + access + refresh tokens | `401` invalid credentials | Log in with email (`username`) and password |
-| `POST` | `/auth/refresh` | Public | `200` + new token pair | `401` invalid/expired/revoked refresh | Exchange refresh token for rotated access + refresh tokens |
+| `POST` | `/auth/register` | Public when `AUTH_ALLOW_SELF_REGISTER=true` | `201` + access + refresh tokens | `403` when self-register disabled, `400` duplicate email, `422` validation | Sign up (`email` + `password` min 8; optional `name`/`phone`/`address`); returns token pair so the new user is logged in immediately |
+| `POST` | `/auth/login` | Public (rate-limited) | `200` + access + refresh tokens | `401` invalid credentials | Log in with email (`username`) and password; access JWT includes `is_admin` |
+| `POST` | `/auth/refresh` | Public (rate-limited) | `200` + new token pair | `401` invalid/expired/revoked refresh | Exchange refresh token for rotated access + refresh tokens |
 | `POST` | `/auth/logout` | Public | `204` empty body | `422` validation | Revoke refresh token (idempotent; unknown tokens still `204`) |
 | `GET` | `/auth/me` | Protected | `200` + user JSON | `401` missing/invalid/expired token | Current user (`id`, `email`, flags, `created_at`, plus `name`/`phone`/`address`) |
 | `GET` | `/auth/profiles/me` | Protected | `200` + `{ email, name, phone, address }` | `401` | Current user profile fields only |
 | `PUT` | `/auth/profiles/me` | Protected | `200` + updated profile | `401`, `422` | Update **only** `name`/`phone`/`address` (owner from Bearer token; email/password/flags ignored if sent) |
-| `POST` | `/users` | Protected | `201` + user JSON | `400` duplicate email, `401`, `422` | Create another user (any authenticated caller; no admin check — public signup is `/auth/register`) |
-| `GET` | `/users` | Protected | `200` + list | `401` | List all users; email hidden unless requester is owner or admin |
+| `POST` | `/users` | Admin | `201` + user JSON | `400` duplicate email, `401`, `403` not admin, `422` | Create another user (**admin only**; open signup remains `/auth/register` when enabled) |
+| `GET` | `/users` | Admin | `200` + list | `401`, `403` not admin | List all users; email hidden unless requester is owner or admin |
 | `GET` | `/users/{id}` | Protected | `200` + user JSON | `401`, `404` | Get one user by id |
 | `PUT` | `/users/{id}` | Protected | `200` + user JSON | `400` duplicate email, `401`, `403` not owner/admin, `404` | Update email and/or password (only self or admin) |
 | `DELETE` | `/users/{id}` | Protected | `204` empty body | `401`, `403` not owner/admin, `404` | Delete user (only self or admin) |
@@ -150,7 +155,7 @@ Refresh tokens carry `type: "refresh"` and cannot be used as Bearer access token
 - **`hashed_password` never appears in any API response** — only safe fields via `UserResponse`.
 - **Email privacy:** when listing or viewing other users, email is omitted unless the requester is that user or an admin.
 - **`.env` is gitignored** — copy from `.env.example`; never commit real secrets.
-- **Protect by default:** public API routes are `/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/forgot-password`, and `/auth/reset-password`; HTML pages at `/`, `/forgot-password`, and `/reset-password` are also public. All `/users` routes, `/auth/me`, and `/auth/profiles/me` require a valid Bearer **access** token.
+- **Protect by default:** public API routes are `/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/forgot-password`, and `/auth/reset-password`; `/auth/register` is public only when `AUTH_ALLOW_SELF_REGISTER=true`. HTML pages at `/`, `/forgot-password`, and `/reset-password` are also public. `/auth/me` and `/auth/profiles/me` require a valid Bearer **access** token. `POST/GET /users` require **admin**; other `/users/{id}` routes stay owner-or-admin. Login/register/refresh are rate-limited (`RATE_LIMIT_AUTH`).
 
 ## Verification
 

@@ -8,6 +8,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /app
 
+COPY packages/ packages/
 COPY data/ data/
 COPY services/reporting/ services/reporting/
 
@@ -21,6 +22,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /app/services/reporting
 
+COPY --from=builder /app/packages /app/packages
 COPY --from=builder /app/data /app/data
 COPY --from=builder /app/services/reporting /app/services/reporting
 

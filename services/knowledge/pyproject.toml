@@ -16,6 +16,7 @@ dependencies = [
     "langchain-mcp-adapters>=0.3.1",
     "mcp>=1.20.0,<2",
     "redis>=5",
+    "slowapi>=0.1.10",
 ]
 
 [tool.uv.sources]

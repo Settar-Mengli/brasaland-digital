@@ -7,8 +7,12 @@ import app as app_module
 
 
 @pytest.fixture
-def client() -> TestClient:
-    with TestClient(app_module.app, raise_server_exceptions=False) as test_client:
+def client(auth_headers: dict[str, str]) -> TestClient:
+    with TestClient(
+        app_module.app,
+        raise_server_exceptions=False,
+        headers=auth_headers,
+    ) as test_client:
         yield test_client
 
 

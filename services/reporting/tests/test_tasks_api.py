@@ -15,7 +15,7 @@ import pytest
         ("PENDING", "pending", None, None),
         ("STARTED", "started", None, None),
         ("SUCCESS", "success", {"run_id": "r1", "status": "Completed"}, {"run_id": "r1", "status": "Completed"}),
-        ("FAILURE", "failure", RuntimeError("boom"), "boom"),
+        ("FAILURE", "failure", RuntimeError("boom"), "Task failed"),
     ],
 )
 async def test_get_task_status_maps_states(

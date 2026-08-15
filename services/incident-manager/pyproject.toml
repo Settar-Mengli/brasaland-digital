@@ -3,6 +3,7 @@ name = "incident-manager"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
+    "brasaland-auth-verify",
     "brasaland-shared",
     "fastapi==0.115.12",
     "uvicorn[standard]==0.34.3",
@@ -19,6 +20,7 @@ dev = [
 ]
 
 [tool.uv.sources]
+brasaland-auth-verify = { path = "../../packages/auth-verify", editable = true }
 brasaland-shared = { path = "../../packages/shared", editable = true }
 
 [tool.uv]

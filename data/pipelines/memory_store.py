@@ -133,6 +133,21 @@ def _entry_key(location: str, category: str) -> str:
     return f"{loc}:{cat}"
 
 
+def _normalize_user_id(user_id: str) -> str:
+    uid = (user_id or "").strip()
+    if not uid:
+        raise ValueError("user_id is required for memory scope")
+    return uid
+
+
+def _scoped_entry_key(user_id: str, location: str, category: str) -> str:
+    return f"{_normalize_user_id(user_id)}:{_entry_key(location, category)}"
+
+
+def _redis_entry_key(user_id: str, location: str, category: str) -> str:
+    return f"{REDIS_ENTRY_PREFIX}{_scoped_entry_key(user_id, location, category)}"
+
+
 def _normalize_location_token(loc: str) -> str:
     """Normalize location labels for tolerant match (Miami Beach ↔ miami_beach)."""
     s = (loc or "").strip().lower()
@@ -293,16 +308,19 @@ def _is_expired(entry: MemoryEntry, now: float | None = None) -> bool:
 
 def read_memory(
     *,
+    user_id: str,
     location: str | None = None,
     category: str | None = None,
 ) -> list[MemoryEntry]:
-    """Read consolidated memory entries (expired entries omitted)."""
+    """Read consolidated memory entries for one user (expired entries omitted)."""
+    uid = _normalize_user_id(user_id)
     client = _redis_client()
     entries: list[MemoryEntry] = []
     if client is not None:
-        pattern = f"{REDIS_ENTRY_PREFIX}*"
         if location and category:
-            pattern = f"{REDIS_ENTRY_PREFIX}{_entry_key(location, category)}"
+            pattern = _redis_entry_key(uid, location, category)
+        else:
+            pattern = f"{REDIS_ENTRY_PREFIX}{uid}:*"
         try:
             keys = list(client.scan_iter(match=pattern))
             for key in keys:
@@ -318,7 +336,10 @@ def read_memory(
         except Exception:  # noqa: BLE001
             entries = []
     else:
+        prefix = f"{uid}:"
         for key, entry in list(_ENTRIES.items()):
+            if not key.startswith(prefix):
+                continue
             if location and not locations_match(entry.get("location"), location):
                 continue
             if category and entry.get("category") != category:
@@ -330,25 +351,26 @@ def read_memory(
         if _is_expired(entry):
             loc = entry.get("location") or "unknown"
             cat = entry.get("category") or "known_incidents"
-            _delete_entry(loc, cat)
+            _delete_entry(uid, loc, cat)
             continue
         alive.append(entry)
     return alive
 
 
-def _delete_entry(location: str, category: str) -> None:
-    key = _entry_key(location, category)
+def _delete_entry(user_id: str, location: str, category: str) -> None:
+    key = _scoped_entry_key(user_id, location, category)
     client = _redis_client()
     if client is not None:
         try:
-            client.delete(f"{REDIS_ENTRY_PREFIX}{key}")
+            client.delete(_redis_entry_key(user_id, location, category))
         except Exception:  # noqa: BLE001
             pass
     _ENTRIES.pop(key, None)
 
 
-def write_memory(entry: MemoryWrite) -> WriteResult:
+def write_memory(entry: MemoryWrite, *, user_id: str) -> WriteResult:
     """Upsert one (location, category) entry after never-store / poisoning checks."""
+    uid = _normalize_user_id(user_id)
     summary = (entry.get("summary") or "").strip()
     location = (entry.get("location") or "unknown").strip() or "unknown"
     category = (entry.get("category") or "known_incidents").strip()
@@ -363,32 +385,33 @@ def write_memory(entry: MemoryWrite) -> WriteResult:
         "updated_at": _utc_now_iso(),
         "proposal_id": entry.get("proposal_id"),
     }
-    key = _entry_key(location, category)
+    key = _scoped_entry_key(uid, location, category)
     client = _redis_client()
     if client is not None:
         try:
             client.set(
-                f"{REDIS_ENTRY_PREFIX}{key}",
+                _redis_entry_key(uid, location, category),
                 json.dumps(stored, ensure_ascii=False),
             )
         except Exception as exc:  # noqa: BLE001
             return {"ok": False, "reason": f"redis_write_failed:{exc}", "entry": None}
     _ENTRIES[key] = stored
-    consolidate_location(location)
+    consolidate_location(location, user_id=uid)
     return {"ok": True, "reason": None, "entry": stored}
 
 
-def consolidate_location(location: str) -> None:
+def consolidate_location(location: str, *, user_id: str) -> None:
     """Dedupe whitespace within each category for a location (upsert already bounds)."""
+    uid = _normalize_user_id(user_id)
     for cat in MEMORY_CATEGORIES:
-        rows = read_memory(location=location, category=cat)
+        rows = read_memory(user_id=uid, location=location, category=cat)
         if not rows:
             continue
         # Single upsert slot — normalize summary whitespace only.
         row = rows[0]
         cleaned = re.sub(r"\s+", " ", (row.get("summary") or "").strip())
         if cleaned != row.get("summary"):
-            key = _entry_key(location, cat)
+            key = _scoped_entry_key(uid, location, cat)
             updated: MemoryEntry = {
                 "location": row["location"],
                 "category": row["category"],
@@ -401,7 +424,7 @@ def consolidate_location(location: str) -> None:
             if client is not None:
                 try:
                     client.set(
-                        f"{REDIS_ENTRY_PREFIX}{key}",
+                        _redis_entry_key(uid, location, cat),
                         json.dumps(updated, ensure_ascii=False),
                     )
                 except Exception:  # noqa: BLE001

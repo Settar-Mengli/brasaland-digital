@@ -2,15 +2,21 @@
 
 from __future__ import annotations
 
-from typing import Any
+import logging
+from typing import Annotated, Any
 
+from brasaland_auth_verify.deps import get_current_user_uuid
 from celery.result import AsyncResult
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from celery_app import celery_app
 from models import TaskStatusResponse
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
+
+TASK_FAILED_MESSAGE = "Task failed"
 
 _STATE_MAP = {
     "PENDING": "pending",
@@ -27,7 +33,10 @@ def _map_status(celery_state: str) -> str:
 
 
 @router.get("/tasks/{task_id}", response_model=TaskStatusResponse)
-def get_task_status(task_id: str) -> TaskStatusResponse:
+def get_task_status(
+    task_id: str,
+    _user: Annotated[str, Depends(get_current_user_uuid)],
+) -> TaskStatusResponse:
     async_result = AsyncResult(task_id, app=celery_app)
     state = async_result.state or "PENDING"
     status = _map_status(state)
@@ -35,5 +44,6 @@ def get_task_status(task_id: str) -> TaskStatusResponse:
     if state == "SUCCESS":
         result = async_result.result
     elif state == "FAILURE":
-        result = str(async_result.result) if async_result.result is not None else None
+        logger.warning("Celery task %s failed: %s", task_id, async_result.result)
+        result = TASK_FAILED_MESSAGE
     return TaskStatusResponse(task_id=task_id, status=status, result=result)

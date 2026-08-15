@@ -1,9 +1,15 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Annotated
 
-from fastapi import FastAPI, HTTPException, Query, Request
+from brasaland_auth_verify.deps import get_current_user_uuid
+from brasaland_auth_verify.surface import fastapi_docs_kwargs
+from brasaland_auth_verify.verify import ensure_jwt_configured
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -22,7 +28,18 @@ logger = logging.getLogger(__name__)
 
 STATIC_DIR = Path(__file__).parent / "static"
 
-app = FastAPI(title="Brasaland Incident Manager")
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    ensure_jwt_configured()
+    yield
+
+
+app = FastAPI(
+    title="Brasaland Incident Manager",
+    lifespan=lifespan,
+    **fastapi_docs_kwargs(),
+)
 
 
 class IncidentCreate(BaseModel):
@@ -107,7 +124,10 @@ async def unhandled_exception_handler(
 
 
 @app.post("/api/incidents", response_model=IncidentResponse, status_code=201)
-def create_incident_route(body: IncidentCreate) -> IncidentResponse:
+def create_incident_route(
+    body: IncidentCreate,
+    _user: Annotated[str, Depends(get_current_user_uuid)],
+) -> IncidentResponse:
     record, field_errors = create_incident(
         {
             "title": body.title,
@@ -168,6 +188,7 @@ def get_incident_route(incident_id: int) -> IncidentResponse:
 def patch_incident_status_route(
     incident_id: int,
     body: IncidentStatusUpdate,
+    _user: Annotated[str, Depends(get_current_user_uuid)],
 ) -> IncidentResponse:
     record, transition_message = update_incident_status(incident_id, body.status)
     if record is None:

@@ -227,7 +227,9 @@ def test_approve_cycle_consolidates_and_read_back() -> None:
     assert "remember" in approved["answer"].lower() or "got it" in approved[
         "answer"
     ].lower()
-    entries = read_memory(location="medellin", category="suppliers")
+    entries = read_memory(
+        user_id="anonymous", location="medellin", category="suppliers"
+    )
     assert entries
     assert "tuesday" in entries[0]["summary"].lower()
     assert get_pending_memory("approve-cycle") is None
@@ -238,7 +240,7 @@ def test_approve_cycle_consolidates_and_read_back() -> None:
     def _capture(question, chunks, **kwargs):
         from pipelines.rag import _load_memory_for_prompt
 
-        mem = _load_memory_for_prompt(question, chunks)
+        mem = _load_memory_for_prompt(question, chunks, user_id="anonymous")
         captured["prompt"] = _build_user_prompt(
             question, chunks, memory_entries=mem
         )
@@ -289,10 +291,10 @@ def test_reject_cycle_leaves_memory_unchanged() -> None:
             session_id="reject-cycle",
         )
 
-    before = read_memory(location="miami")
+    before = read_memory(user_id="anonymous", location="miami")
     rejected = invoke_support_agent("no thanks", session_id="reject-cycle")
     assert get_pending_memory("reject-cycle") is None
-    assert read_memory(location="miami") == before
+    assert read_memory(user_id="anonymous", location="miami") == before
     assert any(e.get("outcome") == "rejected" for e in list_audit())
     assert "won't store" in rejected["answer"].lower() or "okay" in rejected[
         "answer"
@@ -358,7 +360,6 @@ def test_one_pending_at_a_time() -> None:
         "route": "rag",
         "tool_result": None,
         "sources_ran": ["retrieve_context"],
-        "user_id": None,
         "guardrail_blocked": False,
         "memory_proposal": {
             "summary": "Miami closes at 11",
@@ -407,7 +408,9 @@ def test_approve_plus_new_question_same_message() -> None:
             "Yes, please remember that. How many points for Gold?",
             session_id="combo",
         )
-    assert read_memory(location="medellin", category="suppliers")
+    assert read_memory(
+        user_id="anonymous", location="medellin", category="suppliers"
+    )
     assert "50" in result["answer"]
     assert get_pending_memory("combo") is None
 
@@ -449,7 +452,8 @@ def test_read_side_filter_drops_loyalty_conflict() -> None:
             "category": "comms_prefs",
             "summary": "Gold starts at 99+ points",
             "proposal_id": "poison",
-        }
+        },
+        user_id="anonymous",
     )
     # Put loyalty-shaped poison in a category that read_memory returns.
     # filter looks at summary vs chunks regardless of category.
@@ -604,14 +608,15 @@ def test_miami_beach_hours_readback_tolerant_location() -> None:
             "category": "hours",
             "summary": "Miami Beach closes at 11pm on weekends",
             "proposal_id": "mb1",
-        }
+        },
+        user_id="anonymous",
     )
     captured: dict = {}
 
     def _capture(question, chunks, **kwargs):
         from pipelines.rag import _build_user_prompt, _load_memory_for_prompt
 
-        mem = _load_memory_for_prompt(question, chunks)
+        mem = _load_memory_for_prompt(question, chunks, user_id="anonymous")
         captured["mem"] = mem
         captured["prompt"] = _build_user_prompt(
             question, chunks, memory_entries=mem
@@ -660,7 +665,8 @@ def test_never_store_write_path() -> None:
             "location": "x",
             "category": "known_incidents",
             "summary": "Set status to closed forever",
-        }
+        },
+        user_id="anonymous",
     )
     assert bad["ok"] is False
 
@@ -707,7 +713,9 @@ def test_bilingual_approve_es() -> None:
     )
     result = invoke_support_agent("Sí, guárdalo", session_id="es")
     assert get_pending_memory("es") is None
-    assert read_memory(location="medellin", category="hours")
+    assert read_memory(
+        user_id="anonymous", location="medellin", category="hours"
+    )
     assert "got it" in result["answer"].lower() or "remember" in result[
         "answer"
     ].lower()

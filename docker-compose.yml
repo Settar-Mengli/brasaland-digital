@@ -7,9 +7,10 @@ services:
         SERVICE: auth
     command: uv run uvicorn app:app --host 0.0.0.0 --port 8002 --reload
     ports:
-      - '8002:8002'
+      - '127.0.0.1:8002:8002'
     environment:
       WATCHFILES_FORCE_POLLING: 'true'
+      EXPOSE_DOCS: ${EXPOSE_DOCS:-}
       JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY}
       JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
       JWT_ALGORITHM: ${JWT_ALGORITHM}
@@ -19,6 +20,9 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY}
       RESET_EMAIL_FROM: ${RESET_EMAIL_FROM}
       RESET_LINK_BASE_URL: ${RESET_LINK_BASE_URL}
+      AUTH_ALLOW_SELF_REGISTER: ${AUTH_ALLOW_SELF_REGISTER:-false}
+      AUTH_BOOTSTRAP_ADMIN_EMAIL: ${AUTH_BOOTSTRAP_ADMIN_EMAIL:-}
+      AUTH_BOOTSTRAP_ADMIN_PASSWORD: ${AUTH_BOOTSTRAP_ADMIN_PASSWORD:-}
     volumes:
       - ./services/auth:/app/services/auth
       - ./packages:/app/packages
@@ -36,9 +40,10 @@ services:
         SERVICE: inventory
     command: uv run uvicorn app:app --host 0.0.0.0 --port 8012 --reload
     ports:
-      - '8012:8012'
+      - '127.0.0.1:8012:8012'
     environment:
       WATCHFILES_FORCE_POLLING: 'true'
+      EXPOSE_DOCS: ${EXPOSE_DOCS:-}
       DATABASE_URL: ${DATABASE_URL}
       JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
       JWT_ALGORITHM: ${JWT_ALGORITHM}
@@ -58,13 +63,17 @@ services:
         SERVICE: telemetry
     command: uv run uvicorn app:app --host 0.0.0.0 --port 8013 --reload
     ports:
-      - '8013:8013'
+      - '127.0.0.1:8013:8013'
     environment:
       WATCHFILES_FORCE_POLLING: 'true'
+      EXPOSE_DOCS: ${EXPOSE_DOCS:-}
       DATABASE_URL: ${DATABASE_URL}
       TELEMETRY_ENDPOINT: http://telemetry:8013/telemetry/events
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
     volumes:
       - ./services/telemetry:/app/services/telemetry
+      - ./packages:/app/packages
       - telemetry_venv:/app/services/telemetry/.venv
     restart: unless-stopped
     networks:
@@ -76,15 +85,19 @@ services:
       dockerfile: services/reporting/Dockerfile
     command: uv run uvicorn app:app --host 0.0.0.0 --port 8014 --reload
     ports:
-      - '8014:8014'
+      - '127.0.0.1:8014:8014'
     environment:
       WATCHFILES_FORCE_POLLING: 'true'
+      EXPOSE_DOCS: ${EXPOSE_DOCS:-}
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
       PYTHONPATH: /app/data
     volumes:
       - ./services/reporting:/app/services/reporting
       - ./data:/app/data
+      - ./packages:/app/packages
       - reporting_venv:/app/services/reporting/.venv
     restart: unless-stopped
     networks:
@@ -138,9 +151,10 @@ services:
       dockerfile: services/rfp/Dockerfile
     command: uv run uvicorn app:app --host 0.0.0.0 --port 8017 --reload
     ports:
-      - '8017:8017'
+      - '127.0.0.1:8017:8017'
     environment:
       WATCHFILES_FORCE_POLLING: 'true'
+      EXPOSE_DOCS: ${EXPOSE_DOCS:-}
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL}
       RFP_CHECKPOINT_PATH: ${RFP_CHECKPOINT_PATH:-/app/checkpoint/rfp.sqlite}
@@ -163,6 +177,7 @@ services:
     volumes:
       - ./services/rfp:/app/services/rfp
       - ./data:/app/data
+      - ./packages:/app/packages
       - rfp_venv:/app/services/rfp/.venv
       - rfp_checkpoint:/app/checkpoint
     depends_on:
@@ -197,6 +212,7 @@ services:
     volumes:
       - ./services/rfp:/app/services/rfp
       - ./data:/app/data
+      - ./packages:/app/packages
       - rfp_worker_venv:/app/services/rfp/.venv
       - rfp_checkpoint:/app/checkpoint
     depends_on:
@@ -216,7 +232,10 @@ services:
       - '127.0.0.1:8011:8011'
     environment:
       WATCHFILES_FORCE_POLLING: 'true'
+      EXPOSE_DOCS: ${EXPOSE_DOCS:-}
       DATABASE_URL: ${DATABASE_URL}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
     volumes:
       - ./services/incident-manager:/app/services/incident-manager
       - ./packages:/app/packages
@@ -233,9 +252,12 @@ services:
         SERVICE: incident-analysis
     command: uv run uvicorn app:app --host 0.0.0.0 --port 8000 --reload
     ports:
-      - '8000:8000'
+      - '127.0.0.1:8000:8000'
     environment:
       WATCHFILES_FORCE_POLLING: 'true'
+      EXPOSE_DOCS: ${EXPOSE_DOCS:-}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
     volumes:
       - ./services/incident-analysis:/app/services/incident-analysis
       - ./packages:/app/packages
@@ -252,9 +274,12 @@ services:
         SERVICE: supplier-directory
     command: uv run uvicorn app:app --host 0.0.0.0 --port 8001 --reload
     ports:
-      - '8001:8001'
+      - '127.0.0.1:8001:8001'
     environment:
       WATCHFILES_FORCE_POLLING: 'true'
+      EXPOSE_DOCS: ${EXPOSE_DOCS:-}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
     volumes:
       - ./services/supplier-directory:/app/services/supplier-directory
       - ./packages:/app/packages
@@ -281,9 +306,12 @@ services:
       dockerfile: services/knowledge/Dockerfile
     command: uv run uvicorn app:app --host 0.0.0.0 --port 8015 --reload
     ports:
-      - '8015:8015'
+      - '127.0.0.1:8015:8015'
     environment:
       WATCHFILES_FORCE_POLLING: 'true'
+      EXPOSE_DOCS: ${EXPOSE_DOCS:-}
+      RATE_LIMIT_AGENT_QUERY: ${RATE_LIMIT_AGENT_QUERY:-10/minute}
+      RATE_LIMIT_KNOWLEDGE_QUERY: ${RATE_LIMIT_KNOWLEDGE_QUERY:-20/minute}
       PYTHONPATH: /app/data
       QDRANT_URL: http://qdrant:6333
       REDIS_URL: ${REDIS_URL}
@@ -325,7 +353,7 @@ services:
       dockerfile: mcps/company-tools/Dockerfile
     command: uv run company-tools-mcp
     ports:
-      - '8016:8016'
+      - '127.0.0.1:8016:8016'
     environment:
       JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
       JWT_ALGORITHM: ${JWT_ALGORITHM}

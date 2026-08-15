@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from jose import jwt
 
-from brasaland_auth_verify import TokenError, verify_token
+from brasaland_auth_verify import TokenError, ensure_jwt_configured, verify_token
 from tests.conftest import OTHER_PUBLIC_PEM, PRIVATE_PEM
 
 
@@ -71,3 +71,12 @@ def test_verify_token_requires_public_key(monkeypatch: pytest.MonkeyPatch) -> No
 
     with pytest.raises(ValueError, match="JWT_PUBLIC_KEY"):
         verify_token("not-a-real-token")
+
+
+def test_ensure_jwt_configured_requires_public_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("JWT_PUBLIC_KEY", raising=False)
+
+    with pytest.raises(ValueError, match="JWT_PUBLIC_KEY"):
+        ensure_jwt_configured()

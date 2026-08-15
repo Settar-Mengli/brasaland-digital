@@ -6,8 +6,13 @@ import pytest
 from fastapi.testclient import TestClient
 
 import app as app_module
-from auth.security import create_access_token
-from auth.service import PASSWORD_RESET_TOKEN_TYPE, update_user
+from auth.security import create_access_token, decode_access_token
+from auth.service import (
+    PASSWORD_RESET_TOKEN_TYPE,
+    ensure_bootstrap_admin,
+    register_user as register_user_service,
+    update_user,
+)
 
 
 @pytest.fixture
@@ -38,6 +43,18 @@ def _register(client: TestClient, email: str, password: str) -> dict[str, Any]:
 
 def _auth_header(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
+
+
+def _admin_headers(
+    client: TestClient, email: str = "admin@brasaland.com"
+) -> dict[str, str]:
+    register_user_service(email, "password123", is_admin=True)
+    login = client.post(
+        "/auth/login",
+        data={"username": email, "password": "password123"},
+    )
+    assert login.status_code == 200
+    return _auth_header(login.json()["access_token"])
 
 
 def test_register_returns_token_and_me_shows_email(client: TestClient) -> None:
@@ -121,27 +138,57 @@ def test_normal_user_cannot_update_other_user(client: TestClient) -> None:
     assert response.status_code == 403
 
 
-def test_list_users_hides_other_emails_for_normal_user(client: TestClient) -> None:
+def test_normal_user_cannot_list_users(client: TestClient) -> None:
     alice = _register(client, "alice@brasaland.com", "password123")
-    _register(client, "bob@brasaland.com", "password123")
-
-    alice_me = client.get(
-        "/auth/me",
-        headers=_auth_header(alice["access_token"]),
-    ).json()
 
     response = client.get("/users", headers=_auth_header(alice["access_token"]))
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == app_module.ADMIN_REQUIRED
+
+
+def test_admin_lists_users_with_emails(client: TestClient) -> None:
+    _register(client, "bob@brasaland.com", "password123")
+    headers = _admin_headers(client)
+
+    response = client.get("/users", headers=headers)
+
     assert response.status_code == 200
     users = response.json()
     _assert_no_hashed_password(users)
+    emails = {user["email"] for user in users}
+    assert "bob@brasaland.com" in emails
+    assert "admin@brasaland.com" in emails
 
-    by_id = {user["id"]: user for user in users}
-    assert by_id[alice_me["id"]]["email"] == "alice@brasaland.com"
 
-    other_ids = [user_id for user_id in by_id if user_id != alice_me["id"]]
-    assert other_ids
-    for other_id in other_ids:
-        assert by_id[other_id]["email"] is None
+def test_non_admin_cannot_read_other_user(client: TestClient) -> None:
+    first = _register(client, "read-first@brasaland.com", "password123")
+    second = _register(client, "read-second@brasaland.com", "password123")
+
+    second_me = client.get(
+        "/auth/me",
+        headers=_auth_header(second["access_token"]),
+    ).json()
+
+    response = client.get(
+        f"/users/{second_me['id']}",
+        headers=_auth_header(first["access_token"]),
+    )
+    assert response.status_code == 403
+
+
+def test_admin_can_read_other_user(client: TestClient) -> None:
+    user = _register(client, "readable@brasaland.com", "password123")
+    user_me = client.get(
+        "/auth/me",
+        headers=_auth_header(user["access_token"]),
+    ).json()
+    headers = _admin_headers(client)
+
+    response = client.get(f"/users/{user_me['id']}", headers=headers)
+
+    assert response.status_code == 200
+    assert response.json()["email"] == "readable@brasaland.com"
 
 
 def test_normal_user_cannot_set_is_admin_via_put(client: TestClient) -> None:
@@ -198,8 +245,7 @@ def test_update_email_rejects_duplicate_but_allows_fresh_and_own(client: TestCli
 
 
 def test_hashed_password_never_appears_in_responses(client: TestClient) -> None:
-    token_payload = _register(client, "leak@brasaland.com", "password123")
-    headers = _auth_header(token_payload["access_token"])
+    headers = _admin_headers(client, "leak-admin@brasaland.com")
 
     me = client.get("/auth/me", headers=headers)
     users = client.get("/users", headers=headers)
@@ -211,7 +257,7 @@ def test_hashed_password_never_appears_in_responses(client: TestClient) -> None:
 
     login = client.post(
         "/auth/login",
-        data={"username": "leak@brasaland.com", "password": "password123"},
+        data={"username": "leak-admin@brasaland.com", "password": "password123"},
     )
     assert login.status_code == 200
     _assert_no_hashed_password(login.json())
@@ -223,6 +269,52 @@ def test_hashed_password_never_appears_in_responses(client: TestClient) -> None:
     )
     assert created.status_code == 201
     _assert_no_hashed_password(created.json())
+
+
+def test_non_admin_cannot_create_user(client: TestClient) -> None:
+    token_payload = _register(client, "plain@brasaland.com", "password123")
+
+    response = client.post(
+        "/users",
+        headers=_auth_header(token_payload["access_token"]),
+        json={"email": "minted@brasaland.com", "password": "password123"},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == app_module.ADMIN_REQUIRED
+
+
+def test_admin_can_create_user_including_admins(client: TestClient) -> None:
+    headers = _admin_headers(client)
+
+    created = client.post(
+        "/users",
+        headers=headers,
+        json={"email": "minted@brasaland.com", "password": "password123"},
+    )
+    assert created.status_code == 201
+    assert created.json()["is_admin"] is False
+
+    minted_admin = client.post(
+        "/users",
+        headers=headers,
+        json={
+            "email": "minted-admin@brasaland.com",
+            "password": "password123",
+            "is_admin": True,
+        },
+    )
+    assert minted_admin.status_code == 201
+    assert minted_admin.json()["is_admin"] is True
+
+
+def test_users_routes_require_token(client: TestClient) -> None:
+    assert client.get("/users").status_code == 401
+    response = client.post(
+        "/users",
+        json={"email": "anon@brasaland.com", "password": "password123"},
+    )
+    assert response.status_code == 401
 
 
 def test_register_duplicate_email_returns_named_constant(client: TestClient) -> None:
@@ -237,9 +329,22 @@ def test_register_duplicate_email_returns_named_constant(client: TestClient) -> 
     assert response.json()["detail"] == app_module.EMAIL_ALREADY_REGISTERED
 
 
+def test_register_disabled_returns_403(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("AUTH_ALLOW_SELF_REGISTER", "false")
+
+    response = client.post(
+        "/auth/register",
+        json={"email": "gate@brasaland.com", "password": "password123"},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == app_module.SELF_REGISTRATION_DISABLED
+
+
 def test_read_missing_user_returns_named_constant(client: TestClient) -> None:
-    token_payload = _register(client, "reader@brasaland.com", "password123")
-    headers = _auth_header(token_payload["access_token"])
+    headers = _admin_headers(client, "reader-admin@brasaland.com")
 
     response = client.get("/users/9999", headers=headers)
 
@@ -248,8 +353,6 @@ def test_read_missing_user_returns_named_constant(client: TestClient) -> None:
 
 
 def test_delete_missing_user_returns_named_constant(client: TestClient) -> None:
-    from auth.service import register_user as register_user_service
-
     admin = register_user_service(
         "admin-delete@brasaland.com",
         "password123",
@@ -303,6 +406,15 @@ def test_me_accepts_token_with_sub_only_claim(client: TestClient) -> None:
 
     assert response.status_code == 200
     assert response.json()["email"] == "subonly@brasaland.com"
+
+
+def test_access_token_carries_is_admin_claim(client: TestClient) -> None:
+    token_payload = _register(client, "claim@brasaland.com", "password123")
+    assert decode_access_token(token_payload["access_token"])["is_admin"] is False
+
+    headers = _admin_headers(client, "claim-admin@brasaland.com")
+    admin_token = headers["Authorization"].removeprefix("Bearer ")
+    assert decode_access_token(admin_token)["is_admin"] is True
 
 
 def test_static_pages_are_served(client: TestClient) -> None:
@@ -531,3 +643,41 @@ def test_put_profiles_me_ignores_email_password_and_flags(client: TestClient) ->
         },
     )
     assert hijack_login.status_code == 401
+
+
+def test_bootstrap_admin_seeded_on_startup_when_store_empty(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AUTH_BOOTSTRAP_ADMIN_EMAIL", "boot@brasaland.com")
+    monkeypatch.setenv("AUTH_BOOTSTRAP_ADMIN_PASSWORD", "password123")
+
+    with TestClient(app_module.app) as test_client:
+        login = test_client.post(
+            "/auth/login",
+            data={"username": "boot@brasaland.com", "password": "password123"},
+        )
+        assert login.status_code == 200
+        me = test_client.get(
+            "/auth/me",
+            headers=_auth_header(login.json()["access_token"]),
+        ).json()
+        assert me["is_admin"] is True
+
+
+def test_bootstrap_admin_skipped_when_users_exist(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _register(client, "existing@brasaland.com", "password123")
+    monkeypatch.setenv("AUTH_BOOTSTRAP_ADMIN_EMAIL", "boot@brasaland.com")
+    monkeypatch.setenv("AUTH_BOOTSTRAP_ADMIN_PASSWORD", "password123")
+
+    assert ensure_bootstrap_admin() is None
+
+
+def test_bootstrap_admin_requires_both_env_vars(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AUTH_BOOTSTRAP_ADMIN_EMAIL", "boot@brasaland.com")
+    monkeypatch.delenv("AUTH_BOOTSTRAP_ADMIN_PASSWORD", raising=False)
+
+    assert ensure_bootstrap_admin() is None

@@ -1049,3 +1049,24 @@ cd services/knowledge; uv run pytest
 **Files:** `data/pipelines/rfp_intake/draft_prompt.py` (new); `response_graph.py`, `graph.py`, `response_evaluators.py`, `approval_graph.py`, `approval_orchestration.py`; `data/pipelines/rag.py`, `data/pipelines/rfp_intake/generation.py`; `docker-compose.yml`, `.env.example`; `uis/backoffice/app/rfp/[ticketId]/page.tsx`, `RfpTicketView.tsx`, `RfpTicketView.test.tsx`; tests `test_draft_prompt.py`, `test_rfp_regen_prompt.py`, `test_rfp_response_generator.py`, `test_rag.py`, `test_rfp_generation.py`, `test_rfp_approval_orchestration.py`; `services/rfp/README.md`, `tests/pipelines/README.md`.
 
 **Tests (this session):** `uv run --directory data --python 3.13 pytest` → **196** passed (draft-quality + GEN_N failover + extract list-repr guard). `uvx ruff check data/pipelines/rfp_intake/draft_prompt.py` and `generation.py` → clean. GEN_N failover generalized in `rag._generation_tiers` and `rfp_intake.generation._rfp_generation_tiers` (stop at first absent `GEN_N_API_KEY`; blank skips; GEN_4 Mistral placeholder in `.env.example`).
+
+## Contain public access (pre-deploy blocker) — `feature/contain-public-access`
+
+**Status:** Closed on branch tip (docs commit follows the five phases + two follow-ons). Live DDL for RFP owner column was operator-run via Lane-2 script (not Alembic).
+
+**What closed (by phase / follow-on):**
+
+1. **Auth (H2 / H5 / M1)** — `9db2f25`: Admin-guarded `POST/GET /users`; self-registration gated by `AUTH_ALLOW_SELF_REGISTER` (default off); bootstrap admin via `AUTH_BOOTSTRAP_ADMIN_EMAIL` / `AUTH_BOOTSTRAP_ADMIN_PASSWORD`; access JWTs carry `is_admin`.
+2. **Shared JWT gate (five services)** — `a1de91b`: `packages/auth-verify` dependencies on supplier-directory, incident-manager, incident-analysis, reporting, and telemetry **report**. **Deliberate caveat:** `POST /telemetry/events` stays publicly callable (token optional); when a Bearer is present, `userId` is server-derived from the JWT (client `userId` is not trusted).
+3. **Incident-analysis owner scoping** — `464f01f`: Analyze stamps results with caller identity + TTL; export by `result_id` is owner-or-admin.
+4. **RFP owner ACL + agent user scope** — `2f58012` / `dd5b3a6`: Nullable `ticket.owner_user_uuid` + operator script `scripts/add_rfp_ticket_owner_column.py` (Lane-2); ticket routes enforce owner-or-admin (NULL owner ⇒ deny non-admin). Agent: user id only via `config["configurable"]` (never AgentState); user-prefixed Redis memory keys; cross-user deny; `GET /agent/memory/audit` admin-only.
+5. **Surface hardening** — `3ddb445`: SlowAPI rate limits on auth login/register/refresh, RFP upload, analyze, reporting enqueue, telemetry ingest; `EXPOSE_DOCS` gates `/docs` / OpenAPI (off by default); Compose API host ports bound to `127.0.0.1`.
+6. **Knowledge/agent rate limits** — `17e0219`: SlowAPI on `POST /agent/query` (10/min) and `POST /knowledge/query` (20/min).
+7. **OpenAPI auth sweep** — `5c33c65`: `scripts/audit_route_auth.py` — **PASS, 45 in-scope routes, 0 unallowlisted opens**.
+
+**Parked / deferred (intentionally out of this arc):**
+- Redis `EXPIRE` / `LTRIM` hygiene for agent memory + audit keys (user-scoping shipped; TTL/trim hygiene stayed out).
+- Inventory JWT arc and any broader H3 inventory auth work remain outside this branch.
+- No silent route fixes after the sweep — allowlist is explicit for public auth, telemetry ingest, and the Phase-2 open GETs that remain intentionally public where listed.
+
+**Consumer-facing knobs:** root `.env.example` documents `AUTH_ALLOW_SELF_REGISTER`, bootstrap admin envs, `EXPOSE_DOCS`, and `RATE_LIMIT_*` overrides. Service READMEs note owner/ACL/rate-limit/docs behavior where callers need it.

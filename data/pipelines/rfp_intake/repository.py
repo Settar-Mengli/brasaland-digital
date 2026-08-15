@@ -25,11 +25,13 @@ def create_ticket(
     rfp_id: str,
     content_hash: str,
     raw_pdf_path: str,
+    owner_user_uuid: str | None = None,
 ) -> tuple[Ticket, bool]:
     """Insert a ticket at status analyzing, or return the existing row on hash collide.
 
     This is the single place status is initialized to ``analyzing``.
     Idempotent on ``content_hash`` (re-upload returns the existing ticket).
+    ``owner_user_uuid`` is stamped only on insert; collide rows keep their owner.
     """
     ticket_id = str(uuid4())
     now = datetime.now(UTC)
@@ -39,6 +41,7 @@ def create_ticket(
         "status": "analyzing",
         "raw_pdf_path": raw_pdf_path,
         "content_hash": content_hash,
+        "owner_user_uuid": owner_user_uuid,
         "created_at": now,
         "updated_at": now,
     }
