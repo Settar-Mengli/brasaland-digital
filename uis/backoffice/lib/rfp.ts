@@ -10,11 +10,12 @@ import type {
 
 /**
  * Same-origin RFP API base (rewritten to RFP_API_ORIGIN).
+ * Defaults to `/api/rfp` so production images need no baked hostname.
  */
 function getRfpBaseUrl(): string {
   const url = process.env.NEXT_PUBLIC_RFP_API_URL;
-  if (!url) {
-    throw new Error('NEXT_PUBLIC_RFP_API_URL is not set');
+  if (url === undefined || url === '') {
+    return '/api/rfp';
   }
   return url.replace(/\/$/, '');
 }

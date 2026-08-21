@@ -340,3 +340,34 @@ describe('decideRfpCeo', () => {
     expect(handleUnauthorized).toHaveBeenCalled();
   });
 });
+
+describe('RFP API base default', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+    vi.clearAllMocks();
+  });
+
+  it('defaults to /api/rfp when NEXT_PUBLIC_RFP_API_URL is unset', async () => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+    vi.mocked(getAccessToken).mockReturnValue('tok');
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ ticket_id: 't1', status: 'intake_complete' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { getRfpTicket } = await import('./rfp');
+    await getRfpTicket('t1');
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/rfp/tickets/t1',
+      expect.objectContaining({
+        method: 'GET',
+        headers: { Authorization: 'Bearer tok' },
+      }),
+    );
+  });
+});

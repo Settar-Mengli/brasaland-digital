@@ -16,6 +16,15 @@ const LINKS = [
   { href: '/account/profile', label: 'Profile' },
 ] as const;
 
+const SLICE_HREFS = new Set(['/', '/locations', '/rfp', '/account/profile']);
+
+function visibleLinks(): readonly (typeof LINKS)[number][] {
+  if (process.env.NEXT_PUBLIC_SLICE_NAV === '1') {
+    return LINKS.filter((link) => SLICE_HREFS.has(link.href));
+  }
+  return LINKS;
+}
+
 function isActive(pathname: string, href: string): boolean {
   if (href === '/') {
     return pathname === '/';
@@ -27,7 +36,7 @@ export default function NavLinks() {
   const pathname = usePathname();
   return (
     <nav aria-label="Backoffice navigation" className="flex items-center gap-6">
-      {LINKS.map((link) => {
+      {visibleLinks().map((link) => {
         const active = isActive(pathname, link.href);
         return (
           <Link

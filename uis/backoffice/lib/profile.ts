@@ -1,4 +1,4 @@
-import { getAccessToken } from './auth';
+import { getAccessToken, getAuthBaseUrl } from './auth';
 import { parseApiError } from './api-error';
 import { handleUnauthorized } from './session';
 
@@ -14,14 +14,6 @@ export type ProfileUpdate = {
   phone?: string;
   address?: string;
 };
-
-function getAuthBaseUrl(): string {
-  const url = process.env.NEXT_PUBLIC_AUTH_API_URL;
-  if (!url) {
-    throw new Error('NEXT_PUBLIC_AUTH_API_URL is not set');
-  }
-  return url.replace(/\/$/, '');
-}
 
 async function profileFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getAccessToken();
