@@ -187,3 +187,7 @@ _New password set successfully via /reset-password_
 - **Single worker:** TinyDB is a per-process singleton (`db.py`). Use one uvicorn worker unless every worker shares the same JSON path.
 - **`AUTH_DB_PATH`:** Override for the JSON file path — **tests and local tooling only**. Default is `data/users.json` (gitignored at runtime).
 - **Environment loading:** `auth/security.py` loads `services/auth/.env` via `python-dotenv` on import so JWT settings are available whether you start via uvicorn or import the core directly.
+
+## Production slice
+
+TinyDB stays on the `auth_data` volume for this slice (Path A / Postgres is after go-live). Images run as uid 1000. Password reset is **not** routed on the slice Caddyfile. See [../../docs/deploy/rfp-slice.md](../../docs/deploy/rfp-slice.md).

@@ -117,6 +117,8 @@ npm run dev --workspace @brasaland/backoffice
 
 ## Local development with Docker
 
+**Production RFP slice** (backoffice + auth + rfp + rfp-worker + Redis + Caddy): see [docs/deploy/rfp-slice.md](docs/deploy/rfp-slice.md). That overlay is [`docker-compose.slice.yml`](docker-compose.slice.yml) — it does not replace this file.
+
 **Prerequisites:** Docker Desktop (Linux engine), a filled root `.env` (see below).
 
 1. Copy the template and set real values (Supabase `DATABASE_URL`, JWT PEM keys, Resend key if using password reset):

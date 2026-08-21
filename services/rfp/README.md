@@ -134,6 +134,10 @@ Multipart field name `file`. Server-side defenses: **10 MiB** cap (413), require
 
 Expect **19** tests under `services/rfp/tests/` (upload/routes, response, approval task + routes). Pipeline E2E for Parts 1→3 lives in `tests/pipelines/test_rfp_e2e_approval.py`.
 
+## Production slice
+
+Hosted 24/7 overlay is [`docker-compose.slice.yml`](../../docker-compose.slice.yml): one `rfp` + one `rfp-worker --pool=solo`, PDFs on `rfp_uploads` at `/app/data/raw` only, SqliteSaver on `rfp_checkpoint`. `GET /livez` (process) and `GET /readyz` (Postgres + Redis + checkpoint writable) are Compose healthchecks and Free-tier keepalive. Access logs are allowlisted JSON (`brasaland.access`); `/livez` and `/readyz` are not logged. Runbook: [../../docs/deploy/rfp-slice.md](../../docs/deploy/rfp-slice.md).
+
 ```powershell
 cd services/rfp
 uv sync --python 3.13
