@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 
 from celery import Celery
+from celery.signals import worker_ready
 from dotenv import load_dotenv
 
 
@@ -51,3 +52,10 @@ celery_app.conf.update(
         "rfp.process_rfp_approval": {"queue": "rfp"},
     },
 )
+
+
+@worker_ready.connect
+def _setup_checkpointer_on_worker_ready(**kwargs: object) -> None:
+    from checkpointer import run_setup
+
+    run_setup()

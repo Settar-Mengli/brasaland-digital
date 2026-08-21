@@ -33,6 +33,11 @@ def _resolve_path(path: Path | None) -> Path:
     return _DEFAULT_PATH
 
 
+def resolve_db_path() -> Path:
+    """Return the TinyDB path from ``AUTH_DB_PATH`` or the service default."""
+    return _resolve_path(None)
+
+
 def get_db(path: Path | None = None) -> TinyDB:
     global _db, _db_path
 

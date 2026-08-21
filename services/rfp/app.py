@@ -5,14 +5,17 @@ import os
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
-from fastapi import FastAPI
+from fastapi import FastAPI, status
+from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from brasaland_auth_verify.surface import fastapi_docs_kwargs
 
 import config  # noqa: F401 — sys.path for data/pipelines + root .env
+from checkpointer import run_setup
 from database import ensure_schema
+from health import rfp_ready_reason
 from rate_limit import limiter
 from routers.rfp import router as rfp_router
 
@@ -28,6 +31,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
             "(Celery broker/backend)"
         )
     ensure_schema()
+    run_setup()
     yield
 
 
@@ -39,6 +43,22 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.include_router(rfp_router)
+
+
+@app.get("/livez")
+def livez() -> dict[str, str]:
+    return {"status": "ok"}
+
+
+@app.get("/readyz")
+def readyz() -> JSONResponse:
+    reason = rfp_ready_reason()
+    if reason is None:
+        return JSONResponse({"status": "ok"})
+    return JSONResponse(
+        {"status": "unavailable", "reason": reason},
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+    )
 
 
 @app.get("/")

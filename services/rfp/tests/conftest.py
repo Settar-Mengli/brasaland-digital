@@ -3,8 +3,14 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from pathlib import Path
 
 import pytest
+
+
+@pytest.fixture(autouse=True)
+def checkpoint_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("RFP_CHECKPOINT_PATH", str(tmp_path / "rfp.sqlite"))
 
 
 @pytest.fixture(autouse=True)

@@ -25,8 +25,11 @@ from __future__ import annotations
 
 import logging
 import os
+import sqlite3
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager
+from pathlib import Path
 
 from langgraph.checkpoint.sqlite import SqliteSaver
 
@@ -42,6 +45,11 @@ def _resolve_checkpoint_path() -> str:
     return path
 
 
+def resolve_checkpoint_path() -> str:
+    """Return ``RFP_CHECKPOINT_PATH`` or the Compose default."""
+    return _resolve_checkpoint_path()
+
+
 @contextmanager
 def checkpointer_cm() -> Iterator[SqliteSaver]:
     """Yield a ``SqliteSaver`` for one graph operation, then close the connection.
@@ -55,14 +63,28 @@ def checkpointer_cm() -> Iterator[SqliteSaver]:
 
 
 def run_setup() -> None:
-    """Create LangGraph checkpoint tables (OPERATOR invokes explicitly).
+    """Create LangGraph checkpoint tables if missing.
 
-    Import-safe: does not run on import.
+    Import-safe: does not run on import. Called from the FastAPI lifespan and
+    the Celery ``worker_ready`` signal. Concurrent API+worker boot can hit a
+    brief SQLite lock; retries cover that.
     """
     path = _resolve_checkpoint_path()
-    with SqliteSaver.from_conn_string(path) as saver:
-        saver.setup()
-    logger.info("RFP checkpointer setup() completed path=%s", path)
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    last_error: Exception | None = None
+    for attempt in range(5):
+        try:
+            with SqliteSaver.from_conn_string(path) as saver:
+                saver.setup()
+            logger.info("RFP checkpointer setup() completed path=%s", path)
+            return
+        except sqlite3.OperationalError as exc:
+            last_error = exc
+            if "locked" not in str(exc).lower() or attempt == 4:
+                raise
+            time.sleep(0.05 * (attempt + 1))
+    if last_error is not None:
+        raise last_error
 
 
 if __name__ == "__main__":
