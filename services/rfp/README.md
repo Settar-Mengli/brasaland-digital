@@ -77,14 +77,14 @@ Compose also sets `PYTHONPATH=/app/data`. Uploaded PDFs land in host `data/raw/`
 
 ## Celery queues
 
-`rfp-worker` binds `-Q rfp`. The app sets `task_default_queue="rfp"` and `task_routes` for `rfp.process_rfp`, `rfp.process_rfp_response`, and `rfp.process_rfp_approval`. It does not consume the default `celery` queue (or reporting's `reporting` queue).
+`rfp-worker` binds `-Q rfp` with `--pool=solo`. SqliteSaver is **one-replica only**: one `rfp` API process and one `rfp-worker` on the same host. Do not scale either replica and do not use Celery prefork/concurrency > 1 (SQLite lock contention / corrupt interrupts). The production slice Compose file uses the same pin.
 
 ```powershell
 docker compose up -d rfp-worker
 docker compose stop rfp-worker
 ```
 
-Host worker (if not Compose) must pass `-Q rfp`:
+Host worker (if not Compose) must pass `-Q rfp` and `--pool=solo`:
 
 ```powershell
 cd services/rfp
@@ -108,7 +108,7 @@ Run `python -m checkpointer` (or `run_setup()`) once to create tables.
 
 Compose mounts the named volume `rfp_checkpoint` at `/app/checkpoint` in both
 `rfp` (FastAPI resume) and `rfp-worker` (Celery start) so the same SQLite file is
-shared. Limits (honest): single Docker host only; `docker compose down -v` **wipes**
+shared. Limits (honest): **one Docker host, one `rfp` replica, one `rfp-worker` replica, `--pool=solo`**. `docker compose down -v` **wipes**
 in-flight checkpoints; mild SQLite lock contention is possible under many concurrent
 tickets.
 
