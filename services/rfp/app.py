@@ -17,6 +17,7 @@ from checkpointer import run_setup
 from database import ensure_schema
 from health import rfp_ready_reason
 from rate_limit import limiter
+from request_log import RequestIdAccessLogMiddleware, disable_uvicorn_access_log
 from routers.rfp import router as rfp_router
 
 logging.basicConfig(level=logging.INFO)
@@ -40,6 +41,8 @@ app = FastAPI(
     lifespan=lifespan,
     **fastapi_docs_kwargs(),
 )
+disable_uvicorn_access_log()
+app.add_middleware(RequestIdAccessLogMiddleware)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.include_router(rfp_router)

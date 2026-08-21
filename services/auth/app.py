@@ -16,6 +16,7 @@ from slowapi.errors import RateLimitExceeded
 from auth.db import resolve_db_path
 from auth.email_sender import send_password_reset_email
 from auth.health import auth_ready_reason
+from auth.request_log import RequestIdAccessLogMiddleware, disable_uvicorn_access_log
 from auth.security import TokenError
 from auth.service import (
     authenticate_user,
@@ -67,6 +68,8 @@ app = FastAPI(
     lifespan=lifespan,
     **fastapi_docs_kwargs(),
 )
+disable_uvicorn_access_log()
+app.add_middleware(RequestIdAccessLogMiddleware)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
