@@ -50,6 +50,7 @@ services:
     environment:
       REDIS_URL: redis://redis:6379/0
       RFP_CHECKPOINT_PATH: /app/checkpoint/rfp.sqlite
+      RFP_CONTEXT_PATH: /app/context/CONTEXT-rfp.md
     volumes:
       - rfp_checkpoint:/app/checkpoint
       - rfp_uploads:/app/data/raw
@@ -78,6 +79,7 @@ services:
     environment:
       REDIS_URL: redis://redis:6379/0
       RFP_CHECKPOINT_PATH: /app/checkpoint/rfp.sqlite
+      RFP_CONTEXT_PATH: /app/context/CONTEXT-rfp.md
     volumes:
       - rfp_checkpoint:/app/checkpoint
       - rfp_uploads:/app/data/raw

@@ -32,7 +32,10 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --gid 1000 app \
     && useradd --uid 1000 --gid app --create-home --home-dir /home/app app \
-    && mkdir -p /app/checkpoint /app/data/raw \
+    && mkdir -p /app/checkpoint /app/context \
+    && cp /app/data/raw/CONTEXT-rfp.md /app/context/CONTEXT-rfp.md \
+    && rm -rf /app/data/raw \
+    && mkdir -p /app/data/raw \
     && chown -R app:app /app
 
 ENV VIRTUAL_ENV="/app/services/rfp/.venv"

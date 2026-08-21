@@ -55,7 +55,7 @@ Department drafts are client-facing prose. Metadata is interpolated as a fenced 
 4. When all active depts are terminal, if `ceo_approval_required` the driver starts the CEO interrupt; otherwise synthesizes `FinalDocument` → `done`.
 5. CEO approve → synthesize → `done`; CEO reject stays `waiting_for_approval` with `ceo_decision=rejected`.
 
-Compliance §5 rules are loaded at runtime from `data/raw/CONTEXT-rfp.md` (heading `## 5.`). Generation still uses the existing `GEN_1` / `GEN_2` / `GEN_3` env failover (unchanged).
+Compliance §5 rules are loaded at runtime from `data/raw/CONTEXT-rfp.md` (heading `## 5.`), or `RFP_CONTEXT_PATH` / `/app/context/CONTEXT-rfp.md` in the production image (the uploads volume shadows `/app/data/raw`). Missing CONTEXT raises; it does not default to empty rules. Generation still uses the existing `GEN_1` / `GEN_2` / `GEN_3` env failover (unchanged).
 
 ## Env
 
@@ -64,6 +64,7 @@ Compliance §5 rules are loaded at runtime from `data/raw/CONTEXT-rfp.md` (headi
 | `DATABASE_URL` | Supabase/Postgres (brasaland-m5) or SQLite for tests |
 | `REDIS_URL` | Celery broker/backend only (not the LangGraph checkpointer) |
 | `RFP_CHECKPOINT_PATH` | LangGraph SQLite checkpointer DB path (default `/app/checkpoint/rfp.sqlite`) |
+| `RFP_CONTEXT_PATH` | Override path to `CONTEXT-rfp.md` (slice image: `/app/context/CONTEXT-rfp.md`) |
 | `JWT_PUBLIC_KEY` | RS256 verify (same as knowledge/inventory) |
 | `JWT_ALGORITHM` | default RS256 via auth-verify |
 | `EXPOSE_DOCS` | When `1`/`true`, serves `/docs` and OpenAPI; default off |
@@ -136,7 +137,7 @@ Expect **19** tests under `services/rfp/tests/` (upload/routes, response, approv
 
 ## Production slice
 
-Hosted 24/7 overlay is [`docker-compose.slice.yml`](../../docker-compose.slice.yml): one `rfp` + one `rfp-worker --pool=solo`, PDFs on `rfp_uploads` at `/app/data/raw` only, SqliteSaver on `rfp_checkpoint`. `GET /livez` (process) and `GET /readyz` (Postgres + Redis + checkpoint writable) are Compose healthchecks and Free-tier keepalive. Access logs are allowlisted JSON (`brasaland.access`); `/livez` and `/readyz` are not logged. Runbook: [../../docs/deploy/rfp-slice.md](../../docs/deploy/rfp-slice.md).
+Hosted 24/7 overlay is [`docker-compose.slice.yml`](../../docker-compose.slice.yml): one `rfp` + one `rfp-worker --pool=solo`, PDFs on `rfp_uploads` at `/app/data/raw` only (image `raw/` is empty; CONTEXT baked at `/app/context`), SqliteSaver on `rfp_checkpoint`. `GET /livez` (process) and `GET /readyz` (Postgres + Redis + checkpoint writable) are Compose healthchecks and Free-tier keepalive. Access logs are allowlisted JSON (`brasaland.access`); `/livez` and `/readyz` are not logged. Runbook: [../../docs/deploy/rfp-slice.md](../../docs/deploy/rfp-slice.md).
 
 ```powershell
 cd services/rfp

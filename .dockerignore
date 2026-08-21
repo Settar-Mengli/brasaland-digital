@@ -19,3 +19,4 @@ keys_for_env.txt
 fmt_keys.py
 **/.coverage
 **/coverage
+data/raw/seed

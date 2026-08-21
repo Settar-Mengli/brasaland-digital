@@ -5,6 +5,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import pytest
+
 _DATA_ROOT = Path(__file__).resolve().parents[2] / "data"
 _data_str = str(_DATA_ROOT)
 if _data_str not in sys.path:
@@ -15,6 +17,7 @@ from pipelines.rfp_intake.response_evaluators import (
     evaluate_readability,
     evaluate_relevance,
 )
+from pipelines.rfp_intake import response_evaluators as evaluators
 
 
 _CLEAN_DRAFT = (
@@ -83,3 +86,45 @@ def test_evaluate_all_shape_and_overall_pass() -> None:
     assert result["readability"]["pass"] is True
     assert result["relevance"]["pass"] is True
     assert result["compliance"]["pass"] is True
+
+
+@pytest.fixture
+def reset_compliance_cache() -> None:
+    evaluators._CONTEXT_SECTION_5 = None
+    yield
+    evaluators._CONTEXT_SECTION_5 = None
+
+
+def test_context_path_env_beats_packaged(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    reset_compliance_cache: None,
+) -> None:
+    alt = tmp_path / "CONTEXT-rfp.md"
+    alt.write_text("# RFP\n\n## 5. Compliance\n\nenv-tier rulebook\n", encoding="utf-8")
+    monkeypatch.setenv("RFP_CONTEXT_PATH", str(alt))
+
+    resolved = evaluators._context_rfp_path()
+    assert resolved == alt
+    assert resolved != evaluators._PACKAGED_CONTEXT
+    assert evaluators._PACKAGED_CONTEXT.is_file()
+
+    rules = evaluators._load_compliance_rules()
+    assert "env-tier rulebook" in rules
+    assert rules != ""
+
+
+def test_context_path_all_missing_raises(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    reset_compliance_cache: None,
+) -> None:
+    monkeypatch.setenv("RFP_CONTEXT_PATH", str(tmp_path / "missing-env.md"))
+    monkeypatch.setattr(evaluators, "_PACKAGED_CONTEXT", tmp_path / "raw" / "CONTEXT-rfp.md")
+    monkeypatch.setattr(evaluators, "_BAKED_CONTEXT", tmp_path / "context" / "CONTEXT-rfp.md")
+
+    with pytest.raises(FileNotFoundError, match="CONTEXT-rfp.md not found"):
+        evaluators._context_rfp_path()
+    with pytest.raises(FileNotFoundError, match="CONTEXT-rfp.md not found"):
+        evaluators._load_compliance_rules()
+    assert evaluators._CONTEXT_SECTION_5 is None
