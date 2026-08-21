@@ -53,3 +53,5 @@ data/raw/*.pdf
 # Local Qdrant storage (named compose volume is primary; guard native runs)
 qdrant_storage/
 .qdrant/
+
+data/*.sqlite
