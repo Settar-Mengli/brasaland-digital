@@ -22,6 +22,21 @@ auth --> auth_data (TinyDB)
 rfp-worker --pool=solo -Q rfp  (same Redis, Postgres, checkpoint, PDFs)
 ```
 
+## PRE-FIRST-BOOT — chown all three volumes (required)
+
+On a fresh engine, Docker creates named volumes `auth_data`, `rfp_checkpoint`, and `rfp_uploads` as **root**. The slice images run as uid 1000, so they cannot write those mounts until this runs. Image `chown` in the Dockerfiles does **not** apply to a new named volume (the volume overlays the image path).
+
+**Run the two commands below before the first `docker compose -f docker-compose.slice.yml up`.** Skipping them causes auth `GET /readyz` **503** (TinyDB parent not writable) → backoffice `depends_on` never becomes healthy → Caddy never starts.
+
+```powershell
+docker compose -f docker-compose.slice.yml run --rm --user 0 --no-deps auth chown -R 1000:1000 /app/services/auth/data
+docker compose -f docker-compose.slice.yml run --rm --user 0 --no-deps rfp chown -R 1000:1000 /app/checkpoint /app/data/raw
+```
+
+That covers all three: `auth_data` (`/app/services/auth/data`), `rfp_checkpoint` (`/app/checkpoint`), `rfp_uploads` (`/app/data/raw`). Repeat after `down -v` (new empty volumes are root-owned again).
+
+Noted option, **not implemented:** a self-healing root entrypoint that chowns the mount points then drops to uid 1000, so this cannot be forgotten on a fresh host.
+
 ## Volumes (do not `down -v` on a host you care about)
 
 | Volume | Mount | What it holds |
@@ -32,14 +47,7 @@ rfp-worker --pool=solo -Q rfp  (same Redis, Postgres, checkpoint, PDFs)
 | `redis_data` | `/data` | Celery broker persistence |
 | `caddy_data` | `/data` | TLS certificates |
 
-`docker compose -f docker-compose.slice.yml down -v` **wipes** in-flight interrupts, PDFs, sessions, and Redis.
-
-Named volumes created as root may not be writable by uid 1000. One-time on a fresh host (operator):
-
-```powershell
-docker compose -f docker-compose.slice.yml run --rm --user 0 --no-deps auth chown -R 1000:1000 /app/services/auth/data
-docker compose -f docker-compose.slice.yml run --rm --user 0 --no-deps rfp chown -R 1000:1000 /app/checkpoint /app/data/raw
-```
+`docker compose -f docker-compose.slice.yml down -v` **wipes** in-flight interrupts, PDFs, sessions, and Redis. New volumes after `-v` need the [PRE-FIRST-BOOT chown](#pre-first-boot--chown-all-three-volumes-required) again.
 
 The generic [`services/Dockerfile`](../../services/Dockerfile) is also used by out-of-slice services in the full Compose file; existing local named volumes may need the same `chown`.
 
@@ -65,7 +73,7 @@ Access logs (auth + rfp) are one JSON line per request (`brasaland.access`): `me
 2. **Tier check** — brasaland-m5 Free vs Pro. If Pro, skip keepalive/pg_dump anxiety; still keep `/readyz`. If Free, rfp healthcheck is the keepalive; install a daily `pg_dump` via the `:6543` pooler to a directory Compose does not wipe.
 3. **RLS enable** — operator-run DDL. Enumerate all public tables (`pg_tables.rowsecurity`), confirm `DATABASE_URL` role `rolbypassrls` (script assumes table-owner `postgres`, zero policies, **no FORCE**). Run [`scripts/enable_rls.py --dry-run`](../../scripts/enable_rls.py) then real. **Do not advertise the URL until RLS shows ENABLED** on the full public-table list. Do not author policies in this slice.
 4. **DNS** A record → VM IPv4. Set `SLICE_HOST`.
-5. **Deploy** `docker compose -f docker-compose.slice.yml up -d --build`. Confirm `https://$SLICE_HOST/login`.
+5. **Chown then deploy** — [PRE-FIRST-BOOT](#pre-first-boot--chown-all-three-volumes-required) **before** the first `docker compose -f docker-compose.slice.yml up -d --build`. Confirm `https://$SLICE_HOST/login`.
 6. **Hosted non-mutating readiness** — `/livez` and `/readyz` 200 (docker exec; do not publish 8002/8017). Login as bootstrap admin.
 7. **Laptop-off E2E** — one ticket: upload → `intake_complete` → generate response → per-department approval → CEO → final document.
 8. **Advertise** only after step 7 is green **and** RLS is ENABLED.
@@ -73,6 +81,8 @@ Access logs (auth + rfp) are one JSON line per request (`brasaland.access`): `me
 Deployed at `<URL>` — fill after the Phase H E2E.
 
 ## Local slice up (operator smoke, not the hosted gate)
+
+Chown first (see [PRE-FIRST-BOOT](#pre-first-boot--chown-all-three-volumes-required)), then:
 
 ```powershell
 docker compose -f docker-compose.slice.yml up --build
