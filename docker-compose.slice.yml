@@ -1,0 +1,139 @@
+# Production-shaped RFP slice. Does not replace docker-compose.yml (local full stack).
+# Usage: docker compose -f docker-compose.slice.yml up --build
+# Publishes 80/443 on Caddy only. Password reset is not routed.
+
+services:
+  redis:
+    image: redis:7-alpine
+    command: redis-server --maxmemory-policy noeviction
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  auth:
+    build:
+      context: .
+      dockerfile: services/Dockerfile
+      args:
+        SERVICE: auth
+    command: uvicorn app:app --host 0.0.0.0 --port 8002
+    env_file:
+      - .env
+    environment:
+      AUTH_ALLOW_SELF_REGISTER: 'false'
+    volumes:
+      - auth_data:/app/services/auth/data
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'curl -fsS http://127.0.0.1:8002/livez && curl -fsS http://127.0.0.1:8002/readyz',
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+
+  rfp:
+    build:
+      context: .
+      dockerfile: services/rfp/Dockerfile
+    command: uvicorn app:app --host 0.0.0.0 --port 8017
+    env_file:
+      - .env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      RFP_CHECKPOINT_PATH: /app/checkpoint/rfp.sqlite
+      RFP_CONTEXT_PATH: /app/context/CONTEXT-rfp.md
+    volumes:
+      - rfp_checkpoint:/app/checkpoint
+      - rfp_uploads:/app/data/raw
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'curl -fsS http://127.0.0.1:8017/livez && curl -fsS http://127.0.0.1:8017/readyz',
+        ]
+      interval: 30s
+      timeout: 8s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  rfp-worker:
+    build:
+      context: .
+      dockerfile: services/rfp/Dockerfile
+    command: celery -A celery_app.celery_app worker --loglevel=INFO --pool=solo -Q rfp
+    env_file:
+      - .env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      RFP_CHECKPOINT_PATH: /app/checkpoint/rfp.sqlite
+      RFP_CONTEXT_PATH: /app/context/CONTEXT-rfp.md
+    volumes:
+      - rfp_checkpoint:/app/checkpoint
+      - rfp_uploads:/app/data/raw
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'celery', '-A', 'celery_app.celery_app', 'inspect', 'ping', '--timeout', '5']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  backoffice:
+    build:
+      context: .
+      dockerfile: uis/backoffice/Dockerfile
+    environment:
+      AUTH_API_ORIGIN: http://auth:8002
+      RFP_API_ORIGIN: http://rfp:8017
+    depends_on:
+      auth:
+        condition: service_healthy
+      rfp:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:3003/']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      SLICE_HOST: ${SLICE_HOST:-localhost}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      backoffice:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  auth_data:
+  rfp_checkpoint:
+  rfp_uploads:
+  redis_data:
+  caddy_data:
+  caddy_config:

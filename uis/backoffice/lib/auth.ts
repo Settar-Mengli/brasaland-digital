@@ -9,10 +9,14 @@ export type RegisterProfile = {
   address?: string;
 };
 
-function getAuthBaseUrl(): string {
+/**
+ * Same-origin auth API base (rewritten to AUTH_API_ORIGIN).
+ * Defaults to `/api/auth` so production images need no baked hostname.
+ */
+export function getAuthBaseUrl(): string {
   const url = process.env.NEXT_PUBLIC_AUTH_API_URL;
-  if (!url) {
-    throw new Error('NEXT_PUBLIC_AUTH_API_URL is not set');
+  if (url === undefined || url === '') {
+    return '/api/auth';
   }
   return url.replace(/\/$/, '');
 }

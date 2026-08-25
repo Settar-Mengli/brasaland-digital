@@ -55,7 +55,7 @@ Department drafts are client-facing prose. Metadata is interpolated as a fenced 
 4. When all active depts are terminal, if `ceo_approval_required` the driver starts the CEO interrupt; otherwise synthesizes `FinalDocument` → `done`.
 5. CEO approve → synthesize → `done`; CEO reject stays `waiting_for_approval` with `ceo_decision=rejected`.
 
-Compliance §5 rules are loaded at runtime from `data/raw/CONTEXT-rfp.md` (heading `## 5.`). Generation still uses the existing `GEN_1` / `GEN_2` / `GEN_3` env failover (unchanged).
+Compliance §5 rules are loaded at runtime from `data/raw/CONTEXT-rfp.md` (heading `## 5.`), or `RFP_CONTEXT_PATH` / `/app/context/CONTEXT-rfp.md` in the production image (the uploads volume shadows `/app/data/raw`). Missing CONTEXT raises; it does not default to empty rules. Generation still uses the existing `GEN_1` / `GEN_2` / `GEN_3` env failover (unchanged).
 
 ## Env
 
@@ -64,6 +64,7 @@ Compliance §5 rules are loaded at runtime from `data/raw/CONTEXT-rfp.md` (headi
 | `DATABASE_URL` | Supabase/Postgres (brasaland-m5) or SQLite for tests |
 | `REDIS_URL` | Celery broker/backend only (not the LangGraph checkpointer) |
 | `RFP_CHECKPOINT_PATH` | LangGraph SQLite checkpointer DB path (default `/app/checkpoint/rfp.sqlite`) |
+| `RFP_CONTEXT_PATH` | Override path to `CONTEXT-rfp.md` (slice image: `/app/context/CONTEXT-rfp.md`) |
 | `JWT_PUBLIC_KEY` | RS256 verify (same as knowledge/inventory) |
 | `JWT_ALGORITHM` | default RS256 via auth-verify |
 | `EXPOSE_DOCS` | When `1`/`true`, serves `/docs` and OpenAPI; default off |
@@ -77,14 +78,14 @@ Compose also sets `PYTHONPATH=/app/data`. Uploaded PDFs land in host `data/raw/`
 
 ## Celery queues
 
-`rfp-worker` binds `-Q rfp`. The app sets `task_default_queue="rfp"` and `task_routes` for `rfp.process_rfp`, `rfp.process_rfp_response`, and `rfp.process_rfp_approval`. It does not consume the default `celery` queue (or reporting's `reporting` queue).
+`rfp-worker` binds `-Q rfp` with `--pool=solo`. SqliteSaver is **one-replica only**: one `rfp` API process and one `rfp-worker` on the same host. Do not scale either replica and do not use Celery prefork/concurrency > 1 (SQLite lock contention / corrupt interrupts). The production slice Compose file uses the same pin.
 
 ```powershell
 docker compose up -d rfp-worker
 docker compose stop rfp-worker
 ```
 
-Host worker (if not Compose) must pass `-Q rfp`:
+Host worker (if not Compose) must pass `-Q rfp` and `--pool=solo`:
 
 ```powershell
 cd services/rfp
@@ -108,7 +109,7 @@ Run `python -m checkpointer` (or `run_setup()`) once to create tables.
 
 Compose mounts the named volume `rfp_checkpoint` at `/app/checkpoint` in both
 `rfp` (FastAPI resume) and `rfp-worker` (Celery start) so the same SQLite file is
-shared. Limits (honest): single Docker host only; `docker compose down -v` **wipes**
+shared. Limits (honest): **one Docker host, one `rfp` replica, one `rfp-worker` replica, `--pool=solo`**. `docker compose down -v` **wipes**
 in-flight checkpoints; mild SQLite lock contention is possible under many concurrent
 tickets.
 
@@ -133,6 +134,10 @@ Multipart field name `file`. Server-side defenses: **10 MiB** cap (413), require
 ## Tests
 
 Expect **19** tests under `services/rfp/tests/` (upload/routes, response, approval task + routes). Pipeline E2E for Parts 1→3 lives in `tests/pipelines/test_rfp_e2e_approval.py`.
+
+## Production slice
+
+Hosted 24/7 overlay is [`docker-compose.slice.yml`](../../docker-compose.slice.yml): one `rfp` + one `rfp-worker --pool=solo`, PDFs on `rfp_uploads` at `/app/data/raw` only (image `raw/` is empty; CONTEXT baked at `/app/context`), SqliteSaver on `rfp_checkpoint`. `GET /livez` (process) and `GET /readyz` (Postgres + Redis + checkpoint writable) are Compose healthchecks and Free-tier keepalive. Access logs are allowlisted JSON (`brasaland.access`); `/livez` and `/readyz` are not logged. Runbook: [../../docs/deploy/rfp-slice.md](../../docs/deploy/rfp-slice.md).
 
 ```powershell
 cd services/rfp

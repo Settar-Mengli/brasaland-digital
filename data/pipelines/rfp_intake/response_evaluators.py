@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 from typing import Any
@@ -65,10 +66,31 @@ _BUDGET_AMOUNT_RE = re.compile(
 )
 
 
+# Package-relative (local / full-stack bind). Image bake copies this to /app/context
+# then empties /app/data/raw so the uploads volume copy-up has nothing to collide with.
+_PACKAGED_CONTEXT = Path(__file__).resolve().parents[2] / "raw" / "CONTEXT-rfp.md"
+_BAKED_CONTEXT = Path("/app/context/CONTEXT-rfp.md")
+
+
 def _context_rfp_path() -> Path:
-    """``data/raw/CONTEXT-rfp.md`` relative to this package (CWD-robust)."""
-    # .../data/pipelines/rfp_intake/response_evaluators.py → parents[2] == data/
-    return Path(__file__).resolve().parents[2] / "raw" / "CONTEXT-rfp.md"
+    """Resolve CONTEXT-rfp.md: env, then packaged ``data/raw``, then image bake.
+
+    Raises ``FileNotFoundError`` if none of the three tiers is an existing file.
+    """
+    env = os.environ.get("RFP_CONTEXT_PATH", "").strip()
+    candidates: list[Path] = []
+    if env:
+        candidates.append(Path(env))
+    candidates.append(_PACKAGED_CONTEXT)
+    candidates.append(_BAKED_CONTEXT)
+    for path in candidates:
+        if path.is_file():
+            return path
+    checked = ", ".join(str(path) for path in candidates)
+    raise FileNotFoundError(
+        "CONTEXT-rfp.md not found (compliance rules will not silently default). "
+        f"Checked: {checked}"
+    )
 
 
 def _load_compliance_rules() -> str:
@@ -85,7 +107,10 @@ def _load_compliance_rules() -> str:
     # Next markdown heading after §5 (e.g. "## 7.")
     next_match = re.search(r"\n## (?!5\.)", rest)
     section = rest[: next_match.start()] if next_match else rest
-    _CONTEXT_SECTION_5 = section.strip()
+    rules = section.strip()
+    if not rules:
+        raise RuntimeError("CONTEXT-rfp.md §5 is empty")
+    _CONTEXT_SECTION_5 = rules
     return _CONTEXT_SECTION_5
 
 

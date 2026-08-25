@@ -50,6 +50,8 @@ ALLOWLIST_OPEN: frozenset[tuple[str, str, str]] = frozenset(
     {
         # --- probes / static ---
         ("auth", "GET", "/"),
+        ("auth", "GET", "/livez"),
+        ("auth", "GET", "/readyz"),
         ("auth", "GET", "/forgot-password"),
         ("auth", "GET", "/reset-password"),
         ("supplier-directory", "GET", "/"),
@@ -58,6 +60,8 @@ ALLOWLIST_OPEN: frozenset[tuple[str, str, str]] = frozenset(
         ("telemetry", "GET", "/"),
         ("reporting", "GET", "/"),
         ("rfp", "GET", "/"),
+        ("rfp", "GET", "/livez"),
+        ("rfp", "GET", "/readyz"),
         ("knowledge", "GET", "/"),
         # --- auth public token endpoints ---
         ("auth", "POST", "/auth/register"),

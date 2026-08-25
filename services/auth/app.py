@@ -6,14 +6,17 @@ from typing import Annotated
 
 from brasaland_auth_verify.surface import fastapi_docs_kwargs
 from fastapi import Body, Depends, FastAPI, HTTPException, Request, Response, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr, Field
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
+from auth.db import resolve_db_path
 from auth.email_sender import send_password_reset_email
+from auth.health import auth_ready_reason
+from auth.request_log import RequestIdAccessLogMiddleware, disable_uvicorn_access_log
 from auth.security import TokenError
 from auth.service import (
     authenticate_user,
@@ -50,6 +53,10 @@ STATIC_DIR = Path(__file__).parent / "static"
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    try:
+        resolve_db_path().parent.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        logger.warning("Could not create TinyDB parent path; /readyz will fail")
     seeded = ensure_bootstrap_admin()
     if seeded is not None:
         logger.info("Bootstrap admin seeded: %s", seeded["email"])
@@ -61,6 +68,8 @@ app = FastAPI(
     lifespan=lifespan,
     **fastapi_docs_kwargs(),
 )
+disable_uvicorn_access_log()
+app.add_middleware(RequestIdAccessLogMiddleware)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -381,6 +390,22 @@ def delete_user_by_id(
     except UserNotFoundError as error:
         raise HTTPException(status_code=404, detail=USER_NOT_FOUND) from error
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@app.get("/livez")
+def livez() -> dict[str, str]:
+    return {"status": "ok"}
+
+
+@app.get("/readyz")
+def readyz() -> JSONResponse:
+    reason = auth_ready_reason()
+    if reason is None:
+        return JSONResponse({"status": "ok"})
+    return JSONResponse(
+        {"status": "unavailable", "reason": reason},
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+    )
 
 
 @app.get("/")

@@ -88,4 +88,28 @@ describe('auth client', () => {
     expect(localStorage.removeItem).toHaveBeenCalledWith('brasaland_access_token');
     expect(assignMock).toHaveBeenCalledWith('/login');
   });
+
+  it('defaults auth base to /api/auth when NEXT_PUBLIC_AUTH_API_URL is unset', async () => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          access_token: 'rel-token',
+          refresh_token: 'rel-refresh',
+          token_type: 'bearer',
+        }),
+        { status: 200 },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { login } = await import('./auth');
+    await login('ops@brasaland.com', 'password123');
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/auth/login',
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
 });

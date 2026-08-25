@@ -1083,3 +1083,18 @@ cd services/knowledge; uv run pytest
 - **Separate fix during smoke:** `d493979` `fix(compose): mount packages into reporting-worker so auth-verify path dep resolves` — reporting-worker was the only auth-verify `uv run` service missing `./packages:/app/packages`; crash-loop on force-recreate. Own commit, not folded into the queue change.
 
 **Out of this arc:** `--concurrency=1` (SQLite checkpointer band-aid), Redis DB split, Flower changes.
+
+## RFP slice deploy (pre-deploy blocker) — `feature/deploy-vertical-slice`
+
+**Status:** Phases A–G committed locally. Hosted go-live is Phase H (operator-only). Deployed at `<URL>` — fill after the Phase H laptop-off E2E.
+
+**What closed (this session, C–G):**
+
+- **C — request IDs / access logs:** Auth and rfp honor/generate `X-Request-ID`, echo it on the response, and emit one JSON access line (`brasaland.access`) from an allowlist: `method`, `path`, `status`, `duration_ms`, `request_id`. Uvicorn access log is disabled (this is the single source). `/livez` and `/readyz` are excluded. Bodies, query strings, Authorization, tokens, passwords, `DATABASE_URL`, JWT PEMs, and `GEN_*_API_KEY` are never logged.
+- **D — solo worker:** `docker-compose.yml` `rfp-worker` is `--pool=solo -Q rfp`. Documented one-replica + SqliteSaver constraint. Slice Compose uses the same pin.
+- **E — non-root + production backoffice:** Auth (`services/Dockerfile`) and rfp run as uid 1000. Generic Dockerfile also covers out-of-slice services — existing named volumes may need a one-time `chown`. New `uis/backoffice/Dockerfile` (`next start -p 3003`, `AUTH_API_ORIGIN=http://auth:8002` / `RFP_API_ORIGIN=http://rfp:8017` before `next build`). Browser bases default to relative `/api/auth` and `/api/rfp`. `NEXT_PUBLIC_SLICE_NAV=1` hides inventory/reporting/knowledge. `uis/start.sh` unchanged.
+- **F — slice overlay:** `docker-compose.slice.yml` (caddy, backoffice, auth, rfp, rfp-worker, redis). No `--reload`, no source bind-mounts. Volumes: `auth_data`, `rfp_checkpoint`, `rfp_uploads` → `/app/data/raw` only, `redis_data`, `caddy_data`. Publish 80/443 on Caddy only. Reset-password Caddy handles omitted. `REDIS_URL=redis://redis:6379/0` inside the network.
+- **G — runbook:** [`docs/deploy/rfp-slice.md`](docs/deploy/rfp-slice.md). Slice notes on auth/rfp/backoffice READMEs.
+
+**Not run here:** Phase H (provision, DNS, TLS, RLS DDL, pg_dump, hosted deploy, laptop-off E2E). No push, no PR.
+

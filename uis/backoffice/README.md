@@ -121,3 +121,7 @@ npm run build
 ## Architecture note
 
 Browser requests hit the Next.js dev server on port 3003, which rewrites to the Python services. This avoids adding CORS middleware to `services/inventory` or `services/auth`.
+
+## Production slice
+
+`uis/start.sh` is local three-`next dev` only — do not use it in production. The image [`Dockerfile`](./Dockerfile) runs `next start -p 3003` as the `node` user. Browser API bases default to relative `/api/auth` and `/api/rfp` when `NEXT_PUBLIC_*` is unset. `NEXT_PUBLIC_SLICE_NAV=1` (baked in the image) shows Dashboard, Locations, RFP, Profile only. Runbook: [../../docs/deploy/rfp-slice.md](../../docs/deploy/rfp-slice.md).

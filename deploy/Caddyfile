@@ -1,0 +1,4 @@
+{$SLICE_HOST:localhost} {
+	encode gzip
+	reverse_proxy backoffice:3003
+}
