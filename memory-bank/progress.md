@@ -1100,13 +1100,25 @@ cd services/knowledge; uv run pytest
 
 ## Alembic baseline cleanup — `chore/alembic-baseline-m5`
 
-**Status:** Implemented on branch (model reconcile + Alembic baseline + live stamp). Next PR: UNIQUE constraints on `department_section (ticket_id, department_id)` and `final_document (ticket_id)` as the first post-baseline migration.
+**Status:** Merged. First post-baseline migration shipped separately (`chore/rfp-unique-constraints`).
 
 **What closed:**
 
 - Reconciled live↔model drift: dropped dead `public.checkpoint_*` PostgresSaver leftovers (RFP checkpointer remains SqliteSaver); `FinalDocument.document` → JSONB variant; GIN `ix_telemetry_events_tags_gin` declared on telemetry model; created `ix_ticket_owner_user_uuid` on live.
 - Single Alembic home under `data/` with `env.py` importlib loading of inventory / incident-manager / telemetry models + `pipelines.*`; full-schema baseline `c563e07756e0` generated against empty disposable Postgres; live m5 stamped at that revision (no `upgrade` on live).
 - Record correction: RFP public tables (`ticket`, `rfp_metadata`, `department_section`, `final_document`) are **already RLS-enabled** live with zero policies.
+
+Ground every decision in what the repo actually is. The 4Geeks spec is a floor/guide and minimum requirement, not a ceiling — don't take it too literally. Exceed it where best practices serve the repo; build genuinely like a professional/production engineer, not to pass the grader.
+
+## RFP unique constraints — first real Alembic migration — `chore/rfp-unique-constraints`
+
+**Status:** Implemented (models + revision `d38c62feec63` + live apply on m5).
+
+**What closed:**
+
+- Added `uq_department_section_ticket_department` on `(ticket_id, department_id)` and `uq_final_document_ticket` on `ticket_id` in SQLModel and Alembic revision `d38c62feec63` (`down_revision = c563e07756e0`); autogenerate produced only the two `create_unique_constraint` ops (hitchhiker gate passed).
+- Live m5: pre-apply dupe scans empty; constraints applied via reviewed migration; `alembic_version` advanced to `d38c62feec63`. Validated revision → apply → live end-to-end (first real migration after baseline stamp).
+- Repository duplicate-insert tests rewritten to assert `IntegrityError` on `save_department_sections`; docstring updated for DB-enforced pair uniqueness.
 
 Ground every decision in what the repo actually is. The 4Geeks spec is a floor/guide and minimum requirement, not a ceiling — don't take it too literally. Exceed it where best practices serve the repo; build genuinely like a professional/production engineer, not to pass the grader.
 

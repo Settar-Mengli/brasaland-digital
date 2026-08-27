@@ -95,6 +95,11 @@ class RfpMetadata(SQLModel, table=True):
 class DepartmentSection(SQLModel, table=True):
     __tablename__ = "department_section"
     __table_args__ = (
+        UniqueConstraint(
+            "ticket_id",
+            "department_id",
+            name="uq_department_section_ticket_department",
+        ),
         CheckConstraint(
             "approval_status IN ('pending', 'approved', 'rejected')",
             name="ck_department_section_approval_status",
@@ -133,6 +138,9 @@ class DepartmentSection(SQLModel, table=True):
 
 class FinalDocument(SQLModel, table=True):
     __tablename__ = "final_document"
+    __table_args__ = (
+        UniqueConstraint("ticket_id", name="uq_final_document_ticket"),
+    )
 
     id: int | None = Field(default=None, primary_key=True)
     ticket_id: str = Field(

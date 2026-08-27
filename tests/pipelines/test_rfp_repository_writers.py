@@ -11,6 +11,7 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import event
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine, select
 
@@ -236,7 +237,9 @@ def test_update_department_section_raises_when_missing(session: Session) -> None
         )
 
 
-def test_update_department_section_raises_when_duplicate(session: Session) -> None:
+def test_save_department_sections_rejects_duplicate_ticket_department(
+    session: Session,
+) -> None:
     rfp_id = str(uuid4())
     ticket, _ = create_ticket(
         session,
@@ -244,22 +247,14 @@ def test_update_department_section_raises_when_duplicate(session: Session) -> No
         content_hash=f"hash-{rfp_id}",
         raw_pdf_path="/tmp/x.pdf",
     )
-    # Two rows with the same (ticket_id, department_id) — allowed without a unique.
-    save_department_sections(
-        session,
-        ticket_id=ticket.ticket_id,
-        sections=[
-            {"department_id": "marketing", "key_aspects": ["a"]},
-            {"department_id": "marketing", "key_aspects": ["b"]},
-        ],
-    )
-    with pytest.raises(ValueError, match="multiple department_section rows"):
-        update_department_section(
+    with pytest.raises(IntegrityError):
+        save_department_sections(
             session,
             ticket_id=ticket.ticket_id,
-            department_id="marketing",
-            draft_content="x",
-            evaluation_results={},
+            sections=[
+                {"department_id": "marketing", "key_aspects": ["a"]},
+                {"department_id": "marketing", "key_aspects": ["b"]},
+            ],
         )
 
 
@@ -547,7 +542,10 @@ def test_approval_and_merge_raise_when_missing(session: Session) -> None:
         )
 
 
-def test_approval_and_merge_raise_when_duplicate(session: Session) -> None:
+def test_save_department_sections_rejects_duplicate_for_approval_path(
+    session: Session,
+) -> None:
+    """Duplicate (ticket_id, department_id) is rejected before approval/merge paths."""
     rfp_id = str(uuid4())
     ticket, _ = create_ticket(
         session,
@@ -555,27 +553,12 @@ def test_approval_and_merge_raise_when_duplicate(session: Session) -> None:
         content_hash=f"hash-{rfp_id}",
         raw_pdf_path="/tmp/x.pdf",
     )
-    save_department_sections(
-        session,
-        ticket_id=ticket.ticket_id,
-        sections=[
-            {"department_id": "marketing", "key_aspects": ["a"]},
-            {"department_id": "marketing", "key_aspects": ["b"]},
-        ],
-    )
-    with pytest.raises(ValueError, match="multiple department_section rows"):
-        update_department_section_approval(
+    with pytest.raises(IntegrityError):
+        save_department_sections(
             session,
             ticket_id=ticket.ticket_id,
-            department_id="marketing",
-            approval_status="approved",
-            approver="Camila Ospina",
-            approved_at=datetime.now(UTC),
-        )
-    with pytest.raises(ValueError, match="multiple department_section rows"):
-        merge_evaluation_results(
-            session,
-            ticket_id=ticket.ticket_id,
-            department_id="marketing",
-            patch={"cost": 1.0},
+            sections=[
+                {"department_id": "marketing", "key_aspects": ["a"]},
+                {"department_id": "marketing", "key_aspects": ["b"]},
+            ],
         )

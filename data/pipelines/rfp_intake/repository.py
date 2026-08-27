@@ -189,7 +189,9 @@ def update_department_section(
 ) -> DepartmentSection:
     """Update draft_content and evaluation_results for one (ticket, department) row.
 
-    Enforces a single matching row in application code (no DB unique on the pair).
+    The DB enforces one row per (ticket_id, department_id) via
+    ``uq_department_section_ticket_department``. Application code still guards
+    zero or multiple matches as defense-in-depth.
     """
     rows = list(
         session.exec(
