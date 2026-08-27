@@ -38,6 +38,7 @@ class RequestIdAccessLogMiddleware(BaseHTTPMiddleware):
     ) -> Response:
         incoming = request.headers.get(_REQUEST_ID_HEADER, "").strip()
         request_id = incoming or str(uuid.uuid4())
+        request.state.request_id = request_id
         started = time.perf_counter()
         response = await call_next(request)
         response.headers["X-Request-ID"] = request_id

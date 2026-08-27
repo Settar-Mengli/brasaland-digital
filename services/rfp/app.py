@@ -7,6 +7,7 @@ from typing import AsyncIterator
 
 from fastapi import FastAPI, status
 from fastapi.responses import JSONResponse
+from starlette.requests import Request
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
@@ -45,6 +46,21 @@ disable_uvicorn_access_log()
 app.add_middleware(RequestIdAccessLogMiddleware)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    request_id = getattr(request.state, "request_id", None)
+    logger.error(
+        "unhandled_server_error",
+        extra={"path": request.url.path, "request_id": request_id},
+    )
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "An unexpected error occurred."},
+    )
+
+
 app.include_router(rfp_router)
 
 

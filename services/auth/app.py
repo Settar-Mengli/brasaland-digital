@@ -73,6 +73,20 @@ app.add_middleware(RequestIdAccessLogMiddleware)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    request_id = getattr(request.state, "request_id", None)
+    logger.error(
+        "unhandled_server_error",
+        extra={"path": request.url.path, "request_id": request_id},
+    )
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "An unexpected error occurred."},
+    )
+
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 FORGOT_PASSWORD_MESSAGE = "If that email is registered, a reset link has been sent."
@@ -263,13 +277,17 @@ def auth_logout(body: RefreshRequest) -> Response:
 
 
 @app.post("/auth/forgot-password", response_model=MessageResponse)
-def auth_forgot_password(body: ForgotPasswordRequest) -> MessageResponse:
+def auth_forgot_password(request: Request, body: ForgotPasswordRequest) -> MessageResponse:
     token = request_password_reset(str(body.email))
     if token is not None:
         try:
             send_password_reset_email(str(body.email), token)
         except Exception:
-            logger.exception("Failed to send password reset email")
+            request_id = getattr(request.state, "request_id", None)
+            logger.error(
+                "password_reset_email_failed",
+                extra={"request_id": request_id},
+            )
     return MessageResponse(message=FORGOT_PASSWORD_MESSAGE)
 
 

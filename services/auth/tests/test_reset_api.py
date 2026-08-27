@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import pytest
@@ -78,11 +79,13 @@ def test_forgot_password_unknown_email_matches_registered_response(
 def test_forgot_password_send_failure_still_returns_generic_message(
     client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     def failing_send(to_email: str, token: str) -> None:
         raise RuntimeError("Resend API unavailable")
 
     monkeypatch.setattr(app_module, "send_password_reset_email", failing_send)
+    caplog.set_level(logging.ERROR)
 
     client.post(
         "/auth/register",
@@ -98,6 +101,12 @@ def test_forgot_password_send_failure_still_returns_generic_message(
     assert response.json() == {
         "message": app_module.FORGOT_PASSWORD_MESSAGE,
     }
+    log_text = caplog.text
+    assert "password_reset_email_failed" in log_text
+    assert "token=" not in log_text
+    assert "/reset-password?" not in log_text
+    assert "Traceback" not in log_text
+    assert "Resend API unavailable" not in log_text
 
 
 def test_forgot_password_reset_login_full_flow(
