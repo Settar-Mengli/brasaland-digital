@@ -43,7 +43,7 @@ Noted option, **not implemented:** a self-healing root entrypoint that chowns th
 | --- | --- | --- |
 | `auth_data` | `/app/services/auth/data` | TinyDB users + refresh tokens |
 | `rfp_checkpoint` | `/app/checkpoint` | LangGraph SqliteSaver (in-flight approval interrupts) |
-| `rfp_uploads` | `/app/data/raw` **only** | Uploaded PDFs (never mount over all of `/app/data`). Image `/app/data/raw` is empty so copy-up does not race. CONTEXT §5 is baked at `/app/context/CONTEXT-rfp.md` (`RFP_CONTEXT_PATH`). Seed PDFs are not in the image — `docker cp` a fixture into the volume for smoke. |
+| `rfp_uploads` | `/app/data/raw` **only** | Uploaded PDFs (never mount over all of `/app/data`). Staging temps land in `raw/.tmp/` on the same mount (covered by PRE-FIRST-BOOT chown). Image `/app/data/raw` is empty so copy-up does not race. CONTEXT §5 is baked at `/app/context/CONTEXT-rfp.md` (`RFP_CONTEXT_PATH`). Seed PDFs are not in the image — `docker cp` a fixture into the volume for smoke. |
 | `redis_data` | `/data` | Celery broker persistence |
 | `caddy_data` | `/data` | TLS certificates |
 

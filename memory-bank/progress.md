@@ -1122,6 +1122,18 @@ Ground every decision in what the repo actually is. The 4Geeks spec is a floor/g
 
 Ground every decision in what the repo actually is. The 4Geeks spec is a floor/guide and minimum requirement, not a ceiling — don't take it too literally. Exceed it where best practices serve the repo; build genuinely like a professional/production engineer, not to pass the grader.
 
+## RFP upload hygiene — `fix/rfp-upload-hygiene`
+
+**Status:** Implemented (stream-to-temp, rename-before-dedupe, dup/failure unlink; no live DB).
+
+**What closed:**
+
+- Upload streams to `data/raw/.tmp/{uuid}.part` on the same volume as finals (never `/tmp` — avoids EXDEV); O(chunk) memory instead of full in-memory join.
+- Router renames temp → final UUID PDF **before** `create_ticket`; duplicate hash unlinks the loser's file; DB/413/400 failure paths unlink temps/finals. Background orphan sweeper parked.
+- Upload tests assert filesystem state: dup upload leaves exactly one `.pdf` and empty `.tmp`.
+
+Ground every decision in what the repo actually is. The 4Geeks spec is a floor/guide and minimum requirement, not a ceiling — don't take it too literally. Exceed it where best practices serve the repo; build genuinely like a professional/production engineer, not to pass the grader.
+
 ## C1 reject→regen evaluator parity
 
 **Status:** Implemented (driver-side `evaluate_all` on regen persist; tests rewritten; no checkpoint wipe).

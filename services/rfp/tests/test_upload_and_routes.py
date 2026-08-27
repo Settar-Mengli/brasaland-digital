@@ -22,6 +22,8 @@ from brasaland_auth_verify.deps import get_verified_claims
 from app import app
 from database import get_db
 
+import upload as upload_module
+
 _test_engine = create_engine(
     "sqlite://",
     connect_args={"check_same_thread": False},
@@ -75,6 +77,20 @@ def _tiny_pdf() -> bytes:
     return b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"
 
 
+def _pdf_files() -> list[Path]:
+    raw = upload_module.DATA_RAW
+    if not raw.is_dir():
+        return []
+    return list(raw.glob("*.pdf"))
+
+
+def _tmp_staging_files() -> list[Path]:
+    tmp = upload_module._data_raw_tmp()
+    if not tmp.is_dir():
+        return []
+    return list(tmp.glob("*"))
+
+
 def test_post_tickets_unauthorized() -> None:
     from fastapi.testclient import TestClient
 
@@ -109,6 +125,9 @@ def test_upload_valid_pdf_returns_202(client) -> None:
     assert body["ticket_id"]
     assert body["rfp_id"]
     delay.assert_called_once_with(body["ticket_id"])
+    assert len(_pdf_files()) == 1
+    assert _tmp_staging_files() == []
+    assert not str(_pdf_files()[0]).endswith(".part")
 
 
 def test_upload_non_pdf_returns_400(client) -> None:
@@ -118,6 +137,8 @@ def test_upload_non_pdf_returns_400(client) -> None:
     )
     assert response.status_code == 400
     assert "not a valid PDF" in response.json()["detail"]
+    assert _pdf_files() == []
+    assert _tmp_staging_files() == []
 
 
 def test_upload_over_cap_returns_413(client) -> None:
@@ -131,6 +152,8 @@ def test_upload_over_cap_returns_413(client) -> None:
         files={"file": ("big.pdf", huge, "application/pdf")},
     )
     assert response.status_code == 413
+    assert _pdf_files() == []
+    assert _tmp_staging_files() == []
 
 
 def test_get_ticket_round_trip_and_404(client) -> None:
@@ -165,6 +188,8 @@ def test_duplicate_upload_is_idempotent_and_enqueues_once(client) -> None:
     assert second.status_code == 202
     assert first.json()["ticket_id"] == second.json()["ticket_id"]
     assert delay.call_count == 1
+    assert len(_pdf_files()) == 1
+    assert _tmp_staging_files() == []
 
 
 def test_post_response_unauthorized() -> None:

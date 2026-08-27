@@ -26,6 +26,8 @@ CEO interrupts over HTTP, and synthesizes `FinalDocument` → `done`.
 
 **Owner ACL:** every ticket route after create requires the caller to be the ticket `owner_user_uuid` or an admin (`is_admin`). Tickets with a NULL owner deny non-admins (**403**). Upload is rate-limited (`RATE_LIMIT_RFP_UPLOAD`, default `10/minute`). Interactive docs/OpenAPI only when `EXPOSE_DOCS=1`.
 
+**Upload storage:** PDFs stream to `data/raw/.tmp/` (same volume as finals), rename to `{uuid}.pdf` before content-hash dedupe, and duplicate uploads unlink the loser's copy (one file per distinct hash).
+
 ### GET payload (expanded)
 
 `sections` is always present (empty list when none). Each entry:
@@ -133,7 +135,7 @@ Multipart field name `file`. Server-side defenses: **10 MiB** cap (413), require
 
 ## Tests
 
-Expect **19** tests under `services/rfp/tests/` (upload/routes, response, approval task + routes). Pipeline E2E for Parts 1→3 lives in `tests/pipelines/test_rfp_e2e_approval.py`.
+Expect **20** tests under `services/rfp/tests/` (upload/routes, response, approval task + routes). Pipeline E2E for Parts 1→3 lives in `tests/pipelines/test_rfp_e2e_approval.py`.
 
 ## Production slice
 
