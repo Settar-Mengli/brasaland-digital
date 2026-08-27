@@ -183,6 +183,7 @@ name = "brasaland-data"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "alembic" },
     { name = "fastembed" },
     { name = "httpx" },
     { name = "langchain-mcp-adapters" },
@@ -211,6 +212,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "alembic", specifier = ">=1.14,<2" },
     { name = "fastembed" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "langchain-mcp-adapters", specifier = ">=0.3.1" },

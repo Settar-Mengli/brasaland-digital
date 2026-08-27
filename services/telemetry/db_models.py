@@ -17,6 +17,7 @@ class TelemetryEventRow(SQLModel, table=True):
     __table_args__ = (
         Index("ix_telemetry_events_timestamp", "timestamp"),
         Index("ix_telemetry_events_event_type", "event_type"),
+        Index("ix_telemetry_events_tags_gin", "tags", postgresql_using="gin"),
     )
 
     id: int | None = Field(default=None, primary_key=True)

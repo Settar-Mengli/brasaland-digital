@@ -13,6 +13,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.types import JSON
 from sqlmodel import Field, SQLModel
 
@@ -142,7 +143,11 @@ class FinalDocument(SQLModel, table=True):
         default=None, sa_column=Column(Text, nullable=True)
     )
     document: Optional[dict[str, Any]] = Field(
-        default=None, sa_column=Column(JSON, nullable=True)
+        default=None,
+        sa_column=Column(
+            JSON().with_variant(JSONB(), "postgresql"),
+            nullable=True,
+        ),
     )
     generated_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
