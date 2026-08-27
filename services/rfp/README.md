@@ -117,15 +117,15 @@ Compose also mounts separate named volumes `rfp_venv` and `rfp_worker_venv` over
 `.venv`. After adding or changing the saver stack, refresh **both** volumes so both
 containers have the packages.
 
-## Owner column (Lane-2)
+## Owner column + index
 
-Nullable `ticket.owner_user_uuid` is **not** applied by Alembic. Operators add it once with:
+Nullable `ticket.owner_user_uuid` exists on live m5. Index `ix_ticket_owner_user_uuid` is declared on the SQLModel (`index=True`) and included in the Alembic baseline under `data/`. Legacy one-time column add (if ever needed on a fresh DB before migrations):
 
 ```powershell
 uv run --directory services/rfp python ../../scripts/add_rfp_ticket_owner_column.py
 ```
 
-(Use `--dry-run` first against live `DATABASE_URL`.) Existing rows stay NULL until re-uploaded or manually backfilled; NULL owner ⇒ non-admin access is denied.
+(Use `--dry-run` first against live `DATABASE_URL`.) SqliteSaver on volume `rfp_checkpoint` is unchanged; there are no Postgres LangGraph checkpoint tables on m5.
 
 ## Upload hardening
 

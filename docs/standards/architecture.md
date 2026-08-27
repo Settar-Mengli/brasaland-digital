@@ -26,7 +26,7 @@ When replacing a persistence backend (for example TinyDB → SQLModel/PostgreSQL
 1. Swap repository **internals** while keeping the same public function signatures (Path A).
 2. Leave `service.py` and `app.py` unchanged except where signatures truly must change.
 3. Leave pure shared packages untouched (validation/lifecycle only — no database code).
-4. Create/evolve tables via SQLModel metadata and lazy `ensure_schema()` on first DB access (see [Schema and database change policy](./agent-workflow.md#schema-and-database-change-policy)).
+4. Create/evolve tables via SQLModel metadata plus the Alembic baseline/history under `data/` (see [Schema and database change policy](./agent-workflow.md#schema-and-database-change-policy)); lazy `ensure_schema()` / `create_all` remain transitional bootstrap only.
 
 ## Secrets playbook
 

@@ -41,7 +41,7 @@ services/telemetry/
 
 **Immutability:** append-only by convention — no UPDATE/DELETE routes exist. Corrections are out of scope for Phase 1.
 
-**GIN index** on `tags` is Postgres-only; created by `scripts/setup_telemetry_table.py` (not asserted in SQLite tests).
+**GIN index** on `tags` is Postgres-only; declared on the SQLModel (`ix_telemetry_events_tags_gin`) and owned by the Alembic baseline under `data/`. Legacy bootstrap: `scripts/setup_telemetry_table.py` (not asserted in SQLite tests).
 
 ## Validation stages
 

@@ -1,0 +1,5 @@
+Single Alembic history for brasaland-m5.
+
+- Generate / upgrade against disposable Postgres only (never upgrade live m5
+  until a revision is reviewed).
+- Stamp live m5 after a baseline when the live schema already matches models.

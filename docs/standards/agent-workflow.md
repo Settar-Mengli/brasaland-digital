@@ -69,9 +69,9 @@ The operator personally runs all production-touching steps (deployments, secret 
 
 One policy, two lanes. This is the sole home for schema discipline.
 
-**Lane 1 — Tables/columns:** Change tables and columns only through SQLModel metadata / `ensure_schema` in service code. `models.py` is the source of truth.
+**Lane 1 — Tables/columns:** Change tables and columns through SQLModel metadata **and** Alembic revisions under [`data/`](../../data/) (single history / `public.alembic_version` for brasaland-m5). Generate and `upgrade` only against disposable Postgres; **stamp** live m5 when the live schema already matches models (baseline). `create_all` / `ensure_schema()` remain transitional bootstrap until retired — do not use them as the long-term DDL path for production schema changes.
 
-**Lane 2 — RLS, indexes, and anything SQLModel metadata cannot express:** Change these only through idempotent scripts at repo-root `scripts/`. Operator-run. `--dry-run` before every real run. Target identifiers hardcoded as module constants.
+**Lane 2 — RLS and one-off ops not yet expressed in migrations:** Change these only through idempotent scripts at repo-root `scripts/`. Operator-run. `--dry-run` before every real run. Target identifiers hardcoded as module constants. Indexes that belong on models (for example GIN on `telemetry_events.tags`) should be declared in SQLModel/`__table_args__` so Alembic owns them; legacy scripts may remain as idempotent bootstrap only.
 
 **Never, in either lane:**
 
@@ -80,4 +80,4 @@ One policy, two lanes. This is the sole home for schema discipline.
 
 MCP is **read-only verification** only.
 
-**New-table obligation:** Any new table must be added to the `TABLES` constant in `scripts/enable_rls.py`, then re-run that script with `--dry-run` first and again for real.
+**New-table obligation:** Any new table must be added to the `TABLES` constant in `scripts/enable_rls.py` (or the reporting setup script when in `reporting`), then re-run that script with `--dry-run` first and again for real. Also add the model to Alembic metadata imports in `data/alembic/env.py` and ship a revision.

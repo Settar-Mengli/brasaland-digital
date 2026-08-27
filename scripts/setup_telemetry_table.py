@@ -1,3 +1,10 @@
+"""Create telemetry_events indexes on brasaland-m5 (idempotent).
+
+Indexes (including GIN on tags) are now declared on the SQLModel and owned by
+the Alembic baseline under data/. This script remains as legacy/idempotent
+Lane-2 bootstrap only — prefer migrations for new environments.
+"""
+
 from __future__ import annotations
 
 import argparse

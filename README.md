@@ -159,9 +159,11 @@ The backoffice and incident-manager UIs proxy API calls through Next.js rewrites
 
 ### Database security (RLS)
 
-All five brasaland-m5 public tables (`ingredient`, `ingrediententry`, `ingredientexit`, `incident`, `telemetry_events`) have **Row-Level Security enabled with zero policies** — a deny-by-default posture on the PostgREST/anon Data API path, which nothing in this repo uses.
+brasaland-m5 public app tables (`ingredient`, `ingrediententry`, `ingredientexit`, `incident`, `telemetry_events`, `ticket`, `rfp_metadata`, `department_section`, `final_document`) have **Row-Level Security enabled with zero policies** — a deny-by-default posture on the PostgREST/anon Data API path, which nothing in this repo uses. RFP tables are **already RLS-enabled** live (not a pending enablement). Dead LangGraph `PostgresSaver` leftovers (`checkpoint_*`) were dropped; the live RFP checkpointer is SqliteSaver only.
 
-The FastAPI services (`services/inventory`, `services/incident-manager`) connect via `DATABASE_URL` as the table owner and bypass RLS. **FORCE ROW LEVEL SECURITY** is deliberately not set.
+The FastAPI services connect via `DATABASE_URL` as the table owner (`postgres`) and bypass RLS. **FORCE ROW LEVEL SECURITY** is deliberately not set.
+
+**Schema source of truth:** Alembic under [`data/`](data/) (baseline revision stamped on live m5). Generate/upgrade against disposable Postgres only; stamp live when schema already matches. `create_all` remains transitional.
 
 One-time enablement (or re-enablement after adding tables):
 
@@ -171,7 +173,7 @@ uv run --python 3.13 python ../../scripts/enable_rls.py
 uv run --python 3.13 python ../../scripts/enable_rls.py --dry-run
 ```
 
-**Future-table caveat:** `SQLModel.metadata.create_all` creates new tables with RLS **disabled**. Re-run `scripts/enable_rls.py` after adding any table. For `telemetry_events`, run `scripts/setup_telemetry_table.py` after the table exists to create production indexes (including GIN on `tags`).
+**Future-table caveat:** `SQLModel.metadata.create_all` creates new tables with RLS **disabled**. Re-run `scripts/enable_rls.py` after adding any table. Prefer Alembic for schema DDL going forward. Legacy `scripts/setup_telemetry_table.py` remains idempotent bootstrap for telemetry indexes (GIN is also on the model / baseline).
 
 ## Nightly telemetry export (DEV-53)
 
