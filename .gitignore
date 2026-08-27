@@ -49,6 +49,7 @@ data/raw/*.csv
 !data/raw/brasaland_sales.csv
 # Runtime RFP PDF uploads (seed PDFs under data/raw/seed/ stay trackable)
 data/raw/*.pdf
+data/raw/.tmp/
 
 # Local Qdrant storage (named compose volume is primary; guard native runs)
 qdrant_storage/

@@ -24,7 +24,8 @@ from pipelines.rfp_intake.repository import (
 )
 from rate_limit import RFP_UPLOAD_RATE_LIMIT, limiter
 from tasks import process_rfp, process_rfp_approval, process_rfp_response
-from upload import save_upload
+import upload
+from upload import _safe_unlink, save_upload_to_temp
 
 router = APIRouter(prefix="/rfp")
 
@@ -58,16 +59,30 @@ async def post_ticket(
     claims: Annotated[dict[str, Any], Depends(get_verified_claims)],
 ) -> JSONResponse:
     owner_uuid = _caller_uuid(claims)
-    path, content_hash = await save_upload(file)
-    rfp_id = uuid4().hex
-    ticket, created = create_ticket(
-        session,
-        rfp_id=rfp_id,
-        content_hash=content_hash,
-        raw_pdf_path=str(path),
-        owner_user_uuid=owner_uuid,
-    )
-    if created:
+    temp_path, content_hash = await save_upload_to_temp(file)
+    final_path = upload.DATA_RAW / f"{uuid4().hex}.pdf"
+    try:
+        temp_path.rename(final_path)
+    except OSError as exc:
+        _safe_unlink(temp_path)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="failed to store uploaded PDF",
+        ) from exc
+    try:
+        ticket, created = create_ticket(
+            session,
+            rfp_id=uuid4().hex,
+            content_hash=content_hash,
+            raw_pdf_path=str(final_path),
+            owner_user_uuid=owner_uuid,
+        )
+    except Exception:
+        _safe_unlink(final_path)
+        raise
+    if not created:
+        _safe_unlink(final_path)
+    else:
         process_rfp.delay(ticket.ticket_id)
     return JSONResponse(
         status_code=202,
