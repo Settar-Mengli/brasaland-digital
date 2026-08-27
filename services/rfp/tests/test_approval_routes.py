@@ -87,6 +87,7 @@ def _seed_waiting(
     *,
     departments: list[str] | None = None,
     ceo_required: bool = False,
+    key_aspects_by_dept: dict[str, list[str]] | None = None,
 ) -> str:
     departments = departments or ["marketing"]
     with Session(_test_engine) as session:
@@ -110,7 +111,11 @@ def _seed_waiting(
             session,
             ticket_id=ticket.ticket_id,
             sections=[
-                {"department_id": d, "key_aspects": [d]} for d in departments
+                {
+                    "department_id": d,
+                    "key_aspects": (key_aspects_by_dept or {}).get(d, [d]),
+                }
+                for d in departments
             ],
         )
         arb = {
@@ -135,6 +140,21 @@ def _seed_waiting(
         update_ticket_status(session, ticket.ticket_id, "under_evaluation")
         update_ticket_status(session, ticket.ticket_id, "waiting_for_approval")
         return ticket.ticket_id
+
+
+_FAIL_REGEN_DRAFT = (
+    "We propose catering with pricing in COP and USD. "
+    "Setup takes twelve business days. "
+    "This offer is valid for 30 days from issuance."
+)
+
+_PASS_REGEN_DRAFT = (
+    "Brasaland delivers consistent quality, a warm experience, and speed of service. "
+    "Our catering proposal covers brand exclusivity for the client. "
+    "Pricing is quoted in both COP and USD. "
+    "Setup requires 12 business days. "
+    "This offer is valid for 30 days from issuance."
+)
 
 
 class _FakeInterrupt:
@@ -218,14 +238,19 @@ def test_decision_approve_finalizes_without_ceo(client) -> None:
         assert row.approver == "Camila Ospina"
 
 
-def test_decision_reject_regen_persists_new_interrupt(client) -> None:
-    ticket_id = _seed_waiting(departments=["marketing"], ceo_required=False)
+def test_decision_reject_regen_failing_draft_overwrites_stale_pass(client) -> None:
+    """C1: real evaluate_all on FAIL draft must clear stale overall_pass=True."""
+    ticket_id = _seed_waiting(
+        departments=["marketing"],
+        ceo_required=False,
+        key_aspects_by_dept={"marketing": ["brand exclusivity"]},
+    )
 
     fake_graph = MagicMock()
     fake_graph.invoke.return_value = {
         "__interrupt__": [_FakeInterrupt("int-marketing-2", {"draft": "v2"})],
         "section": {
-            "draft_content": "marketing draft v2",
+            "draft_content": _FAIL_REGEN_DRAFT,
             "cost": 11.0,
             "setup_days": 3.0,
             "price_per_cover": None,
@@ -257,15 +282,68 @@ def test_decision_reject_regen_persists_new_interrupt(client) -> None:
 
     with Session(_test_engine) as session:
         row = get_department_sections(session, ticket_id)[0]
-        assert row.draft_content == "marketing draft v2"
+        assert row.draft_content == _FAIL_REGEN_DRAFT
         eval_results = row.evaluation_results or {}
         assert eval_results["interrupt_id"] == "int-marketing-2"
         assert eval_results["cost"] == 11.0
-        assert eval_results["overall_pass"] is True
+        assert eval_results["overall_pass"] is False
+        assert "brand_pillars" in (eval_results.get("compliance") or {}).get(
+            "rule_ids", []
+        )
+        assert eval_results["arbitration"]["ceo_approval_required"] is False
         assert eval_results["human_feedback"] == "tighten brand"
         ticket = get_ticket(session, ticket_id)
         assert ticket is not None
         assert ticket.status == "waiting_for_approval"
+
+
+def test_decision_reject_regen_passing_draft_writes_fresh_pass(client) -> None:
+    """C1: real evaluate_all on PASS draft yields overall_pass True from new text."""
+    ticket_id = _seed_waiting(
+        departments=["marketing"],
+        ceo_required=False,
+        key_aspects_by_dept={"marketing": ["brand exclusivity"]},
+    )
+
+    fake_graph = MagicMock()
+    fake_graph.invoke.return_value = {
+        "__interrupt__": [_FakeInterrupt("int-marketing-2", {"draft": "v2"})],
+        "section": {
+            "draft_content": _PASS_REGEN_DRAFT,
+            "cost": 11.0,
+            "setup_days": 3.0,
+            "price_per_cover": None,
+            "human_feedback": "looks good after polish",
+        },
+        "rework_count": 1,
+    }
+    fake_cm = MagicMock()
+    fake_cm.__enter__.return_value = MagicMock()
+    fake_cm.__exit__.return_value = None
+
+    with (
+        patch("approval_driver.checkpointer_cm", return_value=fake_cm),
+        patch("approval_driver.build_dept_approval_graph", return_value=fake_graph),
+    ):
+        response = client.post(
+            f"/rfp/tickets/{ticket_id}/sections/marketing/decision",
+            json={"action": "reject", "feedback": "looks good after polish"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["outcome"] == "pending_reapproval"
+
+    with Session(_test_engine) as session:
+        row = get_department_sections(session, ticket_id)[0]
+        assert row.draft_content == _PASS_REGEN_DRAFT
+        eval_results = row.evaluation_results or {}
+        assert eval_results["interrupt_id"] == "int-marketing-2"
+        assert eval_results["overall_pass"] is True
+        assert (eval_results.get("compliance") or {}).get("pass") is True
+        assert (eval_results.get("readability") or {}).get("pass") is True
+        assert (eval_results.get("relevance") or {}).get("pass") is True
+        assert eval_results["arbitration"]["ceo_approval_required"] is False
+        assert eval_results["human_feedback"] == "looks good after polish"
 
 
 def test_decision_approve_starts_ceo_when_required(client) -> None:
