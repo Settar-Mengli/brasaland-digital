@@ -45,12 +45,28 @@ services:
       context: .
       dockerfile: services/rfp/Dockerfile
     command: uvicorn app:app --host 0.0.0.0 --port 8017
-    env_file:
-      - .env
     environment:
+      DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: redis://redis:6379/0
       RFP_CHECKPOINT_PATH: /app/checkpoint/rfp.sqlite
       RFP_CONTEXT_PATH: /app/context/CONTEXT-rfp.md
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+      GEN_1_BASE_URL: ${GEN_1_BASE_URL}
+      GEN_1_API_KEY: ${GEN_1_API_KEY}
+      GEN_1_MODEL: ${GEN_1_MODEL}
+      GEN_2_BASE_URL: ${GEN_2_BASE_URL}
+      GEN_2_API_KEY: ${GEN_2_API_KEY}
+      GEN_2_MODEL: ${GEN_2_MODEL}
+      GEN_3_BASE_URL: ${GEN_3_BASE_URL}
+      GEN_3_API_KEY: ${GEN_3_API_KEY}
+      GEN_3_MODEL: ${GEN_3_MODEL}
+      GEN_4_BASE_URL: ${GEN_4_BASE_URL}
+      GEN_4_API_KEY: ${GEN_4_API_KEY}
+      GEN_4_MODEL: ${GEN_4_MODEL}
+      GENERATION_TIMEOUT_SECONDS: ${GENERATION_TIMEOUT_SECONDS:-30}
+      EXPOSE_DOCS: ${EXPOSE_DOCS:-}
+      RATE_LIMIT_RFP_UPLOAD: ${RATE_LIMIT_RFP_UPLOAD:-}
     volumes:
       - rfp_checkpoint:/app/checkpoint
       - rfp_uploads:/app/data/raw
@@ -74,12 +90,24 @@ services:
       context: .
       dockerfile: services/rfp/Dockerfile
     command: celery -A celery_app.celery_app worker --loglevel=INFO --pool=solo -Q rfp
-    env_file:
-      - .env
     environment:
+      DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: redis://redis:6379/0
       RFP_CHECKPOINT_PATH: /app/checkpoint/rfp.sqlite
       RFP_CONTEXT_PATH: /app/context/CONTEXT-rfp.md
+      GEN_1_BASE_URL: ${GEN_1_BASE_URL}
+      GEN_1_API_KEY: ${GEN_1_API_KEY}
+      GEN_1_MODEL: ${GEN_1_MODEL}
+      GEN_2_BASE_URL: ${GEN_2_BASE_URL}
+      GEN_2_API_KEY: ${GEN_2_API_KEY}
+      GEN_2_MODEL: ${GEN_2_MODEL}
+      GEN_3_BASE_URL: ${GEN_3_BASE_URL}
+      GEN_3_API_KEY: ${GEN_3_API_KEY}
+      GEN_3_MODEL: ${GEN_3_MODEL}
+      GEN_4_BASE_URL: ${GEN_4_BASE_URL}
+      GEN_4_API_KEY: ${GEN_4_API_KEY}
+      GEN_4_MODEL: ${GEN_4_MODEL}
+      GENERATION_TIMEOUT_SECONDS: ${GENERATION_TIMEOUT_SECONDS:-30}
     volumes:
       - rfp_checkpoint:/app/checkpoint
       - rfp_uploads:/app/data/raw

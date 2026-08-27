@@ -1134,6 +1134,19 @@ Ground every decision in what the repo actually is. The 4Geeks spec is a floor/g
 
 Ground every decision in what the repo actually is. The 4Geeks spec is a floor/guide and minimum requirement, not a ceiling — don't take it too literally. Exceed it where best practices serve the repo; build genuinely like a professional/production engineer, not to pass the grader.
 
+## Log / secret redaction — `fix/log-secret-redaction`
+
+**Status:** Implemented (reset log redaction; path-only 500 + request_id; slice rfp/worker env allowlists).
+
+**What closed:**
+
+- Forgot-password email-send failure: stable `password_reset_email_failed` log with request_id; no traceback/token/reset URL.
+- auth + rfp: global Exception handler logs path + request_id only; JSON 500 envelope.
+- request_id stored on `request.state` in RequestIdAccessLogMiddleware (auth + rfp).
+- docker-compose.slice.yml: rfp + rfp-worker explicit env allowlists; JWT_PRIVATE_KEY no longer injected into rfp/worker. auth env_file left unchanged.
+
+Ground every decision in what the repo actually is. The 4Geeks spec is a floor/guide and minimum requirement, not a ceiling — don't take it too literally. Exceed it where best practices serve the repo; build genuinely like a professional/production engineer, not to pass the grader.
+
 ## C1 reject→regen evaluator parity
 
 **Status:** Implemented (driver-side `evaluate_all` on regen persist; tests rewritten; no checkpoint wipe).
