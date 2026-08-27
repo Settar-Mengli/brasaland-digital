@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from datetime import UTC, datetime
 from typing import Any
@@ -16,6 +17,7 @@ from pipelines.rfp_intake.approval_orchestration import (
     synthesize_final_document,
 )
 from pipelines.rfp_intake.graph import DEPARTMENT_OWNERS
+from pipelines.rfp_intake.response_evaluators import evaluate_all
 from pipelines.rfp_intake.repository import (
     get_department_sections,
     get_rfp_metadata,
@@ -320,6 +322,35 @@ def serialize_final_document(row: Any) -> dict[str, Any] | None:
 
 _NUMBER_KEYS = ("cost", "setup_days", "price_per_cover")
 
+_FRESH_EVAL_KEYS = (
+    "readability",
+    "relevance",
+    "compliance",
+    "overall_pass",
+    "feedback_for_generator",
+    "ceo_approval_required",
+    "department_id",
+    "iterations",
+    "exhausted",
+    "needs_human_review",
+)
+
+
+def _coerce_key_aspects(raw: object) -> list[str]:
+    """Null-safe coerce department_section.key_aspects to list[str] for evaluate_all."""
+    if raw is None:
+        return []
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except json.JSONDecodeError:
+            return [raw] if raw.strip() else []
+    if isinstance(raw, dict):
+        return []
+    if isinstance(raw, list):
+        return [str(a) for a in raw if str(a).strip()]
+    return [str(raw)] if str(raw).strip() else []
+
 
 def _persist_regen_section(
     session: Session,
@@ -328,9 +359,10 @@ def _persist_regen_section(
     department_id: str,
     section: dict[str, Any],
     interrupt_id: str,
+    budget_range: str | None,
     graph_result: dict[str, Any] | None = None,
 ) -> None:
-    """Read-merge-write draft + full eval in ONE update_department_section."""
+    """Read-merge-write draft + re-evaluated flags in ONE update_department_section."""
     rows = get_department_sections(session, ticket_id)
     by_dept = {str(r.department_id): r for r in rows}
     row = by_dept.get(str(department_id))
@@ -339,7 +371,14 @@ def _persist_regen_section(
             f"department_section not found: ticket_id={ticket_id!r} "
             f"department_id={department_id!r}"
         )
+    draft = str(section.get("draft_content") or row.draft_content or "")
+    key_aspects = _coerce_key_aspects(row.key_aspects)
+    fresh = evaluate_all(draft, key_aspects, budget_range, str(department_id))
+
     merged_eval = dict(row.evaluation_results or {})
+    for key in _FRESH_EVAL_KEYS:
+        if key in fresh:
+            merged_eval[key] = fresh[key]
     for key in _NUMBER_KEYS:
         if key in section:
             merged_eval[key] = section.get(key)
@@ -355,7 +394,6 @@ def _persist_regen_section(
         prior = merged_eval.get("trace")
         prior_list = prior if isinstance(prior, list) else None
         merged_eval["trace"] = bounded_trace(graph_result, existing=prior_list)
-    draft = str(section.get("draft_content") or row.draft_content or "")
     update_department_section(
         session,
         ticket_id=ticket_id,
@@ -389,6 +427,9 @@ def apply_section_decision(
     departments_needed = [str(d) for d in (metadata_row.departments_needed or [])]
     if str(department_id) not in departments_needed:
         raise ValueError(f"department {department_id!r} not in departments_needed")
+    budget_range = metadata_row.budget_range
+    if budget_range is not None:
+        budget_range = str(budget_range)
 
     rows = get_department_sections(session, ticket_id)
     by_dept = {str(r.department_id): r for r in rows}
@@ -435,6 +476,7 @@ def apply_section_decision(
             department_id=str(department_id),
             section=section,
             interrupt_id=new_id,
+            budget_range=budget_range,
             graph_result=result if isinstance(result, dict) else None,
         )
         return {

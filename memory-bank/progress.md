@@ -1110,3 +1110,11 @@ cd services/knowledge; uv run pytest
 
 Ground every decision in what the repo actually is. The 4Geeks spec is a floor/guide and minimum requirement, not a ceiling — don't take it too literally. Exceed it where best practices serve the repo; build genuinely like a professional/production engineer, not to pass the grader.
 
+## C1 reject→regen evaluator parity
+
+**Status:** Implemented (driver-side `evaluate_all` on regen persist; tests rewritten; no checkpoint wipe).
+
+**What closed:** P3 reject→regen previously regenerated `draft_content` but `_persist_regen_section` merged into the prior evaluation without recomputing pass flags (stale `overall_pass` / `compliance.pass`). Fix: after regen, reload `key_aspects` from the DB row (null-safe coerce), call `evaluate_all` on the new draft with metadata `budget_range`, overwrite draft-derived eval fields in the same atomic `update_department_section`, preserve `interrupt_id` / `arbitration` / numbers / bounded `trace` / feedback stamps. Single-shot HITL (no P2 auto-retry loop). Graph nodes/edges unchanged → no `rfp_checkpoint` wipe.
+
+Ground every decision in what the repo actually is. The 4Geeks spec is a floor/guide and minimum requirement, not a ceiling — don't take it too literally. Exceed it where best practices serve the repo; build genuinely like a professional/production engineer, not to pass the grader.
+

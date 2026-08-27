@@ -32,6 +32,7 @@ from pipelines.rfp_intake.approval_orchestration import (
 )
 from pipelines.rfp_intake.arbitration import run_arbitration
 from pipelines.rfp_intake.graph import DEPARTMENT_OWNERS
+from pipelines.rfp_intake.response_evaluators import evaluate_all
 from pipelines.rfp_intake.repository import (
     create_ticket,
     get_department_sections,
@@ -284,14 +285,34 @@ def test_e2e_approval_parts1_to3_simulated_resumes(session: Session) -> None:
         pending["marketing"] = str(getattr(pending_m[0], "id"))
         sections["marketing"] = dict(result["section"])
         traces["marketing"] = list(result.get("trace") or [])
-        mkt_eval = dict(
-            next(
-                r
-                for r in get_department_sections(session, ticket_id)
-                if r.department_id == "marketing"
-            ).evaluation_results
-            or {}
+        mkt_row = next(
+            r
+            for r in get_department_sections(session, ticket_id)
+            if r.department_id == "marketing"
         )
+        mkt_eval = dict(mkt_row.evaluation_results or {})
+        draft_v2 = str(sections["marketing"]["draft_content"])
+        aspects = [str(a) for a in (mkt_row.key_aspects or []) if str(a).strip()]
+        fresh = evaluate_all(
+            draft_v2,
+            aspects,
+            "USD 80,000 / COP 320,000,000",
+            "marketing",
+        )
+        for key in (
+            "readability",
+            "relevance",
+            "compliance",
+            "overall_pass",
+            "feedback_for_generator",
+            "ceo_approval_required",
+            "department_id",
+            "iterations",
+            "exhausted",
+            "needs_human_review",
+        ):
+            if key in fresh:
+                mkt_eval[key] = fresh[key]
         mkt_eval.update(
             {
                 "interrupt_id": pending["marketing"],
@@ -305,9 +326,13 @@ def test_e2e_approval_parts1_to3_simulated_resumes(session: Session) -> None:
             session,
             ticket_id=ticket_id,
             department_id="marketing",
-            draft_content=str(sections["marketing"]["draft_content"]),
+            draft_content=draft_v2,
             evaluation_results=mkt_eval,
         )
+        # Regenerated short draft fails brand pillars → stale overall_pass overwritten.
+        assert mkt_eval["overall_pass"] is False
+        assert "brand_pillars" in (mkt_eval.get("compliance") or {}).get("rule_ids", [])
+        assert mkt_eval.get("arbitration") is not None
 
         # Approve both departments (operaciones still on first interrupt).
         for dept in departments:

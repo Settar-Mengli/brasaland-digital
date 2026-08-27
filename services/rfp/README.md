@@ -51,7 +51,7 @@ Department drafts are client-facing prose. Metadata is interpolated as a fenced 
 
 1. Client calls `POST /rfp/tickets/{id}/approval` when the ticket is `under_evaluation`.
 2. Celery task `rfp.process_rfp_approval` extracts numbers, runs fixed §7 arbitration, flips to `waiting_for_approval`, starts per-dept interrupt threads (`thread_id = rfp-{ticket_id}:{dept}`; CEO uses `rfp-{ticket_id}:ceo`), persists `interrupt_id`s.
-3. Clients approve/reject via `POST .../sections/{dept}/decision` (reject→regen in-process; exhaust → `approval_status=rejected` + `graph_outcome=exhausted`).
+3. Clients approve/reject via `POST .../sections/{dept}/decision` (reject→regen in-process; exhaust → `approval_status=rejected` + `graph_outcome=exhausted`). After reject→regen, the driver re-runs `evaluate_all` on the **new** draft before the atomic Postgres write — pass flags (`overall_pass`, `compliance.pass`, readability/relevance) are recomputed, not carried forward from the prior draft. Ticket-level `arbitration` stamps and the new `interrupt_id` are preserved.
 4. When all active depts are terminal, if `ceo_approval_required` the driver starts the CEO interrupt; otherwise synthesizes `FinalDocument` → `done`.
 5. CEO approve → synthesize → `done`; CEO reject stays `waiting_for_approval` with `ceo_decision=rejected`.
 
