@@ -19,7 +19,6 @@ import {
   itemLimonada,
   itemPicanha,
   itemYuca,
-  locBogota,
   locCali,
   locMedellin,
   locMiami,

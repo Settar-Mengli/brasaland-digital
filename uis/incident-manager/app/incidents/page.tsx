@@ -108,9 +108,6 @@ export default function IncidentsPage() {
   const displayIncidents = error && lastGoodIncidents.length > 0 ? lastGoodIncidents : incidents;
 
   const loadIncidents = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
     try {
       const data = await getIncidents(buildApiFilters(filters));
       setIncidents(data);
@@ -126,10 +123,20 @@ export default function IncidentsPage() {
   }, [filters]);
 
   useEffect(() => {
-    void loadIncidents();
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) {
+        void loadIncidents();
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [loadIncidents]);
 
   function updateFilter<K extends keyof FilterState>(key: K, value: FilterState[K]) {
+    setLoading(true);
+    setError(null);
     setFilters((current) => ({ ...current, [key]: value }));
     setStatusUpdateError(null);
   }
@@ -284,7 +291,11 @@ export default function IncidentsPage() {
             <span>{error}</span>
             <button
               type="button"
-              onClick={() => void loadIncidents()}
+              onClick={() => {
+                setLoading(true);
+                setError(null);
+                void loadIncidents();
+              }}
               className="px-3 py-1 rounded-md border border-brasaland-error/30 bg-white text-brasaland-error font-medium hover:bg-brasaland-error/5"
             >
               Retry
