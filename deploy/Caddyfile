@@ -1,4 +1,8 @@
 {$SLICE_HOST:localhost} {
 	encode gzip
+
+	@blocked_password_reset path /api/auth/forgot-password /api/auth/forgot-password/ /api/auth/reset-password /api/auth/reset-password/
+	respond @blocked_password_reset 404
+
 	reverse_proxy backoffice:3003
 }

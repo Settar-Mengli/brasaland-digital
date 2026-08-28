@@ -9,7 +9,7 @@ This is **not** the full monorepo Compose file. Local full stack remains [`docke
 - Caddy terminates TLS on **80/443 only** and reverse-proxies to `backoffice:3003`.
 - Browser uses same-origin `/api/auth` and `/api/rfp` (no backend CORS). Next.js rewrites to Docker DNS `http://auth:8002` and `http://rfp:8017`.
 - Auth/rfp/rfp-worker/redis are **not** published on `0.0.0.0`.
-- Password reset is **off**. Caddy does not route `/reset-password` or `/forgot-password`. Demo login is bootstrap admin with `AUTH_ALLOW_SELF_REGISTER=false`.
+- The auth backend implements forgot-password and reset-password API routes, but the slice intentionally blocks `/api/auth/forgot-password` and `/api/auth/reset-password` at Caddy with a `404` before the generic `/api/auth/*` proxy. The exact paths and their trailing-slash variants are blocked for every HTTP method; other auth API routes remain proxied. No password-reset UI is included in the slice. Demo login is bootstrap admin with `AUTH_ALLOW_SELF_REGISTER=false`.
 
 ```
 recruiter --HTTPS--> Caddy --> backoffice (next start :3003)
