@@ -1,0 +1,24 @@
+name: Offline RFP lifecycle E2E
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  rfp-e2e-offline:
+    name: Offline RFP lifecycle E2E
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: '3.13'
+      - name: Run deterministic offline lifecycle
+        env:
+          DATABASE_URL: sqlite://
+        run: >-
+          uv run --locked --python 3.13 pytest
+          tests/test_rfp_lifecycle_e2e_offline.py -vv --maxfail=1
+        working-directory: services/rfp

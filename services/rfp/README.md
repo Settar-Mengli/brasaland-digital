@@ -135,7 +135,15 @@ Multipart field name `file`. Server-side defenses: **10 MiB** cap (413), require
 
 ## Tests
 
-Expect **20** tests under `services/rfp/tests/` (upload/routes, response, approval task + routes). Pipeline E2E for Parts 1→3 lives in `tests/pipelines/test_rfp_e2e_approval.py`.
+Expect **35** tests under `services/rfp/tests/` (upload/routes, response, approval task + routes, and the offline lifecycle E2E). Pipeline E2E for Parts 1→3 also lives in `tests/pipelines/test_rfp_e2e_approval.py`.
+
+Run the dedicated deterministic lifecycle gate from the repository root:
+
+```powershell
+uv run --directory services/rfp --locked --python 3.13 pytest tests/test_rfp_lifecycle_e2e_offline.py -vv --maxfail=1
+```
+
+The test executes intake, per-department generation/evaluation, approval, reject→regen re-evaluation, CEO sign-off, and final-document persistence through the real task and graph drivers. It proves the completed document cannot be changed through the lifecycle and that the database permits only one final row per ticket. Generation/evaluation boundaries use fixed stubs; the test removes all `GEN_*` variables, denies network connections, and uses per-run SQLite database, upload, and checkpoint paths under pytest's temporary directory.
 
 ## Production slice
 
