@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import textstat
 from sqlalchemy import event
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, SQLModel, create_engine, select
@@ -36,6 +37,7 @@ from pipelines.rfp_intake.repository import (
     create_ticket,
     get_department_sections,
     get_final_document,
+    get_rfp_metadata,
     get_ticket,
 )
 
@@ -194,6 +196,16 @@ def test_rfp_lifecycle_is_offline_re_evaluates_regen_and_finalizes_once(
     monkeypatch.setattr(intake_graph, "convert_node", _offline_convert)
     monkeypatch.setattr(intake_graph, "generate_json", _offline_intake_generate)
     monkeypatch.setattr(
+        textstat,
+        "flesch_reading_ease",
+        lambda text: 72.0 if text else 0.0,
+    )
+    monkeypatch.setattr(
+        textstat,
+        "flesch_kincaid_grade",
+        lambda text: 8.0 if text else 0.0,
+    )
+    monkeypatch.setattr(
         intake_graph,
         "COMPILED_INTAKE_GRAPH",
         intake_graph.build_intake_graph(),
@@ -337,6 +349,13 @@ def test_rfp_lifecycle_is_offline_re_evaluates_regen_and_finalizes_once(
     assert Counter(intake_generation_calls) == Counter(
         {"classifier": 1, "metadata": 1, "marketing": 1, "operaciones": 1}
     )
+    with Session(isolated_engine) as session:
+        metadata = get_rfp_metadata(session, "offline-rfp-001")
+        assert metadata is not None
+        assert metadata.readability_metrics == {
+            "flesch_reading_ease": 72.0,
+            "flesch_kincaid_grade": 8.0,
+        }
 
     response_result = tasks.process_rfp_response.run(ticket_id)
     assert response_result == {
