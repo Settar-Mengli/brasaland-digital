@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "brasaland-proxy-trust"
+version = "0.1.0"
+description = "Trusted-proxy client IP resolution for Brasaland rate limiting."
+requires-python = ">=3.11"
+dependencies = [
+    "starlette>=0.27",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==8.3.5",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["brasaland_proxy_trust*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

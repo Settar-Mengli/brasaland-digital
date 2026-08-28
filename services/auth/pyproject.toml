@@ -5,6 +5,7 @@ description = "JWT authentication and password reset service for Brasaland."
 requires-python = ">=3.11"
 dependencies = [
     "brasaland-auth-verify",
+    "brasaland-proxy-trust",
     "fastapi==0.115.12",
     "uvicorn[standard]==0.34.3",
     "tinydb==4.8.2",
@@ -31,6 +32,7 @@ package = false
 
 [tool.uv.sources]
 brasaland-auth-verify = { path = "../../packages/auth-verify", editable = true }
+brasaland-proxy-trust = { path = "../../packages/proxy-trust", editable = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

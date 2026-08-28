@@ -26,6 +26,7 @@ services:
       - .env
     environment:
       AUTH_ALLOW_SELF_REGISTER: 'false'
+      TRUSTED_PROXY_CIDRS: '172.16.0.0/12,10.0.0.0/8'
     volumes:
       - auth_data:/app/services/auth/data
     healthcheck:
@@ -66,6 +67,7 @@ services:
       GEN_4_MODEL: ${GEN_4_MODEL}
       GENERATION_TIMEOUT_SECONDS: ${GENERATION_TIMEOUT_SECONDS:-30}
       RFP_REQUIRE_GENERATION_CONFIG: '1'
+      TRUSTED_PROXY_CIDRS: '172.16.0.0/12,10.0.0.0/8'
       EXPOSE_DOCS: ${EXPOSE_DOCS:-}
       RATE_LIMIT_RFP_UPLOAD: ${RATE_LIMIT_RFP_UPLOAD:-}
     volumes:

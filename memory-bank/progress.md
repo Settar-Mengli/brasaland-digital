@@ -1179,3 +1179,15 @@ Ground every decision in what the repo actually is. The 4Geeks spec is a floor/g
 
 Ground every decision in what the repo actually is. The 4Geeks spec is a floor/guide and minimum requirement, not a ceiling — don't take it too literally. Exceed it where best practices serve the repo; build genuinely like a professional/production engineer, not to pass the grader.
 
+## Proxy rate-limit identity — `fix/rate-limit-proxy-client`
+
+**Status:** Implemented (shared `brasaland-proxy-trust` key_func; slice TRUSTED_PROXY_CIDRS).
+
+**What closed:**
+
+- SlowAPI limiters honor `X-Forwarded-For` only from configured trusted proxy peers.
+- Spoofed forwarded headers from untrusted peers fall back to the TCP peer address.
+- Slice Compose sets `TRUSTED_PROXY_CIDRS` on auth and rfp.
+
+Ground every decision in what the repo actually is. The 4Geeks spec is a floor/guide and minimum requirement, not a ceiling — don't take it too literally. Exceed it where best practices serve the repo; build genuinely like a professional/production engineer, not to pass the grader.
+
