@@ -1,6 +1,6 @@
 """Explicit read/write agent memory (location + category) with audit log.
 
-Never-store scrub applies to memory entries AND audit originating_message.
+Never-store scrub applies to memory entries and every string in audit payloads.
 Write-path poisoning rejects contradictions of CONTEXT allowed-value lists /
 proprietary claims. Read-side conflict filter drops memory that fights RAG chunks.
 """
@@ -27,6 +27,7 @@ MEMORY_CATEGORIES: tuple[str, ...] = (
     "comms_prefs",
 )
 ENTRY_TTL_SECONDS = 180 * 24 * 3600  # 180 days
+AUDIT_MAX_ENTRIES = 500
 REDIS_ENTRY_PREFIX = "agent_memory:entry:"
 REDIS_AUDIT_KEY = "agent_memory:audit"
 
@@ -224,6 +225,22 @@ def scrub_for_audit(text: str) -> str:
     return out
 
 
+def _scrub_audit_payload(value: Any) -> Any:
+    """Return a recursively scrubbed copy of an audit payload."""
+    if isinstance(value, str):
+        return scrub_for_audit(value)
+    if isinstance(value, dict):
+        return {
+            key: _scrub_audit_payload(nested)
+            for key, nested in value.items()
+        }
+    if isinstance(value, list):
+        return [_scrub_audit_payload(nested) for nested in value]
+    if isinstance(value, tuple):
+        return tuple(_scrub_audit_payload(nested) for nested in value)
+    return value
+
+
 def _contains_never_store(text: str) -> str | None:
     """Return rejection reason if text must never enter memory, else None."""
     if not text or not text.strip():
@@ -392,6 +409,7 @@ def write_memory(entry: MemoryWrite, *, user_id: str) -> WriteResult:
             client.set(
                 _redis_entry_key(uid, location, category),
                 json.dumps(stored, ensure_ascii=False),
+                ex=ENTRY_TTL_SECONDS,
             )
         except Exception as exc:  # noqa: BLE001
             return {"ok": False, "reason": f"redis_write_failed:{exc}", "entry": None}
@@ -426,30 +444,35 @@ def consolidate_location(location: str, *, user_id: str) -> None:
                     client.set(
                         _redis_entry_key(uid, location, cat),
                         json.dumps(updated, ensure_ascii=False),
+                        ex=ENTRY_TTL_SECONDS,
                     )
                 except Exception:  # noqa: BLE001
                     pass
 
 
 def log_proposal_event(event: ProposalAuditEvent) -> ProposalAuditEvent:
-    """Append audit event; scrub originating_message before persist (Fix 1)."""
-    scrubbed = scrub_for_audit(event.get("originating_message") or "")
-    record: ProposalAuditEvent = {
+    """Append a bounded, expiring audit event after recursive redaction."""
+    raw_record: ProposalAuditEvent = {
         "id": event.get("id") or str(uuid.uuid4()),
         "session_id": event.get("session_id"),
         "outcome": event.get("outcome") or "proposed",
         "proposal": event.get("proposal"),
-        "originating_message": scrubbed,
+        "originating_message": event.get("originating_message") or "",
         "timestamp": event.get("timestamp") or _utc_now_iso(),
         "reason": event.get("reason"),
     }
+    record: ProposalAuditEvent = _scrub_audit_payload(raw_record)
     client = _redis_client()
     if client is not None:
         try:
-            client.rpush(
+            pipeline = client.pipeline(transaction=True)
+            pipeline.rpush(
                 REDIS_AUDIT_KEY,
                 json.dumps(record, ensure_ascii=False),
             )
+            pipeline.ltrim(REDIS_AUDIT_KEY, -AUDIT_MAX_ENTRIES, -1)
+            pipeline.expire(REDIS_AUDIT_KEY, ENTRY_TTL_SECONDS)
+            pipeline.execute()
         except Exception:  # noqa: BLE001 — still keep in-process
             pass
     _AUDIT.append(record)
@@ -497,6 +520,7 @@ def guess_location_from_text(text: str) -> str | None:
 
 
 __all__ = [
+    "AUDIT_MAX_ENTRIES",
     "ENTRY_TTL_SECONDS",
     "MEMORY_CATEGORIES",
     "MemoryEntry",
