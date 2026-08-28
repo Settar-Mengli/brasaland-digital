@@ -1,3 +1,5 @@
+'use client';
+
 import {
   filterActiveLocations,
   filterSalesByLocation,
@@ -7,7 +9,9 @@ import {
 } from '@brasaland/operations-toolkit';
 import type { Location } from '@brasaland/operations-toolkit';
 
-export default function LocationsPage() {
+import InventoryAuthGuard from '@/app/_components/InventoryAuthGuard';
+
+function LocationsContent() {
   const sortedLocations = sortLocationsByCapacity(sampleLocations, 'desc');
   const activeCount = filterActiveLocations(sampleLocations).length;
 
@@ -97,6 +101,14 @@ export default function LocationsPage() {
         Data shown is the M2 fixture dataset (March 2024). No external API.
       </p>
     </>
+  );
+}
+
+export default function LocationsPage() {
+  return (
+    <InventoryAuthGuard>
+      <LocationsContent />
+    </InventoryAuthGuard>
   );
 }
 

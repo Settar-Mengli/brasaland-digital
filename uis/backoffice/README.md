@@ -110,9 +110,11 @@ From the monorepo root:
 npm run test --workspace @brasaland/backoffice
 ```
 
-Expect **58** passed.
+Expect **61** passed.
 
-Vitest unit tests cover `lib/api-error.ts`, `lib/inventory.ts`, `lib/stock-level.ts`, `lib/telemetry.ts`, `lib/locations.ts`, and `lib/login-failure-aggregation.ts`.
+Vitest unit tests cover `lib/api-error.ts`, `lib/inventory.ts`, `lib/stock-level.ts`, `lib/telemetry.ts`, `lib/locations.ts`, `lib/login-failure-aggregation.ts`, and `InventoryAuthGuard`.
+
+`/` (dashboard) and `/locations` require JWT via `InventoryAuthGuard`, matching `/rfp` and `/account/profile`.
 
 ```powershell
 npm run build
