@@ -69,6 +69,13 @@ Copy from [`.env.example`](.env.example) and set real values locally in `.env` (
 | `EXPOSE_DOCS` | When `1`/`true`, serves `/docs` and OpenAPI; default off | unset |
 | `RATE_LIMIT_AUTH` | SlowAPI limit for login / register / refresh | `5/minute` |
 
+### Health probes
+
+| Route | Behavior |
+| --- | --- |
+| `GET /livez` | Process-only liveness (no TinyDB or JWT calls) |
+| `GET /readyz` | Returns **503** when TinyDB is not writable or JWT signing keys are missing/unusable (bounded sign+verify round-trip; no secrets logged) |
+
 Generate an RSA keypair for RS256 signing:
 
 ```powershell

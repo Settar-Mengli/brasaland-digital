@@ -65,6 +65,7 @@ services:
       GEN_4_API_KEY: ${GEN_4_API_KEY}
       GEN_4_MODEL: ${GEN_4_MODEL}
       GENERATION_TIMEOUT_SECONDS: ${GENERATION_TIMEOUT_SECONDS:-30}
+      RFP_REQUIRE_GENERATION_CONFIG: '1'
       EXPOSE_DOCS: ${EXPOSE_DOCS:-}
       RATE_LIMIT_RFP_UPLOAD: ${RATE_LIMIT_RFP_UPLOAD:-}
     volumes:
@@ -108,6 +109,7 @@ services:
       GEN_4_API_KEY: ${GEN_4_API_KEY}
       GEN_4_MODEL: ${GEN_4_MODEL}
       GENERATION_TIMEOUT_SECONDS: ${GENERATION_TIMEOUT_SECONDS:-30}
+      RFP_REQUIRE_GENERATION_CONFIG: '1'
     volumes:
       - rfp_checkpoint:/app/checkpoint
       - rfp_uploads:/app/data/raw
@@ -133,6 +135,8 @@ services:
       auth:
         condition: service_healthy
       rfp:
+        condition: service_healthy
+      rfp-worker:
         condition: service_healthy
     healthcheck:
       test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:3003/']

@@ -1167,3 +1167,15 @@ Ground every decision in what the repo actually is. The 4Geeks spec is a floor/g
 
 Ground every decision in what the repo actually is. The 4Geeks spec is a floor/guide and minimum requirement, not a ceiling — don't take it too literally. Exceed it where best practices serve the repo; build genuinely like a professional/production engineer, not to pass the grader.
 
+## Readiness probes — `fix/readiness-probes`
+
+**Status:** Implemented (auth JWT sign/verify readyz; RFP generation config gate; backoffice waits for rfp-worker).
+
+**What closed:**
+
+- Auth `/readyz` now fails with **503** when JWT keys are missing or unusable (bounded round-trip; `/livez` unchanged).
+- RFP `/readyz` checks generation tier config when `RFP_REQUIRE_GENERATION_CONFIG=1` (slice Compose).
+- `backoffice` `depends_on` includes `rfp-worker: service_healthy`.
+
+Ground every decision in what the repo actually is. The 4Geeks spec is a floor/guide and minimum requirement, not a ceiling — don't take it too literally. Exceed it where best practices serve the repo; build genuinely like a professional/production engineer, not to pass the grader.
+

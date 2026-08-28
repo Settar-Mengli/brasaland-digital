@@ -40,3 +40,39 @@ def test_readyz_returns_503_when_tinydb_parent_missing(
     body = response.json()
     assert body["status"] == "unavailable"
     assert "tinydb" in body["reason"]
+
+
+def test_readyz_returns_503_when_jwt_private_key_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("JWT_PRIVATE_KEY", raising=False)
+
+    with TestClient(app_module.app) as client:
+        livez = client.get("/livez")
+        response = client.get("/readyz")
+    assert livez.status_code == 200
+    assert response.status_code == 503
+    body = response.json()
+    assert body["status"] == "unavailable"
+    assert "jwt" in body["reason"]
+
+
+def test_readyz_returns_503_when_jwt_keys_mismatch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+
+    other_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    other_public = other_key.public_key().public_bytes(
+        serialization.Encoding.PEM,
+        serialization.PublicFormat.SubjectPublicKeyInfo,
+    ).decode()
+    monkeypatch.setenv("JWT_PUBLIC_KEY", other_public)
+
+    with TestClient(app_module.app) as client:
+        response = client.get("/readyz")
+    assert response.status_code == 503
+    body = response.json()
+    assert body["status"] == "unavailable"
+    assert "jwt" in body["reason"]
