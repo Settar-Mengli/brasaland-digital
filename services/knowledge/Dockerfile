@@ -27,8 +27,14 @@ COPY --from=builder /app/packages /app/packages
 COPY --from=builder /app/data /app/data
 COPY --from=builder /app/services/knowledge /app/services/knowledge
 
+RUN groupadd --gid 1000 app \
+    && useradd --uid 1000 --gid app --create-home --home-dir /home/app app \
+    && chown -R app:app /app
+
 ENV VIRTUAL_ENV="/app/services/knowledge/.venv"
 ENV PATH="${VIRTUAL_ENV}/bin:/bin:${PATH}"
 ENV PYTHONPATH="/app/data"
+
+USER app
 
 CMD ["python", "-c", "print('Override CMD with uvicorn via compose')"]

@@ -1191,3 +1191,14 @@ Ground every decision in what the repo actually is. The 4Geeks spec is a floor/g
 
 Ground every decision in what the repo actually is. The 4Geeks spec is a floor/guide and minimum requirement, not a ceiling — don't take it too literally. Exceed it where best practices serve the repo; build genuinely like a professional/production engineer, not to pass the grader.
 
+## Non-root Docker images — `chore/non-root-knowledge-reporting-images`
+
+**Status:** Implemented (knowledge + reporting `USER app`; Qdrant image pinned).
+
+**What closed:**
+
+- Knowledge and reporting runtime images match the in-slice non-root pattern (uid/gid 1000).
+- Full-stack `docker-compose.yml` pins `qdrant/qdrant:v1.12.5` (out of slice; image hygiene only).
+
+Ground every decision in what the repo actually is. The 4Geeks spec is a floor/guide and minimum requirement, not a ceiling — don't take it too literally. Exceed it where best practices serve the repo; build genuinely like a professional/production engineer, not to pass the grader.
+

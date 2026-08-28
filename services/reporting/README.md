@@ -88,6 +88,8 @@ When no week has been computed yet, `GET /reporting/weekly-location-performance`
 
 ### Docker Compose
 
+Production image runs as non-root `app` (uid/gid 1000); see `services/reporting/Dockerfile`.
+
 ```powershell
 docker compose up --build redis flower reporting reporting-worker
 ```
