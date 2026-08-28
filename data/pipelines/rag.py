@@ -28,6 +28,7 @@ SOURCE_DOCUMENTS = (
 )
 DEFAULT_EMBED_MODEL = "BAAI/bge-small-en-v1.5"
 GENERATION_TIMEOUT_SECONDS = float(os.getenv("GENERATION_TIMEOUT_SECONDS", "30"))
+QDRANT_TIMEOUT_SECONDS = float(os.getenv("QDRANT_TIMEOUT_SECONDS", "30"))
 
 _embedder: Any | None = None
 logger = logging.getLogger(__name__)
@@ -104,7 +105,7 @@ def get_qdrant_client() -> Any:
     from qdrant_client import QdrantClient
 
     url = os.environ.get("QDRANT_URL", "http://localhost:6333").rstrip("/")
-    return QdrantClient(url=url)
+    return QdrantClient(url=url, timeout=QDRANT_TIMEOUT_SECONDS)
 
 
 def _split_sentences(text: str) -> list[str]:

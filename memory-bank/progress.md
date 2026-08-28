@@ -1147,6 +1147,18 @@ Ground every decision in what the repo actually is. The 4Geeks spec is a floor/g
 
 Ground every decision in what the repo actually is. The 4Geeks spec is a floor/guide and minimum requirement, not a ceiling — don't take it too literally. Exceed it where best practices serve the repo; build genuinely like a professional/production engineer, not to pass the grader.
 
+## Agent timeouts + guardrail rather gate — `fix/agent-timeouts-guardrail`
+
+**Status:** Implemented (PR-B: guardrail rather precedence; agent→MCP + Qdrant timeouts).
+
+**What closed:**
+
+- Guardrail: "I'd rather not store it" no longer misclassified as edit (was live confirmation-gate bypass writing garbage memory, not just mis-log).
+- Agent→MCP: `get_tools` + `ainvoke` bounded by `MCP_AGENT_TIMEOUT_SECONDS` (default 15s); structured `TicketLookupResult` on timeout.
+- Qdrant: `QdrantClient` constructed with `timeout=QDRANT_TIMEOUT_SECONDS` (default 30s).
+
+Ground every decision in what the repo actually is. The 4Geeks spec is a floor/guide and minimum requirement, not a ceiling — don't take it too literally. Exceed it where best practices serve the repo; build genuinely like a professional/production engineer, not to pass the grader.
+
 ## C1 reject→regen evaluator parity
 
 **Status:** Implemented (driver-side `evaluate_all` on regen persist; tests rewritten; no checkpoint wipe).

@@ -582,6 +582,26 @@ def test_classify_storage_refusal_rejects() -> None:
         assert classify_memory_decision(msg) == ("reject", None), msg
 
 
+def test_classify_rather_not_store_rejects() -> None:
+    assert classify_memory_decision("I'd rather not store it") == ("reject", None)
+
+
+def test_classify_rather_than_store_stays_edit() -> None:
+    decision, edited = classify_memory_decision(
+        "rather than the address, store the city"
+    )
+    assert decision == "edit"
+    assert edited is not None
+    assert "city" in edited.lower()
+
+
+def test_classify_rather_remember_stays_edit() -> None:
+    decision, edited = classify_memory_decision("rather remember closing at 11")
+    assert decision == "edit"
+    assert edited is not None
+    assert "closing" in edited.lower()
+
+
 def test_classify_explicit_approvals() -> None:
     for msg in (
         "Yes, please remember that.",

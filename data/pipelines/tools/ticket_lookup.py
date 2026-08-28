@@ -17,6 +17,9 @@ logger = logging.getLogger("pipelines.tools.ticket_lookup")
 
 MCP_SERVER_URL_ENV = "MCP_SERVER_URL"
 MCP_TOOL_NAME = "check_ticket_status"
+MCP_AGENT_TIMEOUT_SECONDS = float(
+    os.environ.get("MCP_AGENT_TIMEOUT_SECONDS", "15")
+)
 
 
 class TicketLookupInput(TypedDict, total=False):
@@ -141,7 +144,19 @@ async def _ainvoke_check_ticket(
             }
         }
     )
-    tools = await client.get_tools()
+    try:
+        tools = await asyncio.wait_for(
+            client.get_tools(), timeout=MCP_AGENT_TIMEOUT_SECONDS
+        )
+    except asyncio.TimeoutError:
+        return TicketLookupResult(
+            ok=False,
+            incidents=[],
+            matched_by=None,
+            error=(
+                f"MCP ticket lookup timed out after {MCP_AGENT_TIMEOUT_SECONDS:g}s"
+            ),
+        )
     tool = next((item for item in tools if item.name == MCP_TOOL_NAME), None)
     if tool is None:
         return TicketLookupResult(
@@ -151,7 +166,20 @@ async def _ainvoke_check_ticket(
             error=f"MCP tool {MCP_TOOL_NAME} not found",
         )
 
-    raw = await tool.ainvoke({"ticket_ref": ticket_ref})
+    try:
+        raw = await asyncio.wait_for(
+            tool.ainvoke({"ticket_ref": ticket_ref}),
+            timeout=MCP_AGENT_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        return TicketLookupResult(
+            ok=False,
+            incidents=[],
+            matched_by=None,
+            error=(
+                f"MCP ticket lookup timed out after {MCP_AGENT_TIMEOUT_SECONDS:g}s"
+            ),
+        )
     payload = _parse_tool_content(raw)
     if not payload.get("ok"):
         return TicketLookupResult(

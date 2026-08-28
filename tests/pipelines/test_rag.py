@@ -132,6 +132,21 @@ def test_query_empty_question_raises() -> None:
         query("   ")
 
 
+def test_get_qdrant_client_passes_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    from pipelines import rag
+
+    monkeypatch.setattr(rag, "QDRANT_TIMEOUT_SECONDS", 25.0)
+    monkeypatch.setenv("QDRANT_URL", "http://localhost:6333")
+
+    with patch("qdrant_client.QdrantClient") as client_cls:
+        rag.get_qdrant_client()
+
+    client_cls.assert_called_once_with(
+        url="http://localhost:6333",
+        timeout=25.0,
+    )
+
+
 def test_generation_tiers_stop_at_gap(monkeypatch: pytest.MonkeyPatch) -> None:
     """GEN_2 absent stops discovery; GEN_3 is not attempted (stop-at-gap)."""
     from pipelines import rag
