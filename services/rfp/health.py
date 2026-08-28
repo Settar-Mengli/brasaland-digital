@@ -85,9 +85,24 @@ def check_checkpoint_path() -> None:
         raise ReadyCheckError("checkpoint parent path is missing or not writable")
 
 
+def check_generation_config() -> None:
+    flag = (os.environ.get("RFP_REQUIRE_GENERATION_CONFIG") or "").strip().lower()
+    if flag not in ("1", "true", "yes"):
+        return
+    from pipelines.rfp_intake.generation import _rfp_generation_tiers
+
+    if not _rfp_generation_tiers():
+        raise ReadyCheckError("generation provider config is missing or incomplete")
+
+
 def rfp_ready_reason() -> str | None:
     """Run bounded checks in order; return the first failure reason."""
-    for check in (check_postgres, check_redis, check_checkpoint_path):
+    for check in (
+        check_postgres,
+        check_redis,
+        check_checkpoint_path,
+        check_generation_config,
+    ):
         try:
             check()
         except ReadyCheckError as exc:

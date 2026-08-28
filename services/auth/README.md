@@ -68,6 +68,15 @@ Copy from [`.env.example`](.env.example) and set real values locally in `.env` (
 | `AUTH_BOOTSTRAP_ADMIN_PASSWORD` | Password for bootstrap admin (min 8); ignored unless email is set | empty |
 | `EXPOSE_DOCS` | When `1`/`true`, serves `/docs` and OpenAPI; default off | unset |
 | `RATE_LIMIT_AUTH` | SlowAPI limit for login / register / refresh | `5/minute` |
+| `TRUSTED_PROXY_CIDRS` | CIDRs for peers allowed to supply `X-Forwarded-For` (slice Compose sets Docker bridge ranges) | unset |
+| `TRUSTED_PROXY_IPS` | Exact trusted proxy IPs (alternative/complement to CIDRs) | unset |
+
+### Health probes
+
+| Route | Behavior |
+| --- | --- |
+| `GET /livez` | Process-only liveness (no TinyDB or JWT calls) |
+| `GET /readyz` | Returns **503** when TinyDB is not writable or JWT signing keys are missing/unusable (bounded sign+verify round-trip; no secrets logged) |
 
 Generate an RSA keypair for RS256 signing:
 

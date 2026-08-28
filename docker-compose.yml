@@ -291,7 +291,7 @@ services:
       - brasaland-dev
 
   qdrant:
-    image: qdrant/qdrant
+    image: qdrant/qdrant:v1.12.5
     ports:
       - '127.0.0.1:6333:6333'
       - '127.0.0.1:6334:6334'

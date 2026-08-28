@@ -2,12 +2,6 @@
 
 ## Data Pipeline Projects (Design · Implementation · Subflows & Tests)
 
-<!-- hide -->
-
-_Estas instrucciones están [disponibles en español](./CONTEXT-brasaland-pipeline.es.md)._
-
-<!-- endhide -->
-
 This file is self-contained: it gives you everything you need to scope, build, and test the business performance pipeline for Brasaland, without having to go hunting through other documents. It builds directly on the mandatory metrics already defined in your `CONTEXT-brasaland.md` (telemetry) — read that first if you haven't.
 
 ---

@@ -75,6 +75,7 @@ Compliance §5 rules are loaded at runtime from `data/raw/CONTEXT-rfp.md` (headi
 | `GEN_2_BASE_URL` / `GEN_2_API_KEY` / `GEN_2_MODEL` | Failover tier 2 |
 | `GEN_3_BASE_URL` / `GEN_3_API_KEY` / `GEN_3_MODEL` | Failover tier 3 |
 | `GENERATION_TIMEOUT_SECONDS` | Per-attempt OpenAI client timeout (default 30) |
+| `RFP_REQUIRE_GENERATION_CONFIG` | When `1`/`true`, `GET /readyz` requires at least one complete `GEN_N_*` tier (slice Compose sets this) |
 
 Compose also sets `PYTHONPATH=/app/data`. Uploaded PDFs land in host `data/raw/` (gitignored).
 
@@ -147,7 +148,7 @@ The test executes intake, per-department generation/evaluation, approval, reject
 
 ## Production slice
 
-Hosted 24/7 overlay is [`docker-compose.slice.yml`](../../docker-compose.slice.yml): one `rfp` + one `rfp-worker --pool=solo`, PDFs on `rfp_uploads` at `/app/data/raw` only (image `raw/` is empty; CONTEXT baked at `/app/context`), SqliteSaver on `rfp_checkpoint`. `GET /livez` (process) and `GET /readyz` (Postgres + Redis + checkpoint writable) are Compose healthchecks and Free-tier keepalive. Access logs are allowlisted JSON (`brasaland.access`); `/livez` and `/readyz` are not logged. Runbook: [../../docs/deploy/rfp-slice.md](../../docs/deploy/rfp-slice.md).
+Hosted 24/7 overlay is [`docker-compose.slice.yml`](../../docker-compose.slice.yml): one `rfp` + one `rfp-worker --pool=solo`, PDFs on `rfp_uploads` at `/app/data/raw` only (image `raw/` is empty; CONTEXT baked at `/app/context`), SqliteSaver on `rfp_checkpoint`. `GET /livez` (process) and `GET /readyz` (Postgres + Redis + checkpoint writable + optional generation config when `RFP_REQUIRE_GENERATION_CONFIG=1`) are Compose healthchecks and Free-tier keepalive. Backoffice waits for `rfp-worker` healthy before serving. Access logs are allowlisted JSON (`brasaland.access`); `/livez` and `/readyz` are not logged. Runbook: [../../docs/deploy/rfp-slice.md](../../docs/deploy/rfp-slice.md).
 
 ```powershell
 cd services/rfp

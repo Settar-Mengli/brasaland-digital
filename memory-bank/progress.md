@@ -1167,3 +1167,49 @@ Ground every decision in what the repo actually is. The 4Geeks spec is a floor/g
 
 Ground every decision in what the repo actually is. The 4Geeks spec is a floor/guide and minimum requirement, not a ceiling — don't take it too literally. Exceed it where best practices serve the repo; build genuinely like a professional/production engineer, not to pass the grader.
 
+## Readiness probes — `fix/readiness-probes`
+
+**Status:** Implemented (auth JWT sign/verify readyz; RFP generation config gate; backoffice waits for rfp-worker).
+
+**What closed:**
+
+- Auth `/readyz` now fails with **503** when JWT keys are missing or unusable (bounded round-trip; `/livez` unchanged).
+- RFP `/readyz` checks generation tier config when `RFP_REQUIRE_GENERATION_CONFIG=1` (slice Compose).
+- `backoffice` `depends_on` includes `rfp-worker: service_healthy`.
+
+Ground every decision in what the repo actually is. The 4Geeks spec is a floor/guide and minimum requirement, not a ceiling — don't take it too literally. Exceed it where best practices serve the repo; build genuinely like a professional/production engineer, not to pass the grader.
+
+## Proxy rate-limit identity — `fix/rate-limit-proxy-client`
+
+**Status:** Implemented (shared `brasaland-proxy-trust` key_func; slice TRUSTED_PROXY_CIDRS).
+
+**What closed:**
+
+- SlowAPI limiters honor `X-Forwarded-For` only from configured trusted proxy peers.
+- Spoofed forwarded headers from untrusted peers fall back to the TCP peer address.
+- Slice Compose sets `TRUSTED_PROXY_CIDRS` on auth and rfp.
+
+Ground every decision in what the repo actually is. The 4Geeks spec is a floor/guide and minimum requirement, not a ceiling — don't take it too literally. Exceed it where best practices serve the repo; build genuinely like a professional/production engineer, not to pass the grader.
+
+## Non-root Docker images — `chore/non-root-knowledge-reporting-images`
+
+**Status:** Implemented (knowledge + reporting `USER app`; Qdrant image pinned).
+
+**What closed:**
+
+- Knowledge and reporting runtime images match the in-slice non-root pattern (uid/gid 1000).
+- Full-stack `docker-compose.yml` pins `qdrant/qdrant:v1.12.5` (out of slice; image hygiene only).
+
+Ground every decision in what the repo actually is. The 4Geeks spec is a floor/guide and minimum requirement, not a ceiling — don't take it too literally. Exceed it where best practices serve the repo; build genuinely like a professional/production engineer, not to pass the grader.
+
+## Stale docs and dead links — `docs/readme-counts-and-context-links`
+
+**Status:** Implemented (README Expect counts refreshed; dead Spanish CONTEXT links removed).
+
+**What closed:**
+
+- `tests/pipelines/README.md` and `uis/backoffice/README.md` Expect counts match collected/vitest totals.
+- Removed broken `./CONTEXT-brasaland*.es.md` links; hygiene tests guard against regressions.
+
+Ground every decision in what the repo actually is. The 4Geeks spec is a floor/guide and minimum requirement, not a ceiling — don't take it too literally. Exceed it where best practices serve the repo; build genuinely like a professional/production engineer, not to pass the grader.
+

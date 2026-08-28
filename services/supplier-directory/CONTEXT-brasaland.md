@@ -1,7 +1,5 @@
 # CONTEXT - Supplier Directory - Brasaland
 
-_These instructions are also available in [Spanish](./CONTEXT-brasaland.es.md)._
-
 > **Milestone:** 09 - Lightweight Storage API
 > **Repository path:** `09-lightweight-storage/CONTEXT-brasaland.md`
 
