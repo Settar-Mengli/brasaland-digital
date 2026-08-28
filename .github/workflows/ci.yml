@@ -46,6 +46,19 @@ jobs:
       - name: Run pipeline tests
         run: uv run --directory data --python 3.13 pytest
 
+  ruff:
+    name: Ruff baseline ratchet
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: '3.13'
+      - name: Reject new Ruff violations
+        run: >-
+          uv run --directory data --locked --only-group dev --python 3.13
+          python ../scripts/check_ruff_baseline.py
+
   node-tests:
     runs-on: ubuntu-latest
     strategy:

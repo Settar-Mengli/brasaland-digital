@@ -101,7 +101,7 @@ Serves at `http://localhost:3000`.
 npm run test --workspace @brasaland/operations-toolkit
 ```
 
-GitHub Actions runs pytest across twelve service/package/MCP directories, the `data/` pipelines suite, Vitest across three npm workspaces, TypeScript typecheck across four workspaces, and a Prettier format check (see `.github/workflows/ci.yml`).
+GitHub Actions runs pytest across twelve service/package/MCP directories, the `data/` pipelines suite, a Ruff baseline ratchet that rejects new Python lint debt, Vitest across three npm workspaces, TypeScript typecheck across four workspaces, and a Prettier format check (see `.github/workflows/ci.yml`).
 
 **Run the M4 website rebuild locally (port 3002):**
 
