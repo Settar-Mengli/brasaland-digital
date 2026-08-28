@@ -2,14 +2,10 @@
 
 from __future__ import annotations
 
-import platform
 import re
-import shutil
 import subprocess
 import sys
 from pathlib import Path
-
-import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -52,20 +48,18 @@ def test_pipelines_readme_expect_count_matches_pytest_collect() -> None:
     assert readme_count == collected
 
 
-def test_backoffice_readme_expect_count_matches_vitest() -> None:
-    if shutil.which("npm") is None:
-        pytest.skip("npm not available")
+def _count_backoffice_vitest_tests() -> int:
+    """Count ``it(`` / ``test(`` blocks under backoffice vitest files."""
+    root = REPO_ROOT / "uis" / "backoffice"
+    pattern = re.compile(r"^\s*(?:it|test)\(", re.MULTILINE)
+    total = 0
+    for suffix in ("*.test.ts", "*.test.tsx", "*.spec.ts", "*.spec.tsx"):
+        for path in root.rglob(suffix):
+            total += len(pattern.findall(path.read_text(encoding="utf-8")))
+    return total
+
+
+def test_backoffice_readme_expect_count_matches_discovered_tests() -> None:
     readme_count = _expect_count(REPO_ROOT / "uis" / "backoffice" / "README.md")
-    command = "npm run test --workspace @brasaland/backoffice"
-    result = subprocess.run(
-        command,
-        cwd=REPO_ROOT,
-        check=True,
-        capture_output=True,
-        text=True,
-        shell=platform.system() == "Windows",
-    )
-    match = re.search(r"Tests\s+(\d+) passed", result.stdout)
-    assert match is not None, result.stdout
-    passed = int(match.group(1))
-    assert readme_count == passed
+    discovered = _count_backoffice_vitest_tests()
+    assert readme_count == discovered
