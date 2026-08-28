@@ -59,6 +59,35 @@
 - Run tests with `uv run pytest` **from inside** the service or package directory (see [agent-workflow.md](./agent-workflow.md#python-test-invocation)).
 - Honor coverage gates where configured (example: `services/auth` uses `fail_under = 70` on the `auth/` package). Universal thresholds are not invented here — use each package's `pyproject.toml`.
 
+### Ruff baseline ratchet
+
+The root [`ruff.toml`](../../ruff.toml) is the lint source of truth. Ruff is pinned in the
+`data/` development dependency group, and the `Ruff baseline ratchet` CI job runs this command
+from the repository root:
+
+```powershell
+uv run --directory data --locked --only-group dev --python 3.13 python ../scripts/check_ruff_baseline.py
+```
+
+The checker runs `ruff check` over `data/`, `tests/pipelines/`, the twelve Python projects in the
+CI test matrix, and the Python scripts exercised by or implementing the CI checks. Ruff's JSON
+diagnostics are compared with [`.ruff-baseline.json`](../../.ruff-baseline.json) using a stable
+path/rule/message/source-line fingerprint plus a count for duplicate fingerprints. The recorded
+225 violations are tracked debt: a missing baseline diagnostic is allowed, but any unmatched new
+diagnostic fails CI.
+
+After legitimately fixing one or more recorded violations, confirm the gate passes and then
+regenerate the baseline with the subtraction-only update command:
+
+```powershell
+uv run --directory data --locked --only-group dev --python 3.13 python ../scripts/check_ruff_baseline.py --update-baseline
+```
+
+The update refuses to write if Ruff reports any new diagnostic. Review the baseline diff before
+committing it. `--bootstrap-baseline` is reserved for an explicitly reviewed initial baseline or
+an authorized Ruff version, rule, or path-scope migration; it refuses to overwrite an existing
+baseline.
+
 ### Test isolation
 
 - Prefer an in-memory SQLite (or equivalent isolated engine) pattern for SQLModel services so tests do not touch shared databases.
