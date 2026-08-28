@@ -1213,3 +1213,14 @@ Ground every decision in what the repo actually is. The 4Geeks spec is a floor/g
 
 Ground every decision in what the repo actually is. The 4Geeks spec is a floor/guide and minimum requirement, not a ceiling — don't take it too literally. Exceed it where best practices serve the repo; build genuinely like a professional/production engineer, not to pass the grader.
 
+## Backoffice route guards — `fix/backoffice-dashboard-auth-guard`
+
+**Status:** Implemented (`/` and `/locations` wrapped with `InventoryAuthGuard`).
+
+**What closed:**
+
+- Unauthenticated visits to dashboard and locations redirect to `/login` (same guard as `/rfp` and `/account/profile`).
+- RTL tests cover missing token, expired token, and valid-token render paths.
+
+Ground every decision in what the repo actually is. The 4Geeks spec is a floor/guide and minimum requirement, not a ceiling — don't take it too literally. Exceed it where best practices serve the repo; build genuinely like a professional/production engineer, not to pass the grader.
+

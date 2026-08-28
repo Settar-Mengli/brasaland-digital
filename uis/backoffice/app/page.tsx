@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import type { CountryMetrics } from '@brasaland/operations-toolkit';
 import {
@@ -13,7 +15,9 @@ import {
   sampleWasteRecords,
 } from '@brasaland/operations-toolkit';
 
-export default function DashboardPage() {
+import InventoryAuthGuard from '@/app/_components/InventoryAuthGuard';
+
+function DashboardContent() {
   const countryMetrics = calculateCountryComparison(sampleSales, sampleLocations, sampleMenuItems);
   const rankedLocations = rankLocationsByPerformance(
     sampleLocations,
@@ -173,6 +177,14 @@ export default function DashboardPage() {
         Data shown is the M2 fixture dataset (March 2024). No external API.
       </p>
     </>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <InventoryAuthGuard>
+      <DashboardContent />
+    </InventoryAuthGuard>
   );
 }
 
