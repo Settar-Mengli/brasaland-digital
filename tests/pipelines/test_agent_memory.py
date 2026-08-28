@@ -2,20 +2,25 @@
 
 from __future__ import annotations
 
-from unittest.mock import patch
+import json
+from typing import Any
+from unittest.mock import MagicMock, patch
 
 import pytest
-
 from pipelines.guardrails import (
     SESSION_TTL_SECONDS,
+    _purge_expired,
     classify_memory_decision,
     clear_session_guard,
     get_pending_memory,
     set_pending_memory,
-    _purge_expired,
 )
 from pipelines.memory_store import (
+    AUDIT_MAX_ENTRIES,
+    ENTRY_TTL_SECONDS,
+    REDIS_AUDIT_KEY,
     clear_memory_for_tests,
+    consolidate_location,
     filter_memory_against_chunks,
     force_memory_backend,
     list_audit,
@@ -61,6 +66,82 @@ def _loyalty_chunk() -> list[dict]:
             "_score": 0.92,
         }
     ]
+
+
+class _AuditRedisPipeline:
+    def __init__(self, client: _AuditRedis) -> None:
+        self._client = client
+        self._commands: list[tuple[str, tuple[Any, ...]]] = []
+
+    def rpush(self, key: str, value: str) -> _AuditRedisPipeline:
+        self._client.serialized_writes.append(value)
+        self._commands.append(("rpush", (key, value)))
+        return self
+
+    def ltrim(
+        self, key: str, start: int, stop: int
+    ) -> _AuditRedisPipeline:
+        self._client.ltrim_calls.append((key, start, stop))
+        self._commands.append(("ltrim", (key, start, stop)))
+        return self
+
+    def expire(self, key: str, seconds: int) -> _AuditRedisPipeline:
+        self._client.expire_calls.append((key, seconds))
+        self._commands.append(("expire", (key, seconds)))
+        return self
+
+    def execute(self) -> list[int]:
+        self._client.execute_attempts += 1
+        if self._client.fail_execute:
+            raise RuntimeError("pipeline failed")
+
+        rows = {
+            key: list(values) for key, values in self._client.rows.items()
+        }
+        ttls = dict(self._client.ttls)
+        results: list[int] = []
+        for command, args in self._commands:
+            if command == "rpush":
+                key, value = args
+                target = rows.setdefault(key, [])
+                target.append(value)
+                results.append(len(target))
+            elif command == "ltrim":
+                key, start, stop = args
+                target = rows.get(key, [])
+                start_index = start if start >= 0 else max(len(target) + start, 0)
+                stop_index = stop if stop >= 0 else len(target) + stop
+                if start_index > stop_index or start_index >= len(target):
+                    rows[key] = []
+                else:
+                    rows[key] = target[
+                        start_index : min(stop_index + 1, len(target))
+                    ]
+                results.append(1)
+            elif command == "expire":
+                key, seconds = args
+                ttls[key] = seconds
+                results.append(1)
+
+        self._client.rows = rows
+        self._client.ttls = ttls
+        return results
+
+
+class _AuditRedis:
+    def __init__(self, *, fail_execute: bool = False) -> None:
+        self.fail_execute = fail_execute
+        self.rows: dict[str, list[str]] = {}
+        self.ttls: dict[str, int] = {}
+        self.serialized_writes: list[str] = []
+        self.ltrim_calls: list[tuple[str, int, int]] = []
+        self.expire_calls: list[tuple[str, int]] = []
+        self.pipeline_transactions: list[bool] = []
+        self.execute_attempts = 0
+
+    def pipeline(self, *, transaction: bool = True) -> _AuditRedisPipeline:
+        self.pipeline_transactions.append(transaction)
+        return _AuditRedisPipeline(self)
 
 
 # --- dismissals (≥3) ---
@@ -336,7 +417,6 @@ def test_topic_change_rejects_pending_and_continues() -> None:
 
 def test_one_pending_at_a_time() -> None:
     from langchain_core.runnables import RunnableConfig
-
     from pipelines.support_agent import attach_memory_proposal
 
     set_pending_memory(
@@ -415,7 +495,154 @@ def test_approve_plus_new_question_same_message() -> None:
     assert get_pending_memory("combo") is None
 
 
-# --- Fix 1 audit scrub ---
+# --- Redis retention + recursive audit scrub ---
+
+
+def test_redis_primary_memory_write_sets_sliding_ttl() -> None:
+    client = MagicMock()
+    client.scan_iter.return_value = []
+    with patch("pipelines.memory_store._redis_client", return_value=client):
+        result = write_memory(
+            {
+                "location": "miami",
+                "category": "hours",
+                "summary": "Miami closes at 11pm",
+                "proposal_id": "ttl-primary",
+            },
+            user_id="user-1",
+        )
+
+    assert result["ok"] is True
+    client.set.assert_called_once()
+    assert client.set.call_args.kwargs["ex"] == ENTRY_TTL_SECONDS
+    assert client.set.call_args.kwargs["ex"] > 0
+
+
+def test_redis_consolidation_write_sets_sliding_ttl() -> None:
+    client = MagicMock()
+    row = {
+        "location": "miami",
+        "category": "hours",
+        "summary": "Miami   closes   at 11pm",
+        "updated_at": "2026-08-28T00:00:00+00:00",
+        "proposal_id": "ttl-consolidate",
+    }
+
+    def _rows_for_category(**kwargs):
+        return [row] if kwargs.get("category") == "hours" else []
+
+    with (
+        patch("pipelines.memory_store._redis_client", return_value=client),
+        patch(
+            "pipelines.memory_store.read_memory",
+            side_effect=_rows_for_category,
+        ),
+    ):
+        consolidate_location("miami", user_id="user-1")
+
+    client.set.assert_called_once()
+    args = client.set.call_args.args
+    assert json.loads(args[1])["summary"] == "Miami closes at 11pm"
+    assert client.set.call_args.kwargs["ex"] == ENTRY_TTL_SECONDS
+
+
+def test_audit_pipeline_sets_ttl_and_drops_oldest_over_500() -> None:
+    client = _AuditRedis()
+    with patch("pipelines.memory_store._redis_client", return_value=client):
+        for index in range(AUDIT_MAX_ENTRIES + 1):
+            log_proposal_event(
+                {
+                    "id": f"audit-{index}",
+                    "outcome": "proposed",
+                    "originating_message": f"ordinary event {index}",
+                }
+            )
+
+    rows = client.rows[REDIS_AUDIT_KEY]
+    assert len(rows) == AUDIT_MAX_ENTRIES
+    assert json.loads(rows[0])["id"] == "audit-1"
+    assert json.loads(rows[-1])["id"] == f"audit-{AUDIT_MAX_ENTRIES}"
+    assert all(json.loads(row)["id"] != "audit-0" for row in rows)
+    assert client.ttls[REDIS_AUDIT_KEY] == ENTRY_TTL_SECONDS
+    assert client.ltrim_calls[-1] == (
+        REDIS_AUDIT_KEY,
+        -AUDIT_MAX_ENTRIES,
+        -1,
+    )
+    assert client.expire_calls[-1] == (
+        REDIS_AUDIT_KEY,
+        ENTRY_TTL_SECONDS,
+    )
+    assert len(client.expire_calls) == AUDIT_MAX_ENTRIES + 1
+    assert all(client.pipeline_transactions)
+
+
+def test_entire_audit_payload_is_recursively_redacted_before_redis() -> None:
+    email = "jane.audit@example.com"
+    phone = "+1-305-555-0199"
+    token = "sk-1234567890abcdef"
+    client = _AuditRedis()
+    event = {
+        "id": "recursive-redaction",
+        "session_id": "ordinary-session",
+        "outcome": "proposed",
+        "proposal": {
+            "summary": "Miami manager prefers weekly PDF reports",
+            "location": "miami",
+            "category": "comms_prefs",
+            "details": {
+                "contact": email,
+                "items": [
+                    "ordinary value",
+                    {"phone": phone},
+                    ["safe nested value", token],
+                ],
+            },
+        },
+        "originating_message": f"Contact {email} at {phone}",
+        "reason": f"credential supplied: {token}",
+    }
+    with patch("pipelines.memory_store._redis_client", return_value=client):
+        record = log_proposal_event(event)  # type: ignore[arg-type]
+
+    assert len(client.serialized_writes) == 1
+    serialized = client.serialized_writes[0]
+    assert email not in serialized
+    assert phone not in serialized
+    assert token not in serialized
+    stored = json.loads(serialized)
+    details = stored["proposal"]["details"]
+    assert details["contact"] == "[REDACTED_EMAIL]"
+    assert details["items"][0] == "ordinary value"
+    assert details["items"][1]["phone"] == "[REDACTED_PHONE]"
+    assert details["items"][2][0] == "safe nested value"
+    assert details["items"][2][1] == "[REDACTED_SECRET]"
+    assert stored["proposal"]["summary"] == (
+        "Miami manager prefers weekly PDF reports"
+    )
+    assert stored["session_id"] == "ordinary-session"
+    assert record == stored
+
+
+def test_audit_pipeline_failure_is_controlled_and_not_partial() -> None:
+    client = _AuditRedis(fail_execute=True)
+    with patch("pipelines.memory_store._redis_client", return_value=client):
+        record = log_proposal_event(
+            {
+                "id": "pipeline-failure",
+                "outcome": "proposed",
+                "proposal": {"summary": "ordinary proposal"},
+                "originating_message": "ordinary message",
+            }
+        )
+
+    assert record["id"] == "pipeline-failure"
+    assert client.execute_attempts == 1
+    assert client.pipeline_transactions == [True]
+    assert client.rows == {}
+    assert client.ttls == {}
+    assert REDIS_AUDIT_KEY not in client.rows
+    assert list_audit(limit=1)[0]["id"] == "pipeline-failure"
 
 
 def test_audit_originating_message_scrubs_pii() -> None:
