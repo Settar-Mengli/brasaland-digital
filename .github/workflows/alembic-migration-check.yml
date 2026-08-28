@@ -1,0 +1,35 @@
+name: Alembic migration check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  alembic-migration-check:
+    name: Empty database upgrade
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16.4
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci_postgres_password
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: '3.13'
+      - name: Verify migrations from an empty database
+        env:
+          DATABASE_URL: postgresql://postgres:ci_postgres_password@localhost:5432/postgres
+        run: uv run --directory data --locked --python 3.13 python ../scripts/verify_alembic_migrations.py
