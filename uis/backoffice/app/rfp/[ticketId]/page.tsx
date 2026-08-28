@@ -16,7 +16,9 @@ type LoadState =
 function RfpTicketResumeContent() {
   const params = useParams<{ ticketId: string }>();
   const ticketId = typeof params.ticketId === 'string' ? params.ticketId : '';
-  const [state, setState] = useState<LoadState>({ status: 'loading' });
+  const [state, setState] = useState<LoadState>(() =>
+    ticketId ? { status: 'loading' } : { status: 'error', message: 'Missing ticket_id in URL.' },
+  );
   const [pipelineBusy, setPipelineBusy] = useState(false);
 
   const loadTicket = useCallback(async (id: string) => {
@@ -44,10 +46,18 @@ function RfpTicketResumeContent() {
 
   useEffect(() => {
     if (!ticketId) {
-      setState({ status: 'error', message: 'Missing ticket_id in URL.' });
       return;
     }
-    void loadTicket(ticketId);
+
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) {
+        void loadTicket(ticketId);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [ticketId, loadTicket]);
 
   async function onGenerateResponse() {

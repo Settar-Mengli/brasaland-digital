@@ -45,9 +45,6 @@ export default function SummaryPage() {
   const [error, setError] = useState<string | null>(null);
 
   const loadSummary = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
     try {
       const data = await getSummary();
       setSummary(data);
@@ -63,7 +60,15 @@ export default function SummaryPage() {
   }, []);
 
   useEffect(() => {
-    void loadSummary();
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) {
+        void loadSummary();
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [loadSummary]);
 
   return (
@@ -99,7 +104,11 @@ export default function SummaryPage() {
             <span>{error}</span>
             <button
               type="button"
-              onClick={() => void loadSummary()}
+              onClick={() => {
+                setLoading(true);
+                setError(null);
+                void loadSummary();
+              }}
               className="px-3 py-1 rounded-md border border-brasaland-error/30 bg-white text-brasaland-error font-medium hover:bg-brasaland-error/5"
             >
               Retry

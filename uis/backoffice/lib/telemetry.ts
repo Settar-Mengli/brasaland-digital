@@ -207,7 +207,7 @@ function ensureTransport(): void {
   }
   if (!flushTimer) {
     flushTimer = setInterval(() => {
-      void flushQueue('interval');
+      void flushQueue();
     }, QUEUE_FLUSH_INTERVAL_MS);
   }
   if (!visibilityListenerAttached) {
@@ -257,7 +257,7 @@ async function postEvents(events: TelemetryEnvelope[]): Promise<boolean> {
   return false;
 }
 
-async function flushQueue(_reason: 'size' | 'interval'): Promise<void> {
+async function flushQueue(): Promise<void> {
   if (eventQueue.length === 0) {
     return;
   }
@@ -287,7 +287,7 @@ function beaconQueue(): void {
 function enqueue(event: TelemetryEnvelope): void {
   eventQueue.push(event);
   if (eventQueue.length >= QUEUE_FLUSH_SIZE) {
-    void flushQueue('size');
+    void flushQueue();
   }
 }
 
@@ -365,7 +365,7 @@ export function __getQueueForTests(): TelemetryEnvelope[] {
 
 /** Test-only flush trigger. */
 export async function __flushQueueForTests(): Promise<void> {
-  await flushQueue('interval');
+  await flushQueue();
 }
 
 /** Test-only beacon trigger. */

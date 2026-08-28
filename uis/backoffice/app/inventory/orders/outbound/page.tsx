@@ -37,7 +37,7 @@ function OutboundForm() {
   const [reason, setReason] = useState<'consumption' | 'waste'>('consumption');
   const [locationId, setLocationId] = useState('1');
   const [currentStock, setCurrentStock] = useState<number | null>(null);
-  const [stockLoading, setStockLoading] = useState(false);
+  const [stockLoading, setStockLoading] = useState(ingredientId !== '');
   const [stockError, setStockError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [quantityError, setQuantityError] = useState<string | null>(null);
@@ -54,15 +54,11 @@ function OutboundForm() {
 
   useEffect(() => {
     if (ingredientId === '') {
-      setCurrentStock(null);
-      setStockError(null);
       return;
     }
 
     const selectedId = ingredientId;
     let cancelled = false;
-    setStockLoading(true);
-    setStockError(null);
 
     async function loadStock() {
       try {
@@ -103,6 +99,8 @@ function OutboundForm() {
     setReason('consumption');
     setLocationId('1');
     setCurrentStock(null);
+    setStockLoading(false);
+    setStockError(null);
     setQuantityError(null);
   }
 
@@ -203,6 +201,9 @@ function OutboundForm() {
             onChange={(value) => {
               onFieldChange();
               setIngredientId(value);
+              setCurrentStock(null);
+              setStockError(null);
+              setStockLoading(true);
             }}
             disabled={submitting}
           />

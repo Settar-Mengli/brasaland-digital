@@ -37,7 +37,15 @@ export default function InventoryAuthGuard({ children }: Readonly<{ children: Re
       return;
     }
 
-    setReady(true);
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) {
+        setReady(true);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   if (!ready) {

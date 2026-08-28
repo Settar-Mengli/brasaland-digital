@@ -34,9 +34,31 @@
 - Detail views: add `timeStyle: 'short'` (same locale)
 - Instantiate formatters at **module level** (not inside render loops)
 
+### ESLint
+
+ESLint enforces code-quality rules; Prettier remains the formatting authority. From the repository
+root, lint all five TypeScript workspaces with zero warnings allowed:
+
+```powershell
+npm run lint
+```
+
+For one workspace, run its existing script directly, for example:
+
+```powershell
+npm run lint --workspace @brasaland/backoffice -- --max-warnings 0
+```
+
+The root command covers `@brasaland/operations-toolkit`, `@brasaland/talent-pipeline-tracker`,
+`@brasaland/website`, `@brasaland/backoffice`, and `@brasaland/incident-manager`. Each flat config
+globally ignores `.next/`, `out/`, `node_modules/`, `dist/`, and `build/` at any nesting depth.
+The dedicated `ESLint` CI job installs from `package-lock.json` with `npm ci` and runs the same
+root command.
+
 ### Acceptance Criteria
 
 - `tsc --noEmit` passes with zero errors
+- `npm run lint` passes with zero errors and zero warnings
 - No ESLint disable comments suppressing type errors
 
 ## Python

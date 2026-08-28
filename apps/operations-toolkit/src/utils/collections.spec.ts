@@ -21,7 +21,6 @@ import {
   saleTxn002,
   saleTxn003,
   saleTxn004,
-  saleTxn005,
   sampleLocations,
   sampleMenuItems,
   sampleSales,
