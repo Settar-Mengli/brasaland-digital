@@ -468,7 +468,7 @@ _MEMORY_EDIT = re.compile(
     r"\b(make\s+it)\s+(?P<v2>.+)|"
     r"\b(actually,?\s+remember|remember\s+instead)\s*:?\s*(?P<v3>.+)|"
     r"\bremember\s+(?:it|that|this)\s+as\s+(?P<v4>.+)|"
-    r"\b(rather)\s+(?:remember\s+)?(?P<v5>.+)|"
+    r"\b(rather)\s+(?!not\s+(store|save|remember|keep)\b)(?:remember\s+)?(?P<v5>.+)|"
     r"\b(corrige|cambia|edita)\s*:?\s*(?P<v6>.+)|"
     r"\b(en\s+vez(?:\s+de)?|mejor)\s*:?\s*(?P<v7>.+)|"
     r"\bedit\s*:\s*(?P<v8>.+)"
@@ -481,7 +481,9 @@ _MEMORY_REFUSE_STORE = re.compile(
     r"("
     r"\b(don'?t|dont|do\s+not|never)\s+(please\s+)?(remember|save|store|keep)\b|"
     r"\bno\s+lo\s+(recuerdes|guardes|almacenes)\b|"
-    r"\b(no|nunca)\s+(?:me\s+)?(?:lo\s+)?(recuerdes|guardes|almacenes)\b"
+    r"\b(no|nunca)\s+(?:me\s+)?(?:lo\s+)?(recuerdes|guardes|almacenes)\b|"
+    r"\brather\s+not\s+(store|save|remember|keep)\b|"
+    r"\bnot\s+(store|save|remember|keep)\s+(it|that|this)\b"
     r")",
     re.IGNORECASE,
 )
@@ -531,10 +533,11 @@ def classify_memory_decision(
 ) -> tuple[MemoryDecision, str | None]:
     """Classify a user reply against a pending memory proposal.
 
-    Precedence: EDIT (value correction) → storage-refusal REJECT → APPROVE →
+    Precedence: storage-refusal REJECT → EDIT (value correction) → APPROVE →
     default reject (silence / small-talk / bare yes-ok / topic-change).
 
-    Storage refusal matches don't/do-not/never + remember|save|store|keep (and ES
+    Storage refusal matches don't/do-not/never + remember|save|store|keep,
+    \"rather not store/save/remember/keep\", not-store-it/that/this (and ES
     equivalents) — never a bare mid-sentence \"not\".
     Returns (decision, edited_summary_or_None).
     """
@@ -542,14 +545,14 @@ def classify_memory_decision(
     if not q:
         return "reject", None
 
-    # 1) EDIT first — wins over refuse and approve (e.g. "as 11:30, not 11").
+    # 1) Storage-refusal REJECT first (incl. "rather not store").
+    if _MEMORY_REFUSE_STORE.search(q) or _BARE_NO.match(q):
+        return "reject", None
+
+    # 2) EDIT — value correction (e.g. "remember it as 11:30, not 11").
     edited = _extract_edit_value(q)
     if edited:
         return "edit", edited
-
-    # 2) Storage-refusal REJECT (scoped verbs + bare no/nope only).
-    if _MEMORY_REFUSE_STORE.search(q) or _BARE_NO.match(q):
-        return "reject", None
 
     # 3) APPROVE — explicit save cue (not a refusal; refusals already returned).
     if _MEMORY_APPROVE.search(q):
