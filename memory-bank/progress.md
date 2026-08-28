@@ -1202,3 +1202,14 @@ Ground every decision in what the repo actually is. The 4Geeks spec is a floor/g
 
 Ground every decision in what the repo actually is. The 4Geeks spec is a floor/guide and minimum requirement, not a ceiling — don't take it too literally. Exceed it where best practices serve the repo; build genuinely like a professional/production engineer, not to pass the grader.
 
+## Stale docs and dead links — `docs/readme-counts-and-context-links`
+
+**Status:** Implemented (README Expect counts refreshed; dead Spanish CONTEXT links removed).
+
+**What closed:**
+
+- `tests/pipelines/README.md` and `uis/backoffice/README.md` Expect counts match collected/vitest totals.
+- Removed broken `./CONTEXT-brasaland*.es.md` links; hygiene tests guard against regressions.
+
+Ground every decision in what the repo actually is. The 4Geeks spec is a floor/guide and minimum requirement, not a ceiling — don't take it too literally. Exceed it where best practices serve the repo; build genuinely like a professional/production engineer, not to pass the grader.
+

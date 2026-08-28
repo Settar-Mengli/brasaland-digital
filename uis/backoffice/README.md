@@ -110,7 +110,7 @@ From the monorepo root:
 npm run test --workspace @brasaland/backoffice
 ```
 
-Expect **30** passed.
+Expect **58** passed.
 
 Vitest unit tests cover `lib/api-error.ts`, `lib/inventory.ts`, `lib/stock-level.ts`, `lib/telemetry.ts`, `lib/locations.ts`, and `lib/login-failure-aggregation.ts`.
 
