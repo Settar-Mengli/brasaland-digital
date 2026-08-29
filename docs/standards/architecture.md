@@ -26,7 +26,14 @@ When replacing a persistence backend (for example TinyDB → SQLModel/PostgreSQL
 1. Swap repository **internals** while keeping the same public function signatures (Path A).
 2. Leave `service.py` and `app.py` unchanged except where signatures truly must change.
 3. Leave pure shared packages untouched (validation/lifecycle only — no database code).
-4. Create/evolve tables via SQLModel metadata plus the Alembic baseline/history under `data/` (see [Schema and database change policy](./agent-workflow.md#schema-and-database-change-policy)); lazy `ensure_schema()` / `create_all` remain transitional bootstrap only.
+4. Create/evolve tables via Alembic under `data/` (see [Schema and database change policy](./agent-workflow.md#schema-and-database-change-policy)); lazy `ensure_schema()` / `create_all` are **SQLite test bootstrap only** on Postgres.
+
+## Database runtime roles and RLS
+
+- **Migrator:** `MIGRATION_DATABASE_URL` (direct `:5432`, table owner bypasses RLS) for Alembic and operator DDL.
+- **Runtime:** per-service pooler URLs (`INVENTORY_DATABASE_URL`, `TELEMETRY_DATABASE_URL`, etc.) mapping to `brasaland_*` roles with table-scoped grants and FORCE RLS policies (model A).
+- **CI:** `.github/workflows/db-roles-rls-check.yml` — disposable Postgres, `apply_db_roles_rls.py`, `verify_db_roles_rls.py`.
+- **Operator m5:** `scripts/m5_apply_db_roles_rls.sql` (review-only; not agent-executed on live).
 
 ## Secrets playbook
 
@@ -46,4 +53,4 @@ When replacing a persistence backend (for example TinyDB → SQLModel/PostgreSQL
 
 Schema, RLS, indexes, and new-table obligations: see [agent-workflow.md — Schema and database change policy](./agent-workflow.md#schema-and-database-change-policy).
 
-Topology note (not a second policy): the shared project is **brasaland-m5**; inventory, incident-manager, and related services share `DATABASE_URL` against that project.
+Topology note (not a second policy): the shared project is **brasaland-m5**; Postgres-backed services use per-role pooler URLs against that project (see Database runtime roles and RLS above).

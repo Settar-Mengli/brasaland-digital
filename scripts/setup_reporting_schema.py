@@ -1,14 +1,7 @@
 """Create reporting schema and enable RLS on reporting tables (idempotent).
 
-What: Ensures ``CREATE SCHEMA IF NOT EXISTS reporting``. For each of
-``reporting.weekly_location_performance`` and ``reporting.pipeline_runs``,
-runs ``ALTER TABLE ... ENABLE ROW LEVEL SECURITY`` when the table exists;
-when absent, prints ``table not present, RLS skipped`` and continues.
-Does not create policies and does not set FORCE ROW LEVEL SECURITY.
-
-Why: SQLModel ``create_all`` with ``schema="reporting"`` fails if the schema
-does not exist yet. Operators run this script first (schema only / RLS skipped),
-then Lane-1 ``ensure_schema``, then this script again (RLS enablement).
+Legacy ENABLE-only path for reporting schema bootstrap. Runtime isolation uses
+scripts/apply_db_roles_rls.py (grants + FORCE RLS + policies).
 
 How to run::
 

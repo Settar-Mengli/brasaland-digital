@@ -80,4 +80,4 @@ One policy, two lanes. This is the sole home for schema discipline.
 
 MCP is **read-only verification** only.
 
-**New-table obligation:** Any new table must be added to the `TABLES` constant in `scripts/enable_rls.py` (or the reporting setup script when in `reporting`), then re-run that script with `--dry-run` first and again for real. Also add the model to Alembic metadata imports in `data/alembic/env.py` and ship a revision.
+**New-table obligation:** Add the model to Alembic metadata imports in `data/alembic/env.py` and ship a revision. Extend `scripts/db_roles_constants.py`, `scripts/sql/db_roles_grants.sql`, and `scripts/sql/db_rls_policies.sql`, then run `apply_db_roles_rls.py` and `verify_db_roles_rls.py` on disposable Postgres. Keep `scripts/enable_rls.py` TABLES (or reporting setup script) in sync for legacy ENABLE-only PostgREST posture.

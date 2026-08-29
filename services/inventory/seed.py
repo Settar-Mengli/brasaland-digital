@@ -174,7 +174,8 @@ def seed_database() -> tuple[dict[str, int], dict[str, int]]:
     inserted = {"ingredients": 0, "entries": 0, "exits": 0}
     skipped = {"ingredients": 0, "entries": 0, "exits": 0}
 
-    SQLModel.metadata.create_all(engine)
+    if engine.dialect.name != "postgresql":
+        SQLModel.metadata.create_all(engine)
 
     with Session(engine) as session:
         sku_to_id: dict[str, int] = {}

@@ -22,9 +22,9 @@ def get_engine() -> Engine:
         return _engine
 
     load_dotenv(Path(__file__).resolve().parent / ".env")
-    database_url = os.getenv("DATABASE_URL")
+    database_url = os.getenv("REPORTING_DATABASE_URL") or os.getenv("DATABASE_URL")
     if database_url is None:
-        raise RuntimeError("DATABASE_URL is not set")
+        raise RuntimeError("REPORTING_DATABASE_URL or DATABASE_URL is not set")
 
     _engine = create_engine(database_url, echo=False, pool_pre_ping=True)
 
@@ -49,16 +49,21 @@ def _ensure_pipelines_importable() -> None:
 
 
 def ensure_schema() -> None:
-    """Create reporting.* tables from data/pipelines/db_models (Lane-1 source of truth)."""
+    """Create reporting.* tables from data/pipelines/db_models (SQLite tests only)."""
     global _schema_ready
 
     if _schema_ready:
         return
 
+    engine = get_engine()
+    if engine.dialect.name == "postgresql":
+        _schema_ready = True
+        return
+
     _ensure_pipelines_importable()
     import pipelines.db_models  # noqa: F401 — register SQLModel tables on metadata
 
-    SQLModel.metadata.create_all(get_engine())
+    SQLModel.metadata.create_all(engine)
     _schema_ready = True
 
 
@@ -66,16 +71,21 @@ _dead_letters_ready = False
 
 
 def ensure_task_dead_letters_schema() -> None:
-    """Create reporting.task_dead_letters only (scoped Lane-1 safety net)."""
+    """Create reporting.task_dead_letters only (SQLite tests)."""
     global _dead_letters_ready
 
     if _dead_letters_ready:
         return
 
+    engine = get_engine()
+    if engine.dialect.name == "postgresql":
+        _dead_letters_ready = True
+        return
+
     _ensure_pipelines_importable()
     from pipelines.db_models import TaskDeadLetter
 
-    SQLModel.metadata.create_all(get_engine(), tables=[TaskDeadLetter.__table__])
+    SQLModel.metadata.create_all(engine, tables=[TaskDeadLetter.__table__])
     _dead_letters_ready = True
 
 

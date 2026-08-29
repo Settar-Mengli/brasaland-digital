@@ -39,10 +39,10 @@ def get_engine() -> Engine:
     if _engine is not None:
         return _engine
 
-    url = os.environ.get("DATABASE_URL")
+    url = os.environ.get("REPORTING_DATABASE_URL") or os.environ.get("DATABASE_URL")
     if not url:
         load_dotenv()
-        url = os.environ.get("DATABASE_URL")
+        url = os.environ.get("REPORTING_DATABASE_URL") or os.environ.get("DATABASE_URL")
     if not url:
         raise RuntimeError("DATABASE_URL is not set")
 
@@ -51,14 +51,19 @@ def get_engine() -> Engine:
 
 
 def ensure_schema() -> None:
-    """Create reporting.job_runs only (Lane-1 safety net for cron-only hosts)."""
+    """Create reporting.job_runs on SQLite test hosts only."""
     global _schema_ready
     if _schema_ready:
         return
 
+    engine = get_engine()
+    if engine.dialect.name == "postgresql":
+        _schema_ready = True
+        return
+
     import pipelines.db_models  # noqa: F401 — register JobRun on metadata
 
-    SQLModel.metadata.create_all(get_engine(), tables=[JobRun.__table__])
+    SQLModel.metadata.create_all(engine, tables=[JobRun.__table__])
     _schema_ready = True
 
 

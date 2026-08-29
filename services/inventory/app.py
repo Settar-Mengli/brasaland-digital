@@ -13,7 +13,8 @@ from routers.inventory import router as inventory_router
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    SQLModel.metadata.create_all(engine)
+    if engine.dialect.name != "postgresql":
+        SQLModel.metadata.create_all(engine)
     yield
 
 

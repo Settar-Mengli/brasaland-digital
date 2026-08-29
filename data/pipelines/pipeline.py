@@ -38,10 +38,10 @@ def get_engine() -> Engine:
     if _engine is not None:
         return _engine
 
-    url = os.environ.get("DATABASE_URL")
+    url = os.environ.get("REPORTING_DATABASE_URL") or os.environ.get("DATABASE_URL")
     if not url:
         load_dotenv()
-        url = os.environ.get("DATABASE_URL")
+        url = os.environ.get("REPORTING_DATABASE_URL") or os.environ.get("DATABASE_URL")
     if not url:
         raise RuntimeError("DATABASE_URL is not set")
 

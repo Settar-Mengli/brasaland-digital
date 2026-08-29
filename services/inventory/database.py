@@ -10,9 +10,9 @@ from sqlmodel import Session, create_engine
 
 load_dotenv(Path(__file__).parent / ".env")
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.getenv("INVENTORY_DATABASE_URL") or os.getenv("DATABASE_URL")
 if DATABASE_URL is None:
-    raise RuntimeError("DATABASE_URL is not set")
+    raise RuntimeError("INVENTORY_DATABASE_URL or DATABASE_URL is not set")
 
 engine = create_engine(DATABASE_URL, echo=False, pool_pre_ping=True)
 

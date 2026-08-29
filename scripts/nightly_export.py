@@ -6,8 +6,9 @@ Environment:
       (datetime.now(timezone.utc).date() - timedelta(days=1)).
   STALE_LOCK_HOURS
       Hours before a processing job_runs row is treated as orphaned (default 6).
-  DATABASE_URL
-      Required Postgres URL (also loaded from data/.env then services/inventory/.env).
+  REPORTING_DATABASE_URL
+      Postgres URL for reporting role (falls back to DATABASE_URL). Also loaded
+      from data/.env then services/inventory/.env.
 
 Invocation (authoritative)::
 
@@ -79,20 +80,20 @@ def week_start_for(target: date) -> date:
 
 
 def resolve_database_url() -> str:
-    url = os.environ.get("DATABASE_URL")
+    url = os.environ.get("REPORTING_DATABASE_URL") or os.environ.get("DATABASE_URL")
     if url:
         return url
     load_dotenv(DATA_ROOT / ".env")
-    url = os.environ.get("DATABASE_URL")
+    url = os.environ.get("REPORTING_DATABASE_URL") or os.environ.get("DATABASE_URL")
     if url:
         return url
     load_dotenv(REPO_ROOT / "services" / "inventory" / ".env")
-    url = os.environ.get("DATABASE_URL")
+    url = os.environ.get("REPORTING_DATABASE_URL") or os.environ.get("DATABASE_URL")
     if url:
         return url
     raise RuntimeError(
-        "DATABASE_URL is not set. Export it or add it to data/.env or "
-        "services/inventory/.env"
+        "REPORTING_DATABASE_URL or DATABASE_URL is not set. Export it or add it "
+        "to data/.env or services/inventory/.env"
     )
 
 

@@ -181,6 +181,7 @@ def _run_alembic(database_url: str, *arguments: str) -> str:
 
     environment = os.environ.copy()
     environment["DATABASE_URL"] = database_url
+    environment["MIGRATION_DATABASE_URL"] = database_url
     command = [
         "uv",
         "run",

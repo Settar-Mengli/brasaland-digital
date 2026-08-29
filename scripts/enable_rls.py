@@ -1,13 +1,8 @@
 """Enable Row-Level Security on brasaland-m5 public tables (no policies, no FORCE).
 
-What: Runs ALTER TABLE ... ENABLE ROW LEVEL SECURITY on ingredient, ingrediententry,
-ingredientexit, incident, telemetry_events, ticket, rfp_metadata, department_section,
-and final_document. Does not create policies and does not set FORCE ROW LEVEL
-SECURITY.
-
-Why: Closes PostgREST/anon Data API exposure (deny-by-default when RLS is on with zero
-policies). FastAPI services connect as table owner ``postgres`` via DATABASE_URL and
-bypass RLS without FORCE.
+Legacy PostgREST deny-by-default path: runs ALTER TABLE ... ENABLE ROW LEVEL SECURITY
+only (no policies, no FORCE). Runtime service isolation uses per-role grants and
+policies — see scripts/apply_db_roles_rls.py and scripts/verify_db_roles_rls.py.
 
 How to run::
 
@@ -15,8 +10,8 @@ How to run::
     uv run --python 3.13 python ../../scripts/enable_rls.py
     uv run --python 3.13 python ../../scripts/enable_rls.py --dry-run
 
-Future-table caveat: SQLModel.metadata.create_all creates new tables with RLS disabled.
-Re-run this script after adding any table.
+For new tables, extend scripts/db_roles_constants.py and scripts/sql/*, ship an
+Alembic revision, then apply + verify on disposable Postgres.
 """
 
 from __future__ import annotations

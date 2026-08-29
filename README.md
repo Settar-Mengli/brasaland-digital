@@ -159,21 +159,28 @@ The backoffice and incident-manager UIs proxy API calls through Next.js rewrites
 
 ### Database security (RLS)
 
-brasaland-m5 public app tables (`ingredient`, `ingrediententry`, `ingredientexit`, `incident`, `telemetry_events`, `ticket`, `rfp_metadata`, `department_section`, `final_document`) have **Row-Level Security enabled with zero policies** — a deny-by-default posture on the PostgREST/anon Data API path, which nothing in this repo uses. RFP tables are **already RLS-enabled** live (not a pending enablement). Dead LangGraph `PostgresSaver` leftovers (`checkpoint_*`) were dropped; the live RFP checkpointer is SqliteSaver only.
+brasaland-m5 has **13 application tables** (9 `public` + 4 `reporting`) with **Row-Level Security enabled, FORCE RLS, and per-service policies**. Five runtime PostgreSQL roles (`brasaland_inventory`, `brasaland_telemetry`, `brasaland_incident`, `brasaland_rfp`, `brasaland_reporting`) connect via per-service pooler URLs with least-privilege table grants. **Location scoping remains at the API layer** (JWT); policies use model **(A)** table-scoped service isolation (`USING (true)` / `WITH CHECK (true)` on owned tables).
 
-The FastAPI services connect via `DATABASE_URL` as the table owner (`postgres`) and bypass RLS. **FORCE ROW LEVEL SECURITY** is deliberately not set.
+| Purpose | Env var | Role | Connection |
+| --- | --- | --- | --- |
+| Alembic + operator DDL | `MIGRATION_DATABASE_URL` | `postgres` (bypasses RLS) | Direct **:5432** |
+| Inventory API | `INVENTORY_DATABASE_URL` | `brasaland_inventory` | Pooler **:6543** |
+| Telemetry API | `TELEMETRY_DATABASE_URL` | `brasaland_telemetry` | Pooler |
+| Incident API | `INCIDENT_DATABASE_URL` | `brasaland_incident` | Pooler |
+| RFP API + worker | `RFP_DATABASE_URL` | `brasaland_rfp` | Pooler |
+| Reporting API + worker + pipelines | `REPORTING_DATABASE_URL` | `brasaland_reporting` | Pooler |
 
-**Schema source of truth:** Alembic under [`data/`](data/) (baseline revision stamped on live m5). Generate/upgrade against disposable Postgres only; stamp live when schema already matches. `create_all` remains transitional.
+`DATABASE_URL` remains a **fallback** during cutover (`INVENTORY_DATABASE_URL` etc. fall back in Compose and service `database.py` modules). Postgres `create_all` / `ensure_schema` are **SQLite-only**; Alembic owns Postgres DDL.
 
-One-time enablement (or re-enablement after adding tables):
+**Disposable Postgres CI:** `.github/workflows/db-roles-rls-check.yml` runs `verify_alembic_migrations.py` → `apply_db_roles_rls.py` → `verify_db_roles_rls.py`.
 
-```bash
-cd services/inventory
-uv run --python 3.13 python ../../scripts/enable_rls.py
-uv run --python 3.13 python ../../scripts/enable_rls.py --dry-run
-```
+**Operator m5 apply (review-only):** [`scripts/m5_apply_db_roles_rls.sql`](scripts/m5_apply_db_roles_rls.sql) — set role passwords out-of-band on a **direct** session, then rotate app env to runtime role URLs. Do not run from agents against live m5.
 
-**Future-table caveat:** `SQLModel.metadata.create_all` creates new tables with RLS **disabled**. Re-run `scripts/enable_rls.py` after adding any table. Prefer Alembic for schema DDL going forward. Legacy `scripts/setup_telemetry_table.py` remains idempotent bootstrap for telemetry indexes (GIN is also on the model / baseline).
+Legacy **ENABLE-only** path ([`scripts/enable_rls.py`](scripts/enable_rls.py)) remains for PostgREST deny-by-default without policies; production runtime isolation uses the apply/verify scripts above.
+
+**Schema source of truth:** Alembic under [`data/`](data/) (head stamped on live m5). Generate/upgrade against disposable Postgres only; stamp live when schema already matches.
+
+**New-table obligation:** Add the model to Alembic metadata in `data/alembic/env.py`, ship a revision, extend `scripts/db_roles_constants.py`, `scripts/sql/db_roles_grants.sql`, and `scripts/sql/db_rls_policies.sql`, then re-run apply + verify on disposable Postgres.
 
 ## Nightly telemetry export (DEV-53)
 
