@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 import app as app_module
 from auth.request_log import ACCESS_LOGGER_NAME
+from tests.helpers import login_form
 
 
 def test_livez_sets_request_id_and_is_not_access_logged(
@@ -55,7 +56,7 @@ def test_login_access_log_does_not_include_password(
     with TestClient(app_module.app) as client:
         client.post(
             "/auth/login",
-            data={"username": "nobody@brasaland.com", "password": secret},
+            data=login_form("nobody@brasaland.com", secret),
         )
     text = caplog.text
     assert secret not in text

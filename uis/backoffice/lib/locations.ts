@@ -39,6 +39,10 @@ export const LOCATION_OPTIONS = Object.values(LOCATION_MAP).map((slug) => ({
   label: LOCATION_LABELS[slug] ?? slug,
 }));
 
+export function locationLabel(slug: string): string {
+  return LOCATION_LABELS[slug] ?? slug;
+}
+
 export function locationSlug(formValue: number | string): string {
   const numeric = typeof formValue === 'string' ? Number(formValue) : formValue;
   const slug = LOCATION_MAP[numeric];

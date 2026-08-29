@@ -13,6 +13,7 @@ from auth.service import (
     register_user as register_user_service,
     update_user,
 )
+from tests.helpers import assign_test_location, login_form
 
 
 @pytest.fixture
@@ -51,7 +52,7 @@ def _admin_headers(
     register_user_service(email, "password123", is_admin=True)
     login = client.post(
         "/auth/login",
-        data={"username": email, "password": "password123"},
+        data=login_form(email, "password123"),
     )
     assert login.status_code == 200
     return _auth_header(login.json()["access_token"])
@@ -88,10 +89,11 @@ def test_me_with_garbage_token_returns_401(client: TestClient) -> None:
 
 def test_login_success_and_wrong_password(client: TestClient) -> None:
     _register(client, "login@brasaland.com", "password123")
+    assign_test_location("login@brasaland.com")
 
     success = client.post(
         "/auth/login",
-        data={"username": "login@brasaland.com", "password": "password123"},
+        data=login_form("login@brasaland.com", "password123"),
     )
     assert success.status_code == 200
     _assert_no_hashed_password(success.json())
@@ -100,7 +102,7 @@ def test_login_success_and_wrong_password(client: TestClient) -> None:
 
     failure = client.post(
         "/auth/login",
-        data={"username": "login@brasaland.com", "password": "wrong-password"},
+        data=login_form("login@brasaland.com", "wrong-password"),
     )
     assert failure.status_code == 401
 
@@ -257,7 +259,7 @@ def test_hashed_password_never_appears_in_responses(client: TestClient) -> None:
 
     login = client.post(
         "/auth/login",
-        data={"username": "leak-admin@brasaland.com", "password": "password123"},
+        data=login_form("leak-admin@brasaland.com", "password123"),
     )
     assert login.status_code == 200
     _assert_no_hashed_password(login.json())
@@ -626,21 +628,17 @@ def test_put_profiles_me_ignores_email_password_and_flags(client: TestClient) ->
     assert after["is_active"] is True
     assert after["name"] == "Safe Name"
 
+    assign_test_location("profile-secure@brasaland.com")
+
     login = client.post(
         "/auth/login",
-        data={
-            "username": "profile-secure@brasaland.com",
-            "password": "password123",
-        },
+        data=login_form("profile-secure@brasaland.com", "password123"),
     )
     assert login.status_code == 200
 
     hijack_login = client.post(
         "/auth/login",
-        data={
-            "username": "profile-secure@brasaland.com",
-            "password": "hijacked-password",
-        },
+        data=login_form("profile-secure@brasaland.com", "hijacked-password"),
     )
     assert hijack_login.status_code == 401
 
@@ -654,7 +652,7 @@ def test_bootstrap_admin_seeded_on_startup_when_store_empty(
     with TestClient(app_module.app) as test_client:
         login = test_client.post(
             "/auth/login",
-            data={"username": "boot@brasaland.com", "password": "password123"},
+            data=login_form("boot@brasaland.com", "password123"),
         )
         assert login.status_code == 200
         me = test_client.get(

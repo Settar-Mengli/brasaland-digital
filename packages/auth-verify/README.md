@@ -7,8 +7,10 @@ Verify-only RS256 JWT validation for Brasaland Python services. Decode and valid
 ```python
 from brasaland_auth_verify import TokenError, ensure_jwt_configured, verify_token
 from brasaland_auth_verify.deps import get_current_user_uuid, require_admin
+from brasaland_auth_verify.location_claims import assert_active_location_authorized
 
-claims = verify_token(token)  # dict with sub, user_id, exp, is_admin, etc.
+claims = verify_token(token)  # dict with sub, user_id, exp, is_admin, location_slug, etc.
+active_slug = assert_active_location_authorized(claims)
 ```
 
 | Function | Input | Output | Error |

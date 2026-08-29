@@ -7,6 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import app as app_module
+from tests.helpers import assign_test_location, login_form
 
 
 @pytest.fixture
@@ -121,6 +122,7 @@ def test_forgot_password_reset_login_full_flow(
         "/auth/register",
         json={"email": email, "password": old_password},
     )
+    assign_test_location(email)
 
     forgot = client.post("/auth/forgot-password", json={"email": email})
     assert forgot.status_code == 200
@@ -136,13 +138,13 @@ def test_forgot_password_reset_login_full_flow(
 
     new_login = client.post(
         "/auth/login",
-        data={"username": email, "password": new_password},
+        data=login_form(email, new_password),
     )
     assert new_login.status_code == 200
 
     old_login = client.post(
         "/auth/login",
-        data={"username": email, "password": old_password},
+        data=login_form(email, old_password),
     )
     assert old_login.status_code == 401
 

@@ -15,6 +15,7 @@ class UserRecord(TypedDict):
     name: NotRequired[str]
     phone: NotRequired[str]
     address: NotRequired[str]
+    authorized_locations: NotRequired[list[str]]
 
 
 class EmailAlreadyExistsError(Exception):
@@ -31,3 +32,11 @@ class InvalidResetTokenError(Exception):
 
 class InvalidRefreshTokenError(Exception):
     """Raised when a refresh token is invalid, expired, or revoked."""
+
+
+class NoLocationAssignedError(Exception):
+    """Raised when a scoped user has no authorized locations or none were chosen."""
+
+
+class LocationNotAuthorizedError(Exception):
+    """Raised when the requested location is outside the user's assignment."""

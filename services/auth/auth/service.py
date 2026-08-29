@@ -7,6 +7,11 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from auth.locations import (
+    normalize_authorized_locations,
+    sorted_canonical_slugs,
+    validate_location_slug,
+)
 from auth.refresh_repository import (
     create_refresh_token as create_refresh_token_record,
     get_by_hash as get_refresh_token_by_hash,
@@ -32,6 +37,8 @@ from auth.types import (
     EmailAlreadyExistsError,
     InvalidRefreshTokenError,
     InvalidResetTokenError,
+    LocationNotAuthorizedError,
+    NoLocationAssignedError,
     UserNotFoundError,
     UserRecord,
 )
@@ -152,12 +159,17 @@ def register_user(
     name: str = "",
     phone: str = "",
     address: str = "",
+    authorized_locations: list[str] | None = None,
 ) -> UserRecord:
     normalized_email = _normalize_email(email)
     if get_user_by_email(normalized_email) is not None:
         raise EmailAlreadyExistsError(
             f"Email already registered: {normalized_email}"
         )
+
+    locations: list[str] = []
+    if authorized_locations is not None:
+        locations = normalize_authorized_locations(authorized_locations)
 
     return create_user(
         {
@@ -169,6 +181,7 @@ def register_user(
             "name": name,
             "phone": phone,
             "address": address,
+            "authorized_locations": locations,
         }
     )
 
@@ -193,28 +206,73 @@ def authenticate_user(email: str, password: str) -> UserRecord | None:
     return user
 
 
-def issue_access_token(user: UserRecord) -> str:
-    return create_access_token(
-        {
-            "sub": str(user["id"]),
-            "user_id": user["id"],
-            "is_admin": bool(user["is_admin"]),
-        }
-    )
+def user_authorized_locations(user: UserRecord) -> list[str]:
+    """Return the user's stored authorized location slugs (normalized to [])."""
+    return list(user.get("authorized_locations") or [])
 
 
-def issue_refresh_token(user: UserRecord, expires_minutes: int | None = None) -> str:
+def get_effective_authorized_locations(user: UserRecord) -> list[str] | None:
+    """Return assigned slugs for scoped users, or None when admin (all locations)."""
+    if user["is_admin"]:
+        return None
+    return user_authorized_locations(user)
+
+
+def resolve_login_locations(user: UserRecord) -> list[str]:
+    """Slugs the user may pick at login (all canonical for admin)."""
+    if user["is_admin"]:
+        return sorted_canonical_slugs()
+    return user_authorized_locations(user)
+
+
+def validate_login_location(user: UserRecord, location_slug: str) -> str:
+    """Validate and normalize the login location slug for this user."""
+    normalized = validate_location_slug(location_slug)
+    if user["is_admin"]:
+        return normalized
+
+    authorized = user_authorized_locations(user)
+    if not authorized:
+        raise NoLocationAssignedError("No location assigned to this user")
+    if normalized not in authorized:
+        raise LocationNotAuthorizedError(
+            f"Location not authorized for this user: {normalized}"
+        )
+    return normalized
+
+
+def issue_access_token(user: UserRecord, location_slug: str | None = None) -> str:
+    claims: dict[str, Any] = {
+        "sub": str(user["id"]),
+        "user_id": user["id"],
+        "is_admin": bool(user["is_admin"]),
+    }
+    if location_slug is not None:
+        normalized = validate_login_location(user, location_slug)
+        claims["location_slug"] = normalized
+        if user["is_admin"]:
+            claims["authorized_locations"] = []
+        else:
+            claims["authorized_locations"] = user_authorized_locations(user)
+    return create_access_token(claims)
+
+
+def issue_refresh_token(
+    user: UserRecord,
+    location_slug: str | None = None,
+    expires_minutes: int | None = None,
+) -> str:
     minutes = _refresh_token_expire_minutes() if expires_minutes is None else expires_minutes
     expire_at = datetime.now(timezone.utc) + timedelta(minutes=minutes)
-    token = create_access_token(
-        {
-            "sub": str(user["id"]),
-            "user_id": user["id"],
-            "type": REFRESH_TOKEN_TYPE,
-            "jti": secrets.token_urlsafe(16),
-        },
-        expires_minutes=minutes,
-    )
+    payload: dict[str, Any] = {
+        "sub": str(user["id"]),
+        "user_id": user["id"],
+        "type": REFRESH_TOKEN_TYPE,
+        "jti": secrets.token_urlsafe(16),
+    }
+    if location_slug is not None:
+        payload["location_slug"] = validate_login_location(user, location_slug)
+    token = create_access_token(payload, expires_minutes=minutes)
     create_refresh_token_record(
         {
             "user_id": user["id"],
@@ -227,8 +285,13 @@ def issue_refresh_token(user: UserRecord, expires_minutes: int | None = None) ->
     return token
 
 
-def issue_token_pair(user: UserRecord) -> tuple[str, str]:
-    return issue_access_token(user), issue_refresh_token(user)
+def issue_token_pair(
+    user: UserRecord,
+    location_slug: str | None = None,
+) -> tuple[str, str]:
+    return issue_access_token(user, location_slug), issue_refresh_token(
+        user, location_slug
+    )
 
 
 def rotate_refresh_token(token: str) -> tuple[str, str]:
@@ -258,8 +321,15 @@ def rotate_refresh_token(token: str) -> tuple[str, str]:
     if user is None or not user["is_active"]:
         raise InvalidRefreshTokenError("Invalid or expired refresh token")
 
+    location_slug = payload.get("location_slug")
+    if location_slug is not None:
+        try:
+            validate_login_location(user, str(location_slug))
+        except (NoLocationAssignedError, LocationNotAuthorizedError) as error:
+            raise InvalidRefreshTokenError("Invalid or expired refresh token") from error
+
     revoke_refresh_token_record(stored["token_hash"])
-    return issue_token_pair(user)
+    return issue_token_pair(user, str(location_slug) if location_slug is not None else None)
 
 
 def revoke_refresh_token(token: str) -> None:
@@ -282,12 +352,20 @@ def can_modify_user(requester: UserRecord, target_user_id: int) -> bool:
     return requester["id"] == target_user_id or requester["is_admin"]
 
 
-def build_update_fields(email: str | None, password: str | None) -> dict[str, Any]:
+def build_update_fields(
+    email: str | None,
+    password: str | None,
+    authorized_locations: list[str] | None = None,
+) -> dict[str, Any]:
     fields: dict[str, Any] = {}
     if email is not None:
         fields["email"] = str(email)
     if password is not None:
         fields["hashed_password"] = hash_password(password)
+    if authorized_locations is not None:
+        fields["authorized_locations"] = normalize_authorized_locations(
+            authorized_locations
+        )
     return fields
 
 
@@ -336,6 +414,11 @@ def update_user(user_id: int, fields: dict[str, Any]) -> UserRecord:
                 f"Email already registered: {normalized_email}"
             )
         update_fields["email"] = normalized_email
+
+    if "authorized_locations" in update_fields:
+        update_fields["authorized_locations"] = normalize_authorized_locations(
+            list(update_fields["authorized_locations"])
+        )
 
     user = update_user_record(user_id, update_fields)
     if user is None:

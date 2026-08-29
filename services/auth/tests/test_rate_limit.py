@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 
 from app import app
 from brasaland_proxy_trust.rate_limit_key import clear_trusted_proxy_cache
+from tests.helpers import login_form
 
 
 @pytest.fixture(autouse=True)
@@ -26,7 +27,7 @@ def test_login_rate_limit_returns_429() -> None:
         for _ in range(8):
             response = client.post(
                 "/auth/login",
-                data={"username": "nobody@brasaland.com", "password": "wrong-password"},
+                data=login_form("nobody@brasaland.com", "wrong-password"),
             )
             codes.append(response.status_code)
         assert 429 in codes
@@ -48,14 +49,14 @@ def test_login_rate_limit_buckets_differ_by_forwarded_ip(
         for _ in range(6):
             response = client.post(
                 "/auth/login",
-                data={"username": "nobody@brasaland.com", "password": "wrong-password"},
+                data=login_form("nobody@brasaland.com", "wrong-password"),
                 headers={"X-Forwarded-For": "203.0.113.10"},
             )
         assert response.status_code == 429
 
         other_ip = client.post(
             "/auth/login",
-            data={"username": "nobody@brasaland.com", "password": "wrong-password"},
+            data=login_form("nobody@brasaland.com", "wrong-password"),
             headers={"X-Forwarded-For": "203.0.113.11"},
         )
         assert other_ip.status_code == 401

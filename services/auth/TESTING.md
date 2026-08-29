@@ -74,7 +74,7 @@ Regenerate the report with `uv run pytest`.
 
 ## Test catalog
 
-**110 tests** across 9 files.
+**121 tests** across 10 files.
 
 ### `tests/test_security.py` (8)
 
@@ -127,6 +127,14 @@ Regenerate the report with `uv run pytest`.
 - `resolve_active_user` rejects refresh tokens and accepts access tokens.
 - Refresh token carries `type: "refresh"` claim.
 - Password reset revokes the user's refresh tokens (H4).
+
+### `tests/test_location_claims.py` (11)
+
+- Scoped login JWT carries `authorized_locations` and `location_slug`; admin JWT has empty `authorized_locations`.
+- Login rejects unauthorized slug; scoped users without assignment get 403 on preflight and login.
+- Preflight returns server-driven authorized slug lists for scoped and admin users.
+- Refresh preserves `location_slug`; fails when assignment is revoked.
+- Admin CRUD for `authorized_locations`; non-admin cannot update assignments.
 
 ### `tests/test_api.py` (40)
 
