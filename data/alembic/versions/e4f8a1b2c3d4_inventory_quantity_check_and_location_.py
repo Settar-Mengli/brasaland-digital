@@ -5,11 +5,9 @@ Revises: d38c62feec63
 Create Date: 2026-08-29 05:55:00.000000
 
 """
-
 from typing import Sequence, Union
 
 from alembic import op
-
 
 revision: str = "e4f8a1b2c3d4"
 down_revision: Union[str, Sequence[str], None] = "d38c62feec63"
