@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { formatBrasaPointsEarnLine } from '@brasaland/operations-toolkit';
 
 const CHECK_ICON = (
   <svg
@@ -33,7 +34,7 @@ export default function BrasaPointsSection() {
         <div className="mt-12 grid gap-6 sm:grid-cols-2 text-left max-w-3xl mx-auto">
           <div className="flex gap-4 items-start">
             {CHECK_ICON}
-            <p className="leading-relaxed">Accumulate 1 point for every $10,000 COP or $5 USD.</p>
+            <p className="leading-relaxed">{formatBrasaPointsEarnLine()}</p>
           </div>
           <div className="flex gap-4 items-start">
             {CHECK_ICON}
