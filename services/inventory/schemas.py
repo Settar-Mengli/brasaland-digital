@@ -1,8 +1,18 @@
 from __future__ import annotations
 
+import math
 from datetime import datetime
+from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+PositiveQuantity = Annotated[float, Field(gt=0)]
+
+
+def _validate_finite_positive_quantity(value: float) -> float:
+    if not math.isfinite(value):
+        raise ValueError("quantity must be a finite number greater than 0")
+    return value
 
 
 class IngredientCreate(BaseModel):
@@ -27,10 +37,15 @@ class IngredientResponse(BaseModel):
 
 class IngredientEntryCreate(BaseModel):
     ingredient_id: int
-    quantity: float
+    quantity: PositiveQuantity
     unit_cost: float | None = Field(default=None, ge=0)
     supplier_name: str
     location_id: int
+
+    @field_validator("quantity")
+    @classmethod
+    def validate_quantity(cls, value: float) -> float:
+        return _validate_finite_positive_quantity(value)
 
 
 class IngredientEntryResponse(BaseModel):
@@ -48,9 +63,14 @@ class IngredientEntryResponse(BaseModel):
 
 class IngredientExitCreate(BaseModel):
     ingredient_id: int
-    quantity: float
+    quantity: PositiveQuantity
     reason: str
     location_id: int
+
+    @field_validator("quantity")
+    @classmethod
+    def validate_quantity(cls, value: float) -> float:
+        return _validate_finite_positive_quantity(value)
 
 
 class IngredientExitResponse(BaseModel):

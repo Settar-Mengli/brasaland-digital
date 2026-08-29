@@ -29,7 +29,7 @@ import psycopg2
 from psycopg2 import sql
 from sqlalchemy.engine import make_url
 
-EXPECTED_HEAD = "d38c62feec63"
+EXPECTED_HEAD = "e4f8a1b2c3d4"
 POSTGRES_ADMIN_DATABASE = "postgres"
 READINESS_ATTEMPTS = 30
 READINESS_DELAY_SECONDS = 1

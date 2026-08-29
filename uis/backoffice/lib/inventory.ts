@@ -56,12 +56,18 @@ async function inventoryPost<T>(path: string, body: unknown): Promise<T> {
   });
 }
 
-export function getProducts(): Promise<Ingredient[]> {
-  return inventoryGet<Ingredient[]>('/products');
+function productsPath(locationId: number): string {
+  const params = new URLSearchParams({ location_id: String(locationId) });
+  return `/products?${params.toString()}`;
 }
 
-export function getProduct(id: number): Promise<Ingredient> {
-  return inventoryGet<Ingredient>(`/products/${id}`);
+export function getProducts(locationId: number): Promise<Ingredient[]> {
+  return inventoryGet<Ingredient[]>(productsPath(locationId));
+}
+
+export function getProduct(id: number, locationId: number): Promise<Ingredient> {
+  const params = new URLSearchParams({ location_id: String(locationId) });
+  return inventoryGet<Ingredient>(`/products/${id}?${params.toString()}`);
 }
 
 export function createInbound(body: IngredientEntryCreate): Promise<IngredientEntryResponse> {

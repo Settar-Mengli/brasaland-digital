@@ -52,6 +52,22 @@ export function locationSlug(formValue: number | string): string {
   return slug;
 }
 
+export function locationIdFromSlug(slug: string): number {
+  const match = Object.entries(LOCATION_MAP).find(([, value]) => value === slug);
+  if (!match) {
+    throw new Error(`Unknown location slug: ${slug}`);
+  }
+  return Number(match[0]);
+}
+
+export function getSessionLocationId(): number {
+  const slug = getSessionLocationSlug();
+  if (!slug) {
+    return 1;
+  }
+  return locationIdFromSlug(slug);
+}
+
 export function getSessionLocationSlug(): string {
   if (typeof window === 'undefined') {
     return '';

@@ -28,9 +28,9 @@ services/inventory/
 
 ## Concurrency
 
-Outbound stock checks (`POST /inventory/orders/outbound`) serialize on an **`Ingredient` row lock** (`SELECT … FOR UPDATE`) in the same session before the computed stock guard and exit insert. That closes the TOCTOU window between availability read and exit write under PostgreSQL.
+Outbound stock checks (`POST /inventory/orders/outbound`) acquire a **PostgreSQL advisory transaction lock** (`pg_advisory_xact_lock(ingredient_id, location_id)`) before the per-location computed stock guard and exit insert. That serializes concurrent outbound requests for the same ingredient at the same location without locking unrelated locations.
 
-SQLite test runs do **not** exercise real row locking (`with_for_update()` is a no-op on SQLite). Lock behavior is verified against live Postgres (brasaland-m5).
+SQLite test runs do **not** exercise advisory locks (the lock call is skipped on non-PostgreSQL dialects). Lock behavior is verified against live Postgres (brasaland-m5).
 
 ## Setup
 
@@ -77,7 +77,8 @@ Expected first-run totals: **6** ingredients, **4** entries, **3** exits.
 
 ## Business rules
 
-- **`current_stock`** is computed as `SUM(IngredientEntry.quantity) − SUM(IngredientExit.quantity)` per ingredient. It appears on product responses only — not in the database.
+- **`current_stock`** is computed as `SUM(IngredientEntry.quantity) − SUM(IngredientExit.quantity)` per **(ingredient, location_id)**. It appears on product responses only — not in the database. Product GET endpoints require a `location_id` query parameter (1–14).
+- **Quantity** on inbound and outbound orders must be a finite number **strictly greater than zero** (Pydantic validation and PostgreSQL CHECK constraints).
 - **`unit_cost` (optional, inbound only)** — `POST /inventory/orders/inbound` accepts an optional non-negative `unit_cost` on `IngredientEntry`. Omitted or null is valid (historical rows). `IngredientExit` has no cost field; waste monetary valuation is deferred to the M6 pipeline, which values waste at the ingredient's latest supply `unit_cost`.
 - **Float convention for `unit_cost`:** floats are not exact for monetary values; this field follows the service's existing float convention, while the M6 pipeline's destination table uses NUMERIC per the pipeline CONTEXT and aggregation happens in pandas — precision is enforced at the reporting destination, convention preserved at the source.
 - **Live column rollout** — `SQLModel.metadata.create_all` does not add columns to existing tables. On brasaland-m5, operators add `ingrediententry.unit_cost` with `scripts/add_inventory_cost_column.py` (dry-run first) **after merge and before** restarting/deploying inventory with the new model.
@@ -91,9 +92,9 @@ All routes are under `/inventory`.
 
 | Method | Path | Auth | Description |
 | --- | --- | --- | --- |
-| `GET` | `/inventory/products` | No | List all ingredients with `current_stock` |
+| `GET` | `/inventory/products` | No | List all ingredients with `current_stock` at `location_id` (required query, 1–14) |
 | `POST` | `/inventory/products` | Bearer | Create a new ingredient (`current_stock` starts at 0) |
-| `GET` | `/inventory/products/{id}` | No | Get one ingredient with `current_stock` |
+| `GET` | `/inventory/products/{id}` | No | Get one ingredient with `current_stock` at `location_id` (required query, 1–14) |
 | `POST` | `/inventory/orders/inbound` | Bearer | Log a supplier delivery (`IngredientEntry`; optional `unit_cost`) |
 | `POST` | `/inventory/orders/outbound` | Bearer | Log consumption or waste (`IngredientExit`) |
 | `GET` | `/inventory/orders` | No | List all entries and exits with nested ingredient data |
@@ -107,6 +108,6 @@ cd services/inventory
 uv run pytest
 ```
 
-Expect **33** passed (SQLite in-memory; no Supabase required for tests).
+Expect **37** passed (SQLite in-memory; no Supabase required for tests).
 
 CI runs this suite via the `uv-tests` matrix row `services/inventory` in `.github/workflows/ci.yml`.

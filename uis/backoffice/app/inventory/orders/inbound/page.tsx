@@ -7,7 +7,7 @@ import { type FormEvent, useState } from 'react';
 import InventoryAuthGuard from '@/app/_components/InventoryAuthGuard';
 import ProductSelect from '@/app/_components/ProductSelect';
 import { createInbound } from '@/lib/inventory';
-import { locationSlug } from '@/lib/locations';
+import { locationSlug, getSessionLocationId } from '@/lib/locations';
 import { mapSupplyFailure } from '@/lib/order-failure-codes';
 import { track } from '@/lib/telemetry';
 import { useOrderFormAbandonment } from '@/lib/use-order-form-abandonment';
@@ -31,7 +31,7 @@ function InboundForm() {
   const [quantity, setQuantity] = useState('');
   const [unitCost, setUnitCost] = useState('');
   const [supplierName, setSupplierName] = useState('');
-  const [locationId, setLocationId] = useState('1');
+  const [locationId, setLocationId] = useState(() => String(getSessionLocationId()));
   const [formError, setFormError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -49,7 +49,7 @@ function InboundForm() {
     setQuantity('');
     setUnitCost('');
     setSupplierName('');
-    setLocationId('1');
+    setLocationId(String(getSessionLocationId()));
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -59,6 +59,12 @@ function InboundForm() {
 
     if (ingredientId === '') {
       setFormError('Select a product.');
+      return;
+    }
+
+    const parsedQuantity = Number(quantity);
+    if (!Number.isFinite(parsedQuantity) || parsedQuantity <= 0) {
+      setFormError('quantity must be greater than 0.');
       return;
     }
 
@@ -76,7 +82,7 @@ function InboundForm() {
     try {
       const response = await createInbound({
         ingredient_id: ingredientId,
-        quantity: Number(quantity),
+        quantity: parsedQuantity,
         ...(parsedUnitCost !== undefined ? { unit_cost: parsedUnitCost } : {}),
         supplier_name: supplierName.trim(),
         location_id: Number(locationId),
@@ -150,6 +156,7 @@ function InboundForm() {
           <ProductSelect
             id="inbound-product"
             value={ingredientId}
+            locationId={Number(locationId)}
             onChange={(value) => {
               onFieldChange();
               setIngredientId(value);

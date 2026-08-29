@@ -222,16 +222,21 @@ def update_ticket_status(incident_id: int, status: str) -> dict[str, Any]:
 @mcp.tool(
     name="check_stock",
     description=(
-        "Read-only ingredient stock query by ingredient_id or sku. Returns "
-        "current_stock and Ingredient fields. Scope: inventory:read."
+        "Read-only ingredient stock query by ingredient_id or sku for a specific "
+        "location_id (1-14). Returns current_stock and Ingredient fields. Scope: "
+        "inventory:read."
     ),
 )
 def check_stock(
+    location_id: int,
     ingredient_id: int | None = None,
     sku: str | None = None,
 ) -> dict[str, Any]:
     return inventory_tools.check_stock_impl(
-        mcp_auth, ingredient_id=ingredient_id, sku=sku
+        mcp_auth,
+        ingredient_id=ingredient_id,
+        sku=sku,
+        location_id=location_id,
     )
 
 

@@ -11,6 +11,7 @@ const SELECT_CLASS =
 type ProductSelectProps = {
   id?: string;
   value: number | '';
+  locationId: number;
   onChange: (ingredientId: number) => void;
   disabled?: boolean;
 };
@@ -18,6 +19,7 @@ type ProductSelectProps = {
 export default function ProductSelect({
   id = 'product',
   value,
+  locationId,
   onChange,
   disabled = false,
 }: ProductSelectProps) {
@@ -29,8 +31,10 @@ export default function ProductSelect({
     let cancelled = false;
 
     async function loadProducts() {
+      setLoading(true);
+      setLoadError(null);
       try {
-        const data = await getProducts();
+        const data = await getProducts(locationId);
         if (!cancelled) {
           setProducts(data);
         }
@@ -38,6 +42,7 @@ export default function ProductSelect({
         if (!cancelled) {
           const message = error instanceof Error ? error.message : 'Failed to load ingredients.';
           setLoadError(message);
+          setProducts([]);
         }
       } finally {
         if (!cancelled) {
@@ -51,7 +56,7 @@ export default function ProductSelect({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [locationId]);
 
   if (loadError) {
     return (

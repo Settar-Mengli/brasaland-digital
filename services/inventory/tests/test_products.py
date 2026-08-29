@@ -72,7 +72,7 @@ def test_get_products_returns_schemas_with_country_and_stock(
 ) -> None:
     _seed_stock_fixtures(session)
 
-    response = client.get("/inventory/products")
+    response = client.get("/inventory/products", params={"location_id": 1})
     assert response.status_code == 200
     products = response.json()
     assert isinstance(products, list)
@@ -100,7 +100,9 @@ def test_get_product_detail_returns_schema_with_stock(
     beef = _seed_stock_fixtures(session)
     assert beef.id is not None
 
-    response = client.get(f"/inventory/products/{beef.id}")
+    response = client.get(
+        f"/inventory/products/{beef.id}", params={"location_id": 1}
+    )
     assert response.status_code == 200
     product = response.json()
     assert product["country"] == "CO"
@@ -108,7 +110,7 @@ def test_get_product_detail_returns_schema_with_stock(
 
 
 def test_get_product_detail_returns_404_when_missing(client: TestClient) -> None:
-    response = client.get("/inventory/products/9999")
+    response = client.get("/inventory/products/9999", params={"location_id": 1})
     assert response.status_code == 404
 
 

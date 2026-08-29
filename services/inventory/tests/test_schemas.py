@@ -131,3 +131,25 @@ def test_exit_response_includes_user_uuid() -> None:
     parsed = IngredientExitResponse.model_validate(payload)
     assert parsed.reason == "consumption"
     assert parsed.user_uuid == "staff-uuid-2"
+
+
+def test_entry_create_rejects_zero_quantity() -> None:
+    payload = {
+        "ingredient_id": 1,
+        "quantity": 0.0,
+        "supplier_name": "Carnes del Valle S.A.",
+        "location_id": 3,
+    }
+    with pytest.raises(ValidationError):
+        IngredientEntryCreate.model_validate(payload)
+
+
+def test_exit_create_rejects_non_finite_quantity() -> None:
+    payload = {
+        "ingredient_id": 1,
+        "quantity": float("inf"),
+        "reason": "waste",
+        "location_id": 2,
+    }
+    with pytest.raises(ValidationError):
+        IngredientExitCreate.model_validate(payload)

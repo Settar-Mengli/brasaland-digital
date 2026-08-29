@@ -15,15 +15,19 @@ def inventory_origin() -> str:
     return raw.rstrip("/")
 
 
-def list_products() -> tuple[int, Any]:
+def list_products(location_id: int) -> tuple[int, Any]:
     with httpx.Client(timeout=TIMEOUT_S) as client:
-        response = client.get(f"{inventory_origin()}/inventory/products")
+        response = client.get(
+            f"{inventory_origin()}/inventory/products",
+            params={"location_id": location_id},
+        )
         return response.status_code, response.json() if response.content else None
 
 
-def get_product(ingredient_id: int) -> tuple[int, Any]:
+def get_product(ingredient_id: int, location_id: int) -> tuple[int, Any]:
     with httpx.Client(timeout=TIMEOUT_S) as client:
         response = client.get(
-            f"{inventory_origin()}/inventory/products/{ingredient_id}"
+            f"{inventory_origin()}/inventory/products/{ingredient_id}",
+            params={"location_id": location_id},
         )
         return response.status_code, response.json() if response.content else None
