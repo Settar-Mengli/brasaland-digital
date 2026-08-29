@@ -37,3 +37,19 @@ docker rm -f brasaland-alembic-postgres
 
 The script leaves its uniquely named `alembic_ci_*` database for inspection.
 Drop that disposable database after a successful run if it is no longer needed.
+
+## DB roles and RLS check
+
+After migrations pass, the `DB roles and RLS check` workflow applies runtime
+roles, grants, FORCE RLS, and policies then verifies the privilege matrix.
+Local reproduction (same disposable Postgres container):
+
+```powershell
+$env:MIGRATION_DATABASE_URL = $env:DATABASE_URL
+$env:BRASALAND_RUNTIME_ROLE_PASSWORD = "ci_brasaland_runtime_role_password"
+uv run --directory data --locked --python 3.13 python ../scripts/apply_db_roles_rls.py
+uv run --directory data --locked --python 3.13 python ../scripts/verify_db_roles_rls.py
+```
+
+Operator apply on live m5 uses `scripts/m5_apply_db_roles_rls.sql` on a direct
+session — not the disposable CI apply script.

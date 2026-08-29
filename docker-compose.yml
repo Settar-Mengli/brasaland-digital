@@ -44,7 +44,8 @@ services:
     environment:
       WATCHFILES_FORCE_POLLING: 'true'
       EXPOSE_DOCS: ${EXPOSE_DOCS:-}
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: ${INVENTORY_DATABASE_URL:-${DATABASE_URL}}
+      INVENTORY_DATABASE_URL: ${INVENTORY_DATABASE_URL:-${DATABASE_URL}}
       JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
       JWT_ALGORITHM: ${JWT_ALGORITHM}
     volumes:
@@ -67,7 +68,8 @@ services:
     environment:
       WATCHFILES_FORCE_POLLING: 'true'
       EXPOSE_DOCS: ${EXPOSE_DOCS:-}
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: ${TELEMETRY_DATABASE_URL:-${DATABASE_URL}}
+      TELEMETRY_DATABASE_URL: ${TELEMETRY_DATABASE_URL:-${DATABASE_URL}}
       TELEMETRY_ENDPOINT: http://telemetry:8013/telemetry/events
       JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
       JWT_ALGORITHM: ${JWT_ALGORITHM}
@@ -89,7 +91,8 @@ services:
     environment:
       WATCHFILES_FORCE_POLLING: 'true'
       EXPOSE_DOCS: ${EXPOSE_DOCS:-}
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: ${REPORTING_DATABASE_URL:-${DATABASE_URL}}
+      REPORTING_DATABASE_URL: ${REPORTING_DATABASE_URL:-${DATABASE_URL}}
       REDIS_URL: ${REDIS_URL}
       JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
       JWT_ALGORITHM: ${JWT_ALGORITHM}
@@ -132,7 +135,8 @@ services:
       dockerfile: services/reporting/Dockerfile
     command: uv run celery -A celery_app.celery_app worker --loglevel=INFO -Q reporting
     environment:
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: ${REPORTING_DATABASE_URL:-${DATABASE_URL}}
+      REPORTING_DATABASE_URL: ${REPORTING_DATABASE_URL:-${DATABASE_URL}}
       REDIS_URL: ${REDIS_URL}
       PYTHONPATH: /app/data
     volumes:
@@ -156,7 +160,8 @@ services:
     environment:
       WATCHFILES_FORCE_POLLING: 'true'
       EXPOSE_DOCS: ${EXPOSE_DOCS:-}
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: ${RFP_DATABASE_URL:-${DATABASE_URL}}
+      RFP_DATABASE_URL: ${RFP_DATABASE_URL:-${DATABASE_URL}}
       REDIS_URL: ${REDIS_URL}
       RFP_CHECKPOINT_PATH: ${RFP_CHECKPOINT_PATH:-/app/checkpoint/rfp.sqlite}
       JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
@@ -193,7 +198,8 @@ services:
       dockerfile: services/rfp/Dockerfile
     command: uv run celery -A celery_app.celery_app worker --loglevel=INFO --pool=solo -Q rfp
     environment:
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: ${RFP_DATABASE_URL:-${DATABASE_URL}}
+      RFP_DATABASE_URL: ${RFP_DATABASE_URL:-${DATABASE_URL}}
       REDIS_URL: ${REDIS_URL}
       RFP_CHECKPOINT_PATH: ${RFP_CHECKPOINT_PATH:-/app/checkpoint/rfp.sqlite}
       PYTHONPATH: /app/data
@@ -234,7 +240,8 @@ services:
     environment:
       WATCHFILES_FORCE_POLLING: 'true'
       EXPOSE_DOCS: ${EXPOSE_DOCS:-}
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: ${INCIDENT_DATABASE_URL:-${DATABASE_URL}}
+      INCIDENT_DATABASE_URL: ${INCIDENT_DATABASE_URL:-${DATABASE_URL}}
       JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
       JWT_ALGORITHM: ${JWT_ALGORITHM}
     volumes:

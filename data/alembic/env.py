@@ -51,11 +51,13 @@ target_metadata = SQLModel.metadata
 
 
 def _database_url() -> str:
-    url = os.environ.get("DATABASE_URL")
+    url = os.environ.get("MIGRATION_DATABASE_URL")
+    if not url:
+        url = os.environ.get("DATABASE_URL")
     if not url:
         raise RuntimeError(
-            "DATABASE_URL is required for Alembic (disposable Postgres for "
-            "revision/upgrade; brasaland-m5 pooler for stamp only)."
+            "MIGRATION_DATABASE_URL or DATABASE_URL is required for Alembic (disposable "
+            "Postgres for revision/upgrade; brasaland-m5 pooler for stamp only)."
         )
     return url
 

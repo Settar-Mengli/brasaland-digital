@@ -9,9 +9,9 @@ from sqlmodel import Session, SQLModel, create_engine
 
 load_dotenv(Path(__file__).resolve().parent / ".env")
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.getenv("TELEMETRY_DATABASE_URL") or os.getenv("DATABASE_URL")
 if DATABASE_URL is None:
-    raise RuntimeError("DATABASE_URL is not set")
+    raise RuntimeError("TELEMETRY_DATABASE_URL or DATABASE_URL is not set")
 
 engine = create_engine(DATABASE_URL, echo=False, pool_pre_ping=True)
 
@@ -31,11 +31,17 @@ if engine.dialect.name == "sqlite":
 def ensure_schema() -> None:
     global _schema_ready
 
-    if not _schema_ready:
-        import db_models  # noqa: F401
+    if _schema_ready:
+        return
 
-        SQLModel.metadata.create_all(engine)
+    if engine.dialect.name == "postgresql":
         _schema_ready = True
+        return
+
+    import db_models  # noqa: F401
+
+    SQLModel.metadata.create_all(engine)
+    _schema_ready = True
 
 
 def get_session() -> Session:

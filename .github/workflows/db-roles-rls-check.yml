@@ -1,0 +1,40 @@
+name: DB roles and RLS check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  db-roles-rls-check:
+    name: Roles grants RLS verify
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16.4
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci_postgres_password
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+        with:
+          python-version: '3.13'
+      - name: Upgrade Alembic head then apply and verify roles RLS
+        env:
+          DATABASE_URL: postgresql://postgres:ci_postgres_password@localhost:5432/postgres
+          MIGRATION_DATABASE_URL: postgresql://postgres:ci_postgres_password@localhost:5432/postgres
+          BRASALAND_RUNTIME_ROLE_PASSWORD: ci_brasaland_runtime_role_password
+        run: |
+          uv run --directory data --locked --python 3.13 python ../scripts/verify_alembic_migrations.py
+          uv run --directory data --locked --python 3.13 python ../scripts/apply_db_roles_rls.py
+          uv run --directory data --locked --python 3.13 python ../scripts/verify_db_roles_rls.py
