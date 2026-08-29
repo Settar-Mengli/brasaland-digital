@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import InventoryAuthGuard from '@/app/_components/InventoryAuthGuard';
 import { getProducts } from '@/lib/inventory';
 import type { Ingredient } from '@/lib/inventory-types';
-import { getSessionLocationSlug } from '@/lib/locations';
+import { getSessionLocationId, getSessionLocationSlug } from '@/lib/locations';
 import { getStockLevel, type StockLevel } from '@/lib/stock-level';
 import { track } from '@/lib/telemetry';
 
@@ -37,13 +37,14 @@ function ProductsContent() {
 
     async function loadProducts() {
       try {
-        const data = await getProducts();
+        const locationId = getSessionLocationId();
+        const data = await getProducts(locationId);
         if (!cancelled) {
           setProducts(data);
-          const locationId = getSessionLocationSlug();
-          if (locationId) {
+          const locationSlug = getSessionLocationSlug();
+          if (locationSlug) {
             track('ingredient_list_viewed', {
-              location_id: locationId,
+              location_id: locationSlug,
               item_count: data.length,
             });
           }
@@ -153,13 +154,13 @@ function ProductsContent() {
           </table>
         </div>
         <p className="text-xs text-brasaland-charcoal/40 mt-2">
-          Powered by getProducts() · GET /inventory/products
+          Powered by getProducts() · GET /inventory/products?location_id=
         </p>
       </section>
 
       <p className="text-xs text-brasaland-charcoal/40 border-t border-brasaland-charcoal/10 pt-4">
-        Live ingredient data from the Brasaland Inventory API. current_stock is computed from
-        entries minus exits.
+        Live ingredient data from the Brasaland Inventory API. current_stock is computed per
+        location from entries minus exits.
       </p>
     </>
   );

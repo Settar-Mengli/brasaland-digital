@@ -72,9 +72,9 @@ All endpoints must be registered under the `/inventory` prefix. The router file 
 
 | Method | Path                         | Description                                        |
 | ------ | ---------------------------- | -------------------------------------------------- |
-| `GET`  | `/inventory/products`        | List all ingredients with `current_stock`          |
+| `GET`  | `/inventory/products`        | List all ingredients with `current_stock` at required `location_id` query (1–14) |
 | `POST` | `/inventory/products`        | Create a new ingredient                            |
-| `GET`  | `/inventory/products/{id}`   | Get one ingredient with current stock              |
+| `GET`  | `/inventory/products/{id}`   | Get one ingredient with current stock at `location_id` |
 | `POST` | `/inventory/orders/inbound`  | Log an ingredient delivery (`IngredientEntry`)     |
 | `POST` | `/inventory/orders/outbound` | Log a consumption or waste exit (`IngredientExit`) |
 | `GET`  | `/inventory/orders`          | List all entries and exits with ingredient data    |
@@ -83,11 +83,12 @@ All endpoints must be registered under the `/inventory` prefix. The router file 
 
 ## Business Rules
 
-1. **`current_stock` is always computed**, never stored. For any given ingredient: `current_stock = SUM(IngredientEntry.quantity) − SUM(IngredientExit.quantity)`.
-2. **An exit cannot be logged if it would result in negative stock.** Return `HTTP 400` with the message: `"Insufficient stock for ingredient '{name}'. Available: {available}, requested: {requested}."`. Reject before writing.
-3. **Both Colombia and US ingredients exist in the same table.** Use the `country` field to filter by market when needed.
-4. **No user table in Supabase.** The `user_uuid` fields reference TinyDB users. Do not create a User model in SQLModel.
-5. **Locations are numeric IDs 1–14.** They are not foreign keys in this milestone — store only the integer.
+1. **`current_stock` is always computed per (ingredient, location_id)**, never stored. For a given ingredient at a location: `current_stock = SUM(entries at location) − SUM(exits at location)`.
+2. **Order quantities must be strictly positive finite numbers** (API validation and database CHECK constraints).
+3. **An exit cannot be logged if it would result in negative stock at the exit's `location_id`.** Return `HTTP 400` with the message: `"Insufficient stock for ingredient '{name}'. Available: {available}, requested: {requested}."`. Reject before writing.
+4. **Both Colombia and US ingredients exist in the same table.** Use the `country` field to filter by market when needed.
+5. **No user table in Supabase.** The `user_uuid` fields reference TinyDB users. Do not create a User model in SQLModel.
+6. **Locations are numeric IDs 1–14.** They are not foreign keys in this milestone — store only the integer.
 
 ---
 

@@ -160,7 +160,7 @@ def test_outbound_reduces_stock_and_persists_user_uuid(
     assert body["user_uuid"] == "9"
     assert body["reason"] == "consumption"
 
-    products = client.get("/inventory/products").json()
+    products = client.get("/inventory/products", params={"location_id": 1}).json()
     beef_product = next(item for item in products if item["sku"] == "BRS-BEEF-001")
     assert beef_product["current_stock"] == 40.0
 

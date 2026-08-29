@@ -33,7 +33,7 @@ Protected Resource Metadata: `GET /.well-known/oauth-protected-resource`.
 | `check_ticket_status` | `tickets:read` | Dual id / `source_incident_id` resolution |
 | `create_ticket` | `tickets:write` | All CONTEXT `REQUIRED_FIELDS` required |
 | `update_ticket_status` | `tickets:write` | `PATCH /api/incidents/{id}/status` only |
-| `check_stock` | `inventory:read` | Returns `current_stock` |
+| `check_stock` | `inventory:read` | Returns `current_stock` at required `location_id` (1–14) by `ingredient_id` or `sku` |
 | `create_ingredient` | `inventory:read` | Always `INVENTORY_WRITE_FORBIDDEN` |
 | `record_inbound` | `inventory:read` | Always `INVENTORY_WRITE_FORBIDDEN` |
 | `record_outbound` | `inventory:read` | Always `INVENTORY_WRITE_FORBIDDEN` |

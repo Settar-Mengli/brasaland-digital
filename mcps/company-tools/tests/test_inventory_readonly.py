@@ -27,7 +27,7 @@ def test_check_stock_by_id(baseline_auth: MagicMock) -> None:
         "company_tools_mcp.tools.inventory.inventory_client.get_product",
         return_value=(200, ingredient),
     ):
-        result = check_stock_impl(baseline_auth, ingredient_id=1)
+        result = check_stock_impl(baseline_auth, ingredient_id=1, location_id=1)
     assert result["ok"] is True
     assert result["ingredient"]["current_stock"] == 12.5
 

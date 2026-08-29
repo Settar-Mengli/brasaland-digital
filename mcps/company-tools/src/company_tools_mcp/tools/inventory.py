@@ -26,6 +26,7 @@ def check_stock_impl(
     *,
     ingredient_id: int | None = None,
     sku: str | None = None,
+    location_id: int | None = None,
 ) -> dict[str, Any]:
     denied = require_scopes(mcp_auth, [SCOPE_INVENTORY_READ])
     user_id = current_user_id(mcp_auth)
@@ -34,6 +35,16 @@ def check_stock_impl(
             tool="check_stock", client_user_id=user_id, result=denied["code"]
         )
         return denied
+
+    if location_id is None or location_id < 1 or location_id > 14:
+        result = error_payload(
+            VALIDATION_ERROR,
+            "location_id is required and must be between 1 and 14",
+        )
+        log_invocation(
+            tool="check_stock", client_user_id=user_id, result=result["code"]
+        )
+        return result
 
     if ingredient_id is None and not (sku and str(sku).strip()):
         result = error_payload(
@@ -47,7 +58,9 @@ def check_stock_impl(
 
     try:
         if ingredient_id is not None:
-            status, payload = inventory_client.get_product(ingredient_id)
+            status, payload = inventory_client.get_product(
+                ingredient_id, location_id
+            )
             if status == 200 and isinstance(payload, dict):
                 result = ok_payload(ingredient=payload)
             elif status == 404:
@@ -57,7 +70,7 @@ def check_stock_impl(
                     UPSTREAM_ERROR, f"inventory HTTP {status}"
                 )
         else:
-            status, rows = inventory_client.list_products()
+            status, rows = inventory_client.list_products(location_id)
             if status != 200 or not isinstance(rows, list):
                 result = error_payload(
                     UPSTREAM_ERROR, f"inventory HTTP {status}"

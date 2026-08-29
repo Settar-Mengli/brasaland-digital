@@ -7,7 +7,7 @@ import { type FormEvent, useEffect, useState } from 'react';
 import InventoryAuthGuard from '@/app/_components/InventoryAuthGuard';
 import ProductSelect from '@/app/_components/ProductSelect';
 import { createOutbound, getProduct } from '@/lib/inventory';
-import { locationSlug } from '@/lib/locations';
+import { locationSlug, getSessionLocationId } from '@/lib/locations';
 import { mapConsumptionFailure } from '@/lib/order-failure-codes';
 import { track } from '@/lib/telemetry';
 import { useOrderFormAbandonment } from '@/lib/use-order-form-abandonment';
@@ -35,7 +35,7 @@ function OutboundForm() {
   );
   const [quantity, setQuantity] = useState('');
   const [reason, setReason] = useState<'consumption' | 'waste'>('consumption');
-  const [locationId, setLocationId] = useState('1');
+  const [locationId, setLocationId] = useState(() => String(getSessionLocationId()));
   const [currentStock, setCurrentStock] = useState<number | null>(null);
   const [stockLoading, setStockLoading] = useState(ingredientId !== '');
   const [stockError, setStockError] = useState<string | null>(null);
@@ -58,11 +58,14 @@ function OutboundForm() {
     }
 
     const selectedId = ingredientId;
+    const selectedLocationId = Number(locationId);
     let cancelled = false;
 
     async function loadStock() {
+      setStockLoading(true);
+      setStockError(null);
       try {
-        const product = await getProduct(selectedId);
+        const product = await getProduct(selectedId, selectedLocationId);
         if (!cancelled) {
           setCurrentStock(product.current_stock);
         }
@@ -84,7 +87,7 @@ function OutboundForm() {
     return () => {
       cancelled = true;
     };
-  }, [ingredientId]);
+  }, [ingredientId, locationId]);
 
   const parsedQuantity = quantity === '' ? null : Number(quantity);
   const showClientWarning =
@@ -97,7 +100,7 @@ function OutboundForm() {
     setIngredientId('');
     setQuantity('');
     setReason('consumption');
-    setLocationId('1');
+    setLocationId(String(getSessionLocationId()));
     setCurrentStock(null);
     setStockLoading(false);
     setStockError(null);
@@ -115,11 +118,17 @@ function OutboundForm() {
       return;
     }
 
+    const parsedQuantity = Number(quantity);
+    if (!Number.isFinite(parsedQuantity) || parsedQuantity <= 0) {
+      setQuantityError('quantity must be greater than 0.');
+      return;
+    }
+
     setSubmitting(true);
     try {
       const response = await createOutbound({
         ingredient_id: ingredientId,
-        quantity: Number(quantity),
+        quantity: parsedQuantity,
         reason,
         location_id: Number(locationId),
       });
@@ -198,6 +207,7 @@ function OutboundForm() {
           <ProductSelect
             id="outbound-product"
             value={ingredientId}
+            locationId={Number(locationId)}
             onChange={(value) => {
               onFieldChange();
               setIngredientId(value);
@@ -305,6 +315,9 @@ function OutboundForm() {
             onChange={(event) => {
               onFieldChange();
               setLocationId(event.target.value);
+              setCurrentStock(null);
+              setStockError(null);
+              setStockLoading(ingredientId !== '');
             }}
             className={INPUT_CLASS}
           />
