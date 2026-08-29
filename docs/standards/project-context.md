@@ -47,9 +47,11 @@ Reporting API (8014) ships in `services/reporting/` (FastAPI + Celery worker + C
 
 ## Live deployments
 
+Canonical **public marketing site:** M4 `@brasaland/website` ([`uis/website`](../../uis/website/)) — also what `docker compose` launches on port **3002** via [`uis/start.sh`](../../uis/start.sh). M1 `@brasaland/public-website` remains deployed but is legacy/superseded for new work.
+
 | Surface | URL |
 | --- | --- |
-| M1 — Public website | https://brasaland-public-website.vercel.app |
+| M1 — Public website (legacy) | https://brasaland-public-website.vercel.app |
 | M3 — Talent Pipeline Tracker | https://brasaland-talent-pipeline.vercel.app |
-| M4 — Website (Next.js rebuild) | https://brasaland-website.vercel.app |
+| M4 — Website (canonical public site) | https://brasaland-website.vercel.app |
 | M4 — Backoffice | https://brasaland-backoffice.vercel.app |

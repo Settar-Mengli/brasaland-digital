@@ -8,7 +8,7 @@ Brasaland Digital is an npm + Python monorepo: six npm workspaces under `apps/` 
 
 ## Live demos
 
-Canonical live URLs: [docs/standards/project-context.md](docs/standards/project-context.md#live-deployments).
+Canonical live URLs: [docs/standards/project-context.md](docs/standards/project-context.md#live-deployments). The **canonical public marketing site** is `@brasaland/website` (M4); `@brasaland/public-website` (M1) remains live on Vercel as legacy.
 
 <img src="docs/screenshots/m4-backoffice.png" alt="Brasaland backoffice operations dashboard" width="800">
 
@@ -18,10 +18,10 @@ Additional product surfaces are shown in each workspace README under `apps/` and
 
 | Workspace | Role | Stack | Status |
 | --- | --- | --- | --- |
-| `@brasaland/public-website` | Customer-facing marketing site and Brasa Points sign-up | HTML5, Tailwind CSS (CDN), vanilla JavaScript | Complete |
+| `@brasaland/public-website` | Legacy M1 marketing site and Brasa Points sign-up (live on Vercel; superseded by `@brasaland/website`) | HTML5, Tailwind CSS (CDN), vanilla JavaScript | Complete |
 | `@brasaland/operations-toolkit` | Pure TypeScript utility library for restaurant operations data | TypeScript, Vitest | Complete |
 | `@brasaland/talent-pipeline-tracker` | Internal HR app for managing candidate pipelines | Next.js (App Router), React, Tailwind CSS | Complete |
-| `@brasaland/website` | Next.js rebuild of the public website | Next.js 16, React 19, Tailwind v4, TypeScript | Live |
+| `@brasaland/website` | **Canonical** public marketing site (M4 Next.js rebuild) | Next.js 16, React 19, Tailwind v4, TypeScript | Live |
 | `@brasaland/backoffice` | Internal operations dashboard with M2 integration | Next.js 16, React 19, Tailwind v4, TypeScript | Live |
 | `@brasaland/incident-manager` | Centralized incident manager UI for Brasaland Operations | Next.js 16, React 19, Tailwind v4, TypeScript | Complete |
 
@@ -30,11 +30,11 @@ Additional product surfaces are shown in each workspace README under `apps/` and
 ```
 brasaland-digital/
 ├── apps/
-│   ├── public-website/          # M1 — landing page + Brasa Points form (live)
+│   ├── public-website/          # M1 — legacy landing + Brasa Points (live on Vercel)
 │   ├── operations-toolkit/      # M2 — pure TypeScript library (no UI)
 │   └── talent-pipeline-tracker/ # M3 — Next.js HR app (live)
 ├── uis/
-│   ├── website/                 # M4 — Next.js rebuild of public website
+│   ├── website/                 # M4 — canonical public website (Compose :3002)
 │   ├── backoffice/              # M4 — Operations dashboard with M2 integration
 │   └── incident-manager/        # Incident manager UI
 ├── packages/

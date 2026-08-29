@@ -10,6 +10,8 @@ This workspace is the public marketing site for Brasaland, a grilled-food restau
 
 Canonical live URLs: [../../docs/standards/project-context.md](../../docs/standards/project-context.md#live-deployments).
 
+**Superseded:** This M1 workspace is legacy. Use [`uis/website`](../../uis/website/) (M4 `@brasaland/website`) as the canonical public marketing site and for the local full-stack demo (`docker compose` UI on port 3002). This deployment remains live on Vercel and is not deleted.
+
 <img src="../../docs/screenshots/m1-landing.png" alt="Brasaland public website landing page" width="800">
 
 ## Tech Stack
