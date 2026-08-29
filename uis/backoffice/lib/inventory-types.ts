@@ -91,4 +91,10 @@ export type TokenResponse = {
   access_token: string;
   refresh_token: string;
   token_type: string;
+  location_slug?: string | null;
+};
+
+export type AuthorizedLocationsResponse = {
+  is_admin: boolean;
+  authorized_locations: string[];
 };

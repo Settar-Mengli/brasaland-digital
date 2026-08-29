@@ -1,5 +1,6 @@
 import { parseApiError } from './api-error';
-import type { TokenResponse } from './inventory-types';
+import type { AuthorizedLocationsResponse, TokenResponse } from './inventory-types';
+import { setSessionLocationSlug } from './locations';
 
 const TOKEN_KEY = 'brasaland_access_token';
 
@@ -21,10 +22,28 @@ export function getAuthBaseUrl(): string {
   return url.replace(/\/$/, '');
 }
 
-export async function login(email: string, password: string): Promise<void> {
+export async function fetchAuthorizedLocations(
+  email: string,
+  password: string,
+): Promise<AuthorizedLocationsResponse> {
+  const response = await fetch(`${getAuthBaseUrl()}/login/authorized-locations`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseApiError(response));
+  }
+
+  return (await response.json()) as AuthorizedLocationsResponse;
+}
+
+export async function login(email: string, password: string, locationSlug: string): Promise<void> {
   const body = new URLSearchParams();
   body.set('username', email);
   body.set('password', password);
+  body.set('location_slug', locationSlug);
 
   const response = await fetch(`${getAuthBaseUrl()}/login`, {
     method: 'POST',
@@ -38,6 +57,7 @@ export async function login(email: string, password: string): Promise<void> {
 
   const data = (await response.json()) as TokenResponse;
   setAccessToken(data.access_token);
+  setSessionLocationSlug(data.location_slug ?? locationSlug);
 }
 
 export async function register(

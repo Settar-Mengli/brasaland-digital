@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Annotated
 
 from brasaland_auth_verify.surface import fastapi_docs_kwargs
-from fastapi import Body, Depends, FastAPI, HTTPException, Request, Response, status
+from fastapi import Body, Depends, FastAPI, Form, HTTPException, Request, Response, status
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
@@ -16,8 +16,9 @@ from slowapi.errors import RateLimitExceeded
 from auth.db import resolve_db_path
 from auth.email_sender import send_password_reset_email
 from auth.health import auth_ready_reason
+from auth.locations import InvalidLocationSlugError
 from auth.request_log import RequestIdAccessLogMiddleware, disable_uvicorn_access_log
-from auth.security import TokenError
+from auth.security import TokenError, decode_access_token
 from auth.service import (
     authenticate_user,
     build_update_fields,
@@ -31,16 +32,21 @@ from auth.service import (
     request_password_reset,
     reset_password,
     resolve_active_user,
+    resolve_login_locations,
     revoke_refresh_token,
     rotate_refresh_token,
     self_registration_enabled,
     update_profile,
     update_user,
+    user_authorized_locations,
+    validate_login_location,
 )
 from auth.types import (
     EmailAlreadyExistsError,
     InvalidRefreshTokenError,
     InvalidResetTokenError,
+    LocationNotAuthorizedError,
+    NoLocationAssignedError,
     UserNotFoundError,
     UserRecord,
 )
@@ -95,6 +101,9 @@ USER_NOT_FOUND = "User not found"
 INVALID_REFRESH_TOKEN = "Invalid or expired refresh token"
 SELF_REGISTRATION_DISABLED = "Self-registration is disabled"
 ADMIN_REQUIRED = "Admin privileges required"
+NO_LOCATION_ASSIGNED = "No location assigned to this user"
+LOCATION_NOT_AUTHORIZED = "Location not authorized for this user"
+INVALID_LOCATION_SLUG = "Unknown location slug"
 
 
 class UserRegister(BaseModel):
@@ -107,11 +116,13 @@ class UserRegister(BaseModel):
 
 class UserCreate(UserRegister):
     is_admin: bool = False
+    authorized_locations: list[str] = Field(default_factory=list)
 
 
 class UserUpdate(BaseModel):
     email: EmailStr | None = None
     password: str | None = Field(default=None, min_length=8)
+    authorized_locations: list[str] | None = None
 
 
 class UserResponse(BaseModel):
@@ -123,6 +134,7 @@ class UserResponse(BaseModel):
     name: str = ""
     phone: str = ""
     address: str = ""
+    authorized_locations: list[str] = Field(default_factory=list)
 
 
 class ProfileUpdate(BaseModel):
@@ -142,6 +154,17 @@ class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+    location_slug: str | None = None
+
+
+class LoginCredentials(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class AuthorizedLocationsResponse(BaseModel):
+    is_admin: bool
+    authorized_locations: list[str]
 
 
 class RefreshRequest(BaseModel):
@@ -172,6 +195,7 @@ def _to_response(user: UserRecord, requester: UserRecord) -> UserResponse:
         name=user.get("name", ""),
         phone=user.get("phone", ""),
         address=user.get("address", ""),
+        authorized_locations=user_authorized_locations(user),
     )
 
 
@@ -206,11 +230,16 @@ def require_admin(
     return current_user
 
 
-def _token_response(access_token: str, refresh_token: str) -> TokenResponse:
+def _token_response(
+    access_token: str,
+    refresh_token: str,
+    location_slug: str | None = None,
+) -> TokenResponse:
     return TokenResponse(
         access_token=access_token,
         refresh_token=refresh_token,
         token_type="bearer",
+        location_slug=location_slug,
     )
 
 
@@ -238,11 +267,39 @@ def auth_register(
     return _token_response(*issue_token_pair(user))
 
 
+@app.post("/auth/login/authorized-locations", response_model=AuthorizedLocationsResponse)
+@limiter.limit(AUTH_RATE_LIMIT)
+def auth_login_authorized_locations(
+    request: Request,
+    body: Annotated[LoginCredentials, Body()],
+) -> AuthorizedLocationsResponse:
+    user = authenticate_user(str(body.email), body.password)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    locations = resolve_login_locations(user)
+    if not user["is_admin"] and not locations:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=NO_LOCATION_ASSIGNED,
+        )
+
+    return AuthorizedLocationsResponse(
+        is_admin=bool(user["is_admin"]),
+        authorized_locations=locations,
+    )
+
+
 @app.post("/auth/login", response_model=TokenResponse)
 @limiter.limit(AUTH_RATE_LIMIT)
 def auth_login(
     request: Request,
     form: Annotated[OAuth2PasswordRequestForm, Depends()],
+    location_slug: Annotated[str, Form()],
 ) -> TokenResponse:
     user = authenticate_user(form.username, form.password)
     if user is None:
@@ -251,7 +308,27 @@ def auth_login(
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    return _token_response(*issue_token_pair(user))
+
+    try:
+        normalized_slug = validate_login_location(user, location_slug)
+    except NoLocationAssignedError as error:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=NO_LOCATION_ASSIGNED,
+        ) from error
+    except LocationNotAuthorizedError as error:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=LOCATION_NOT_AUTHORIZED,
+        ) from error
+    except InvalidLocationSlugError as error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=INVALID_LOCATION_SLUG,
+        ) from error
+
+    access_token, refresh_token = issue_token_pair(user, normalized_slug)
+    return _token_response(access_token, refresh_token, normalized_slug)
 
 
 @app.post("/auth/refresh", response_model=TokenResponse)
@@ -267,7 +344,15 @@ def auth_refresh(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=INVALID_REFRESH_TOKEN,
         ) from error
-    return _token_response(access_token, refresh_token)
+    location_slug: str | None = None
+    try:
+        payload = decode_access_token(access_token)
+        raw_slug = payload.get("location_slug")
+        if raw_slug is not None:
+            location_slug = str(raw_slug)
+    except TokenError:
+        pass
+    return _token_response(access_token, refresh_token, location_slug)
 
 
 @app.post("/auth/logout", status_code=status.HTTP_204_NO_CONTENT)
@@ -342,9 +427,12 @@ def create_user(
             name=body.name,
             phone=body.phone,
             address=body.address,
+            authorized_locations=body.authorized_locations,
         )
     except EmailAlreadyExistsError as error:
         raise HTTPException(status_code=400, detail=EMAIL_ALREADY_REGISTERED) from error
+    except InvalidLocationSlugError as error:
+        raise HTTPException(status_code=400, detail=INVALID_LOCATION_SLUG) from error
     return _to_response(user, current_user)
 
 
@@ -378,7 +466,14 @@ def update_user_by_id(
     if not can_modify_user(current_user, user_id):
         raise HTTPException(status_code=403, detail="Not allowed to update this user")
 
-    fields = build_update_fields(body.email, body.password)
+    if body.authorized_locations is not None and not current_user["is_admin"]:
+        raise HTTPException(status_code=403, detail=ADMIN_REQUIRED)
+
+    fields = build_update_fields(
+        body.email,
+        body.password,
+        body.authorized_locations,
+    )
     if not fields:
         try:
             user = get_user(user_id)
@@ -390,6 +485,8 @@ def update_user_by_id(
         user = update_user(user_id, fields)
     except EmailAlreadyExistsError as error:
         raise HTTPException(status_code=400, detail=EMAIL_ALREADY_REGISTERED) from error
+    except InvalidLocationSlugError as error:
+        raise HTTPException(status_code=400, detail=INVALID_LOCATION_SLUG) from error
     except UserNotFoundError as error:
         raise HTTPException(status_code=404, detail=USER_NOT_FOUND) from error
     return _to_response(user, current_user)

@@ -26,10 +26,13 @@ describe('auth client', () => {
   beforeEach(() => {
     vi.stubEnv('NEXT_PUBLIC_AUTH_API_URL', AUTH_BASE);
     const storage = createStorage();
+    const sessionStore = createStorage();
     vi.stubGlobal('localStorage', storage);
+    vi.stubGlobal('sessionStorage', sessionStore);
     vi.stubGlobal('window', {
       ...globalThis,
       localStorage: storage,
+      sessionStorage: sessionStore,
       location: { assign: assignMock },
     });
     vi.stubGlobal('fetch', vi.fn());
@@ -92,12 +95,23 @@ describe('auth client', () => {
   it('defaults auth base to /api/auth when NEXT_PUBLIC_AUTH_API_URL is unset', async () => {
     vi.unstubAllEnvs();
     vi.resetModules();
+    const storage = createStorage();
+    const sessionStore = createStorage();
+    vi.stubGlobal('localStorage', storage);
+    vi.stubGlobal('sessionStorage', sessionStore);
+    vi.stubGlobal('window', {
+      ...globalThis,
+      localStorage: storage,
+      sessionStorage: sessionStore,
+      location: { assign: assignMock },
+    });
     const fetchMock = vi.fn().mockResolvedValueOnce(
       new Response(
         JSON.stringify({
           access_token: 'rel-token',
           refresh_token: 'rel-refresh',
           token_type: 'bearer',
+          location_slug: 'medellin_centro',
         }),
         { status: 200 },
       ),
@@ -105,11 +119,45 @@ describe('auth client', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     const { login } = await import('./auth');
-    await login('ops@brasaland.com', 'password123');
+    await login('ops@brasaland.com', 'password123', 'medellin_centro');
 
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/auth/login',
-      expect.objectContaining({ method: 'POST' }),
+      expect.objectContaining({
+        method: 'POST',
+        body: 'username=ops%40brasaland.com&password=password123&location_slug=medellin_centro',
+      }),
+    );
+  });
+
+  it('fetchAuthorizedLocations POSTs credentials to preflight endpoint', async () => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          is_admin: false,
+          authorized_locations: ['medellin_centro'],
+        }),
+        { status: 200 },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { fetchAuthorizedLocations } = await import('./auth');
+    const result = await fetchAuthorizedLocations('ops@brasaland.com', 'password123');
+
+    expect(result.authorized_locations).toEqual(['medellin_centro']);
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/auth/login/authorized-locations',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: 'ops@brasaland.com',
+          password: 'password123',
+        }),
+      }),
     );
   });
 });

@@ -23,6 +23,13 @@ def _next_id(records: list[UserRecord]) -> int:
     return max(record["id"] for record in records) + 1
 
 
+def _normalize_user(record: UserRecord) -> UserRecord:
+    if "authorized_locations" not in record:
+        record = dict(record)
+        record["authorized_locations"] = []
+    return record
+
+
 def create_user(record: dict[str, Any]) -> UserRecord:
     table = _table()
     existing = table.all()
@@ -39,6 +46,7 @@ def create_user(record: dict[str, Any]) -> UserRecord:
         "name": str(record.get("name") or ""),
         "phone": str(record.get("phone") or ""),
         "address": str(record.get("address") or ""),
+        "authorized_locations": list(record.get("authorized_locations") or []),
     }
     table.insert(stored)
     return stored
@@ -49,7 +57,7 @@ def get_user_by_id(user_id: int) -> UserRecord | None:
     result = _table().get(query.id == user_id)
     if result is None:
         return None
-    return result
+    return _normalize_user(result)
 
 
 def get_user_by_email(email: str) -> UserRecord | None:
@@ -57,11 +65,14 @@ def get_user_by_email(email: str) -> UserRecord | None:
     result = _table().get(query.email == email)
     if result is None:
         return None
-    return result
+    return _normalize_user(result)
 
 
 def list_users() -> list[UserRecord]:
-    return sorted(_table().all(), key=lambda record: record["id"])
+    return sorted(
+        [_normalize_user(record) for record in _table().all()],
+        key=lambda record: record["id"],
+    )
 
 
 def update_user(user_id: int, fields: dict[str, Any]) -> UserRecord | None:
