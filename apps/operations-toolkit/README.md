@@ -25,7 +25,7 @@ From the monorepo root:
 npm run test --workspace @brasaland/operations-toolkit
 ```
 
-Expect **115** passed.
+Expect **119** passed.
 
 ## Project Structure
 
