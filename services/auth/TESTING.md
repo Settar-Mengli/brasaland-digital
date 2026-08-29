@@ -74,7 +74,7 @@ Regenerate the report with `uv run pytest`.
 
 ## Test catalog
 
-**99 tests** across 9 files.
+**110 tests** across 9 files.
 
 ### `tests/test_security.py` (8)
 

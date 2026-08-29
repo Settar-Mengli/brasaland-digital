@@ -37,8 +37,8 @@ Open **http://127.0.0.1:3003**
 
 | Path                         | Auth | Description                                                 |
 | ---------------------------- | ---- | ----------------------------------------------------------- |
-| `/`                          | No   | Operations dashboard (M2 fixtures)                          |
-| `/locations`                 | No   | Locations table (M2 fixtures)                               |
+| `/`                          | Yes  | Operations dashboard (M2 fixtures; JWT via `InventoryAuthGuard`) |
+| `/locations`                 | Yes  | Locations table (M2 fixtures; JWT via `InventoryAuthGuard`)      |
 | `/login`                     | No   | Sign in (JWT stored in `localStorage`)                      |
 | `/register`                  | No   | Create account (`POST /auth/register`); stores access token |
 | `/account/profile`           | Yes  | View/edit name, phone, address (`GET`/`PUT /profiles/me`)   |

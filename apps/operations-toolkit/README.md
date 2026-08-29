@@ -8,7 +8,7 @@ This package contains the domain types and utility functions that model Brasalan
 
 ## Status
 
-🚧 In development
+Complete
 
 ## Scripts
 
