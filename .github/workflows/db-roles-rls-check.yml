@@ -36,5 +36,6 @@ jobs:
           BRASALAND_RUNTIME_ROLE_PASSWORD: ci_brasaland_runtime_role_password
         run: |
           uv run --directory data --locked --python 3.13 python ../scripts/verify_alembic_migrations.py
+          uv run --directory data --locked --python 3.13 alembic -c alembic.ini upgrade head
           uv run --directory data --locked --python 3.13 python ../scripts/apply_db_roles_rls.py
           uv run --directory data --locked --python 3.13 python ../scripts/verify_db_roles_rls.py
