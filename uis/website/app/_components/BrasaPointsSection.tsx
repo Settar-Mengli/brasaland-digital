@@ -38,7 +38,10 @@ export default function BrasaPointsSection() {
           </div>
           <div className="flex gap-4 items-start">
             {CHECK_ICON}
-            <p className="leading-relaxed">Redeem your points for discounts and free dishes.</p>
+            <p className="leading-relaxed">
+              Redeem points for bill discounts — from tier perks to 20,000 COP or 20 USD off per 5
+              points.
+            </p>
           </div>
           <div className="flex gap-4 items-start">
             {CHECK_ICON}
@@ -46,14 +49,17 @@ export default function BrasaPointsSection() {
           </div>
           <div className="flex gap-4 items-start">
             {CHECK_ICON}
-            <p className="leading-relaxed">100% digital registration — no more paper cards.</p>
+            <p className="leading-relaxed">
+              Physical stamp cards are being phased out; transfer completed cards to the app once at
+              any location.
+            </p>
           </div>
         </div>
         <Link
           href="/brasa-points"
           className="mt-12 inline-block bg-brasaland-ivory text-brasaland-ember font-sans font-semibold text-base sm:text-lg px-8 py-3 rounded-md hover:bg-brasaland-cream focus:outline-none focus:ring-2 focus:ring-brasaland-ivory focus:ring-offset-2 focus:ring-offset-brasaland-ember transition-colors"
         >
-          Join Brasa Points
+          Learn about Brasa Points
         </Link>
       </div>
     </section>

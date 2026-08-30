@@ -1,0 +1,439 @@
+{
+  "schema_version": 1,
+  "locations": [
+    {
+      "slug": "medellin_centro",
+      "display_name": "Medellín Centro",
+      "city": "Medellín",
+      "country_code": "CO",
+      "currency": "COP",
+      "full_address": "Calle 50 #45-12, Medellín, Antioquia",
+      "timezone": "America/Bogota",
+      "regular_hours": {
+        "mon": { "open": "11:00", "close": "22:00" },
+        "tue": { "open": "11:00", "close": "22:00" },
+        "wed": { "open": "11:00", "close": "22:00" },
+        "thu": { "open": "11:00", "close": "22:00" },
+        "fri": { "open": "11:00", "close": "22:00" },
+        "sat": { "open": "11:00", "close": "22:00" },
+        "sun": { "open": "11:00", "close": "22:00" }
+      },
+      "phone": "+57 4 321 0101",
+      "map_url": "https://maps.example.com/brasaland/medellin_centro",
+      "reservations": {
+        "accepted": false,
+        "note": "Walk-in welcome. Call ahead for large groups."
+      },
+      "ordering": {
+        "online": false,
+        "pickup": "call_ahead",
+        "delivery": "app_only"
+      },
+      "status": "active",
+      "last_verified_at": "2026-08-30"
+    },
+    {
+      "slug": "medellin_poblado",
+      "display_name": "Medellín Poblado",
+      "city": "Medellín",
+      "country_code": "CO",
+      "currency": "COP",
+      "full_address": "Calle 10 #42-18, El Poblado, Medellín",
+      "timezone": "America/Bogota",
+      "regular_hours": {
+        "mon": { "open": "11:00", "close": "22:00" },
+        "tue": { "open": "11:00", "close": "22:00" },
+        "wed": { "open": "11:00", "close": "22:00" },
+        "thu": { "open": "11:00", "close": "22:00" },
+        "fri": { "open": "11:00", "close": "22:00" },
+        "sat": { "open": "11:00", "close": "22:00" },
+        "sun": { "open": "11:00", "close": "22:00" }
+      },
+      "phone": "+57 4 321 0102",
+      "map_url": "https://maps.example.com/brasaland/medellin_poblado",
+      "reservations": {
+        "accepted": false,
+        "note": "Walk-in welcome. Call ahead for large groups."
+      },
+      "ordering": {
+        "online": false,
+        "pickup": "call_ahead",
+        "delivery": "app_only"
+      },
+      "status": "active",
+      "last_verified_at": "2026-08-30"
+    },
+    {
+      "slug": "medellin_laureles",
+      "display_name": "Medellín Laureles",
+      "city": "Medellín",
+      "country_code": "CO",
+      "currency": "COP",
+      "full_address": "Circular 1 #73-28, Laureles, Medellín",
+      "timezone": "America/Bogota",
+      "regular_hours": {
+        "mon": { "open": "11:00", "close": "22:00" },
+        "tue": { "open": "11:00", "close": "22:00" },
+        "wed": { "open": "11:00", "close": "22:00" },
+        "thu": { "open": "11:00", "close": "22:00" },
+        "fri": { "open": "11:00", "close": "22:00" },
+        "sat": { "open": "11:00", "close": "22:00" },
+        "sun": { "open": "11:00", "close": "22:00" }
+      },
+      "phone": "+57 4 321 0103",
+      "map_url": "https://maps.example.com/brasaland/medellin_laureles",
+      "reservations": {
+        "accepted": false,
+        "note": "Walk-in welcome. Call ahead for large groups."
+      },
+      "ordering": {
+        "online": false,
+        "pickup": "call_ahead",
+        "delivery": "app_only"
+      },
+      "status": "active",
+      "last_verified_at": "2026-08-30"
+    },
+    {
+      "slug": "bogota_zona_rosa",
+      "display_name": "Bogotá Zona Rosa",
+      "city": "Bogotá",
+      "country_code": "CO",
+      "currency": "COP",
+      "full_address": "Calle 82 #12-18, Zona Rosa, Bogotá",
+      "timezone": "America/Bogota",
+      "regular_hours": {
+        "mon": { "open": "11:00", "close": "22:00" },
+        "tue": { "open": "11:00", "close": "22:00" },
+        "wed": { "open": "11:00", "close": "22:00" },
+        "thu": { "open": "11:00", "close": "22:00" },
+        "fri": { "open": "11:00", "close": "22:00" },
+        "sat": { "open": "11:00", "close": "22:00" },
+        "sun": { "open": "11:00", "close": "22:00" }
+      },
+      "phone": "+57 1 321 0201",
+      "map_url": "https://maps.example.com/brasaland/bogota_zona_rosa",
+      "reservations": {
+        "accepted": false,
+        "note": "Walk-in welcome. Call ahead for large groups."
+      },
+      "ordering": {
+        "online": false,
+        "pickup": "call_ahead",
+        "delivery": "app_only"
+      },
+      "status": "active",
+      "last_verified_at": "2026-08-30"
+    },
+    {
+      "slug": "bogota_chapinero",
+      "display_name": "Bogotá Chapinero",
+      "city": "Bogotá",
+      "country_code": "CO",
+      "currency": "COP",
+      "full_address": "Carrera 7 #32-16, Chapinero, Bogotá",
+      "timezone": "America/Bogota",
+      "regular_hours": {
+        "mon": { "open": "11:00", "close": "22:00" },
+        "tue": { "open": "11:00", "close": "22:00" },
+        "wed": { "open": "11:00", "close": "22:00" },
+        "thu": { "open": "11:00", "close": "22:00" },
+        "fri": { "open": "11:00", "close": "22:00" },
+        "sat": { "open": "11:00", "close": "22:00" },
+        "sun": { "open": "11:00", "close": "22:00" }
+      },
+      "phone": "+57 1 321 0202",
+      "map_url": "https://maps.example.com/brasaland/bogota_chapinero",
+      "reservations": {
+        "accepted": false,
+        "note": "Walk-in welcome. Call ahead for large groups."
+      },
+      "ordering": {
+        "online": false,
+        "pickup": "call_ahead",
+        "delivery": "app_only"
+      },
+      "status": "active",
+      "last_verified_at": "2026-08-30"
+    },
+    {
+      "slug": "bogota_usaquen",
+      "display_name": "Bogotá Usaquén",
+      "city": "Bogotá",
+      "country_code": "CO",
+      "currency": "COP",
+      "full_address": "Carrera 5 #119-08, Usaquén, Bogotá",
+      "timezone": "America/Bogota",
+      "regular_hours": {
+        "mon": { "open": "11:00", "close": "22:00" },
+        "tue": { "open": "11:00", "close": "22:00" },
+        "wed": { "open": "11:00", "close": "22:00" },
+        "thu": { "open": "11:00", "close": "22:00" },
+        "fri": { "open": "11:00", "close": "22:00" },
+        "sat": { "open": "11:00", "close": "22:00" },
+        "sun": { "open": "11:00", "close": "22:00" }
+      },
+      "phone": "+57 1 321 0203",
+      "map_url": "https://maps.example.com/brasaland/bogota_usaquen",
+      "reservations": {
+        "accepted": false,
+        "note": "Walk-in welcome. Call ahead for large groups."
+      },
+      "ordering": {
+        "online": false,
+        "pickup": "call_ahead",
+        "delivery": "app_only"
+      },
+      "status": "active",
+      "last_verified_at": "2026-08-30"
+    },
+    {
+      "slug": "bogota_norte",
+      "display_name": "Bogotá Norte",
+      "city": "Bogotá",
+      "country_code": "CO",
+      "currency": "COP",
+      "full_address": "Autopista Norte #145-20, Bogotá",
+      "timezone": "America/Bogota",
+      "regular_hours": {
+        "mon": { "open": "11:00", "close": "22:00" },
+        "tue": { "open": "11:00", "close": "22:00" },
+        "wed": { "open": "11:00", "close": "22:00" },
+        "thu": { "open": "11:00", "close": "22:00" },
+        "fri": { "open": "11:00", "close": "22:00" },
+        "sat": { "open": "11:00", "close": "22:00" },
+        "sun": { "open": "11:00", "close": "22:00" }
+      },
+      "phone": "+57 1 321 0204",
+      "map_url": "https://maps.example.com/brasaland/bogota_norte",
+      "reservations": {
+        "accepted": false,
+        "note": "Walk-in welcome. Call ahead for large groups."
+      },
+      "ordering": {
+        "online": false,
+        "pickup": "call_ahead",
+        "delivery": "app_only"
+      },
+      "status": "active",
+      "last_verified_at": "2026-08-30"
+    },
+    {
+      "slug": "cali_san_fernando",
+      "display_name": "Cali San Fernando",
+      "city": "Cali",
+      "country_code": "CO",
+      "currency": "COP",
+      "full_address": "Av. 4N #6N-28, San Fernando, Cali",
+      "timezone": "America/Bogota",
+      "regular_hours": {
+        "mon": { "open": "11:00", "close": "22:00" },
+        "tue": { "open": "11:00", "close": "22:00" },
+        "wed": { "open": "11:00", "close": "22:00" },
+        "thu": { "open": "11:00", "close": "22:00" },
+        "fri": { "open": "11:00", "close": "22:00" },
+        "sat": { "open": "11:00", "close": "22:00" },
+        "sun": { "open": "11:00", "close": "22:00" }
+      },
+      "phone": "+57 2 321 0301",
+      "map_url": "https://maps.example.com/brasaland/cali_san_fernando",
+      "reservations": {
+        "accepted": false,
+        "note": "Walk-in welcome. Call ahead for large groups."
+      },
+      "ordering": {
+        "online": false,
+        "pickup": "call_ahead",
+        "delivery": "app_only"
+      },
+      "status": "active",
+      "last_verified_at": "2026-08-30"
+    },
+    {
+      "slug": "cali_granada",
+      "display_name": "Cali Granada",
+      "city": "Cali",
+      "country_code": "CO",
+      "currency": "COP",
+      "full_address": "Calle 15 #100-45, Granada, Cali",
+      "timezone": "America/Bogota",
+      "regular_hours": {
+        "mon": { "open": "11:00", "close": "22:00" },
+        "tue": { "open": "11:00", "close": "22:00" },
+        "wed": { "open": "11:00", "close": "22:00" },
+        "thu": { "open": "11:00", "close": "22:00" },
+        "fri": { "open": "11:00", "close": "22:00" },
+        "sat": { "open": "11:00", "close": "22:00" },
+        "sun": { "open": "11:00", "close": "22:00" }
+      },
+      "phone": "+57 2 321 0302",
+      "map_url": "https://maps.example.com/brasaland/cali_granada",
+      "reservations": {
+        "accepted": false,
+        "note": "Walk-in welcome. Call ahead for large groups."
+      },
+      "ordering": {
+        "online": false,
+        "pickup": "call_ahead",
+        "delivery": "app_only"
+      },
+      "status": "active",
+      "last_verified_at": "2026-08-30"
+    },
+    {
+      "slug": "cali_ciudad_jardin",
+      "display_name": "Cali Ciudad Jardín",
+      "city": "Cali",
+      "country_code": "CO",
+      "currency": "COP",
+      "full_address": "Calle 18 #118-50, Ciudad Jardín, Cali",
+      "timezone": "America/Bogota",
+      "regular_hours": {
+        "mon": { "open": "11:00", "close": "22:00" },
+        "tue": { "open": "11:00", "close": "22:00" },
+        "wed": { "open": "11:00", "close": "22:00" },
+        "thu": { "open": "11:00", "close": "22:00" },
+        "fri": { "open": "11:00", "close": "22:00" },
+        "sat": { "open": "11:00", "close": "22:00" },
+        "sun": { "open": "11:00", "close": "22:00" }
+      },
+      "phone": "+57 2 321 0303",
+      "map_url": "https://maps.example.com/brasaland/cali_ciudad_jardin",
+      "reservations": {
+        "accepted": false,
+        "note": "Walk-in welcome. Call ahead for large groups."
+      },
+      "ordering": {
+        "online": false,
+        "pickup": "call_ahead",
+        "delivery": "app_only"
+      },
+      "status": "active",
+      "last_verified_at": "2026-08-30"
+    },
+    {
+      "slug": "miami_brickell",
+      "display_name": "Miami Brickell",
+      "city": "Miami",
+      "country_code": "US",
+      "currency": "USD",
+      "full_address": "801 Brickell Ave, Miami, FL 33131",
+      "timezone": "America/New_York",
+      "regular_hours": {
+        "mon": { "open": "11:00", "close": "22:00" },
+        "tue": { "open": "11:00", "close": "22:00" },
+        "wed": { "open": "11:00", "close": "22:00" },
+        "thu": { "open": "11:00", "close": "22:00" },
+        "fri": { "open": "11:00", "close": "22:00" },
+        "sat": { "open": "11:00", "close": "22:00" },
+        "sun": { "open": "11:00", "close": "22:00" }
+      },
+      "phone": "+1 305 123 4567",
+      "map_url": "https://maps.example.com/brasaland/miami_brickell",
+      "reservations": {
+        "accepted": false,
+        "note": "Walk-in welcome. Call ahead for large groups."
+      },
+      "ordering": {
+        "online": false,
+        "pickup": "call_ahead",
+        "delivery": "app_only"
+      },
+      "status": "active",
+      "last_verified_at": "2026-08-30"
+    },
+    {
+      "slug": "miami_wynwood",
+      "display_name": "Miami Wynwood",
+      "city": "Miami",
+      "country_code": "US",
+      "currency": "USD",
+      "full_address": "2200 NW 2nd Ave, Miami, FL 33127",
+      "timezone": "America/New_York",
+      "regular_hours": {
+        "mon": { "open": "11:00", "close": "22:00" },
+        "tue": { "open": "11:00", "close": "22:00" },
+        "wed": { "open": "11:00", "close": "22:00" },
+        "thu": { "open": "11:00", "close": "22:00" },
+        "fri": { "open": "11:00", "close": "22:00" },
+        "sat": { "open": "11:00", "close": "22:00" },
+        "sun": { "open": "11:00", "close": "22:00" }
+      },
+      "phone": "+1 305 123 4568",
+      "map_url": "https://maps.example.com/brasaland/miami_wynwood",
+      "reservations": {
+        "accepted": false,
+        "note": "Walk-in welcome. Call ahead for large groups."
+      },
+      "ordering": {
+        "online": false,
+        "pickup": "call_ahead",
+        "delivery": "app_only"
+      },
+      "status": "active",
+      "last_verified_at": "2026-08-30"
+    },
+    {
+      "slug": "miami_coral_gables",
+      "display_name": "Miami Coral Gables",
+      "city": "Miami",
+      "country_code": "US",
+      "currency": "USD",
+      "full_address": "2500 Ponce de Leon Blvd, Coral Gables, FL 33134",
+      "timezone": "America/New_York",
+      "regular_hours": {
+        "mon": { "open": "11:00", "close": "22:00" },
+        "tue": { "open": "11:00", "close": "22:00" },
+        "wed": { "open": "11:00", "close": "22:00" },
+        "thu": { "open": "11:00", "close": "22:00" },
+        "fri": { "open": "11:00", "close": "22:00" },
+        "sat": { "open": "11:00", "close": "22:00" },
+        "sun": { "open": "11:00", "close": "22:00" }
+      },
+      "phone": "+1 305 123 4569",
+      "map_url": "https://maps.example.com/brasaland/miami_coral_gables",
+      "reservations": {
+        "accepted": false,
+        "note": "Walk-in welcome. Call ahead for large groups."
+      },
+      "ordering": {
+        "online": false,
+        "pickup": "call_ahead",
+        "delivery": "app_only"
+      },
+      "status": "active",
+      "last_verified_at": "2026-08-30"
+    },
+    {
+      "slug": "miami_kendall",
+      "display_name": "Miami Kendall",
+      "city": "Miami",
+      "country_code": "US",
+      "currency": "USD",
+      "full_address": "8700 SW 72nd Ave, Miami, FL 33156",
+      "timezone": "America/New_York",
+      "regular_hours": {
+        "mon": { "open": "11:00", "close": "22:00" },
+        "tue": { "open": "11:00", "close": "22:00" },
+        "wed": { "open": "11:00", "close": "22:00" },
+        "thu": { "open": "11:00", "close": "22:00" },
+        "fri": { "open": "11:00", "close": "22:00" },
+        "sat": { "open": "11:00", "close": "22:00" },
+        "sun": { "open": "11:00", "close": "22:00" }
+      },
+      "phone": "+1 305 123 4570",
+      "map_url": "https://maps.example.com/brasaland/miami_kendall",
+      "reservations": {
+        "accepted": false,
+        "note": "Walk-in welcome. Call ahead for large groups."
+      },
+      "ordering": {
+        "online": false,
+        "pickup": "call_ahead",
+        "delivery": "app_only"
+      },
+      "status": "active",
+      "last_verified_at": "2026-08-30"
+    }
+  ]
+}
