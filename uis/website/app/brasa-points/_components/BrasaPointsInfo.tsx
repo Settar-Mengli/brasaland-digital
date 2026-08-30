@@ -3,6 +3,8 @@ import { formatBrasaPointsEarnLine } from '@brasaland/operations-toolkit';
 
 export default function BrasaPointsInfo() {
   const earnLine = formatBrasaPointsEarnLine();
+  const REGISTRATION_NOTICE =
+    'Registration in the mobile app is coming soon. This page does not collect personal information.';
 
   return (
     <article aria-labelledby="page-heading">
@@ -82,10 +84,7 @@ export default function BrasaPointsInfo() {
         >
           Registration
         </h2>
-        <p className="mt-3 text-brasaland-charcoal/80 leading-relaxed">
-          Registration in the mobile app is coming soon. This page does not collect personal
-          information.
-        </p>
+        <p className="mt-3 text-brasaland-charcoal/80 leading-relaxed">{REGISTRATION_NOTICE}</p>
       </section>
 
       <div className="mt-10">
