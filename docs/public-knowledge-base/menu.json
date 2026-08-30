@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "items": [
+    {
+      "id": "guest-menu-sirloin",
+      "name": "Grilled Sirloin (Lomo a la Brasa)",
+      "description": "Char-grilled sirloin with Brasaland marinade and house chimichurri.",
+      "category": "main",
+      "markets": { "CO": true, "US": true },
+      "price": { "COP": 95000, "USD": 28 },
+      "allergens": ["soy"],
+      "may_contain": [],
+      "dietary_flags": ["gluten_free"],
+      "is_complete": true
+    },
+    {
+      "id": "guest-menu-ribs",
+      "name": "Brasaland BBQ Ribs",
+      "description": "Slow-smoked ribs with imported BBQ sauce.",
+      "category": "main",
+      "markets": { "CO": true, "US": true },
+      "price": { "COP": 110000, "USD": 32 },
+      "allergens": ["soy"],
+      "may_contain": ["peanuts"],
+      "dietary_flags": [],
+      "is_complete": true
+    },
+    {
+      "id": "guest-menu-chicken",
+      "name": "Classic Grilled Chicken",
+      "description": "Half chicken marinated and grilled over open flame.",
+      "category": "main",
+      "markets": { "CO": true, "US": true },
+      "price": { "COP": 72000, "USD": 22 },
+      "allergens": [],
+      "may_contain": [],
+      "dietary_flags": ["gluten_free"],
+      "is_complete": true
+    },
+    {
+      "id": "guest-menu-salad",
+      "name": "Tropical Salad",
+      "description": "Mixed greens with cashews, feta, and citrus dressing.",
+      "category": "side",
+      "markets": { "CO": true, "US": true },
+      "price": { "COP": 22000, "USD": 8 },
+      "allergens": ["nuts", "dairy"],
+      "may_contain": [],
+      "dietary_flags": [],
+      "is_complete": true
+    },
+    {
+      "id": "guest-menu-arepa",
+      "name": "Corn Arepa",
+      "description": "Griddled corn arepa served as a side.",
+      "category": "side",
+      "markets": { "CO": true, "US": false },
+      "price": { "COP": 15000, "USD": null },
+      "allergens": ["dairy", "egg"],
+      "may_contain": [],
+      "dietary_flags": [],
+      "is_complete": true
+    },
+    {
+      "id": "guest-menu-sauce",
+      "name": "House Sauce",
+      "description": "Signature table sauce for grilled meats.",
+      "category": "side",
+      "markets": { "CO": true, "US": true },
+      "price": { "COP": 8000, "USD": 4 },
+      "allergens": ["soy", "sulfites"],
+      "may_contain": [],
+      "dietary_flags": [],
+      "is_complete": true
+    },
+    {
+      "id": "guest-menu-limonada",
+      "name": "Limonada de Coco",
+      "description": "Fresh coconut limeade.",
+      "category": "beverage",
+      "markets": { "CO": true, "US": true },
+      "price": { "COP": 16000, "USD": 5 },
+      "allergens": [],
+      "may_contain": [],
+      "dietary_flags": ["vegetarian"],
+      "is_complete": true
+    },
+    {
+      "id": "guest-menu-churros",
+      "name": "Cinnamon Churros",
+      "description": "Warm churros with chocolate dipping sauce.",
+      "category": "dessert",
+      "markets": { "CO": true, "US": true },
+      "price": { "COP": 18000, "USD": 6 },
+      "allergens": ["gluten", "dairy", "egg"],
+      "may_contain": [],
+      "dietary_flags": [],
+      "is_complete": true
+    },
+    {
+      "id": "guest-menu-combo",
+      "name": "Grill Combo for Two",
+      "description": "Sirloin, chicken, two sides, and two beverages.",
+      "category": "combo",
+      "markets": { "CO": true, "US": true },
+      "price": { "COP": 185000, "USD": 52 },
+      "allergens": ["soy"],
+      "may_contain": [],
+      "dietary_flags": [],
+      "is_complete": true
+    },
+    {
+      "id": "guest-menu-seasonal",
+      "name": "Seasonal Citrus Skewers",
+      "description": "Limited-time grilled citrus-marinated skewers.",
+      "category": "main",
+      "markets": { "CO": true, "US": true },
+      "price": { "COP": 68000, "USD": 20 },
+      "allergens": [],
+      "may_contain": ["soy"],
+      "dietary_flags": ["gluten_free"],
+      "is_complete": true
+    }
+  ]
+}

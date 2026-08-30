@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "audience": "public",
+  "locale": "en",
+  "last_verified_at": "2026-08-30",
+  "sources": [
+    {
+      "path": "locations.json",
+      "topic": "locations",
+      "format": "json",
+      "audience": "public",
+      "last_verified_at": "2026-08-30"
+    },
+    {
+      "path": "menu.json",
+      "topic": "menu",
+      "format": "json",
+      "audience": "public",
+      "last_verified_at": "2026-08-30"
+    },
+    {
+      "path": "loyalty.md",
+      "topic": "loyalty",
+      "format": "markdown",
+      "audience": "public",
+      "last_verified_at": "2026-08-30"
+    },
+    {
+      "path": "allergens.md",
+      "topic": "allergens",
+      "format": "markdown",
+      "audience": "public",
+      "last_verified_at": "2026-08-30"
+    },
+    {
+      "path": "reservations.md",
+      "topic": "reservations",
+      "format": "markdown",
+      "audience": "public",
+      "last_verified_at": "2026-08-30"
+    },
+    {
+      "path": "ordering.md",
+      "topic": "ordering",
+      "format": "markdown",
+      "audience": "public",
+      "last_verified_at": "2026-08-30"
+    },
+    {
+      "path": "contact.md",
+      "topic": "contact",
+      "format": "markdown",
+      "audience": "public",
+      "last_verified_at": "2026-08-30"
+    },
+    {
+      "path": "hours-holidays.md",
+      "topic": "hours",
+      "format": "markdown",
+      "audience": "public",
+      "last_verified_at": "2026-08-30"
+    }
+  ]
+}
