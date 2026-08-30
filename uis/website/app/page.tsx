@@ -6,6 +6,7 @@ import LocationsSection from './_components/LocationsSection';
 import BrasaPointsSection from './_components/BrasaPointsSection';
 import ContactSection from './_components/ContactSection';
 import Footer from './_components/Footer';
+import GuestChatWidget from './_components/GuestChatWidget';
 
 export default function HomePage() {
   return (
@@ -19,6 +20,7 @@ export default function HomePage() {
         <BrasaPointsSection />
         <ContactSection />
       </main>
+      <GuestChatWidget />
       <Footer />
     </>
   );

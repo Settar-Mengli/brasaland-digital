@@ -31,7 +31,7 @@ from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-EXPECTED_IN_SCOPE_ROUTE_COUNT = 53
+EXPECTED_IN_SCOPE_ROUTE_COUNT = 54
 
 # (service_name, directory relative to repo root)
 SERVICES: list[tuple[str, str]] = [

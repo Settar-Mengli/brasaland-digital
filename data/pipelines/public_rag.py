@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pipelines.rag import _bounded_chat_completion, retrieve
+from pipelines.rag import _bounded_chat_completion, resolve_public_generation_tiers, retrieve
 from pipelines.rag_profiles import PUBLIC_NO_CONTEXT_ANSWER, PUBLIC_PROFILE, RagProfile
 
 PUBLIC_SYSTEM_PROMPT = (
@@ -79,6 +79,7 @@ def generate_public_answer(question: str, chunks: list[dict[str, Any]]) -> str:
         temperature=PUBLIC_PROFILE.generation_temperature,
         max_tokens=PUBLIC_PROFILE.generation_max_tokens,
         max_tier_attempts=max_attempts,
+        tiers=resolve_public_generation_tiers(),
     )
 
 

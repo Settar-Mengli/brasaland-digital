@@ -26,6 +26,9 @@ services:
       MCP_SERVICE_CLIENT_ID: ${MCP_SERVICE_CLIENT_ID:-}
       MCP_SERVICE_CLIENT_SECRET: ${MCP_SERVICE_CLIENT_SECRET:-}
       MCP_SERVICE_USER_EMAIL: ${MCP_SERVICE_USER_EMAIL:-}
+      WEBSITE_KNOWLEDGE_CLIENT_ID: ${WEBSITE_KNOWLEDGE_CLIENT_ID:-}
+      WEBSITE_KNOWLEDGE_CLIENT_SECRET: ${WEBSITE_KNOWLEDGE_CLIENT_SECRET:-}
+      WEBSITE_KNOWLEDGE_SERVICE_USER_EMAIL: ${WEBSITE_KNOWLEDGE_SERVICE_USER_EMAIL:-}
     volumes:
       - ./services/auth:/app/services/auth
       - ./packages:/app/packages
@@ -323,6 +326,10 @@ services:
       EXPOSE_DOCS: ${EXPOSE_DOCS:-}
       RATE_LIMIT_AGENT_QUERY: ${RATE_LIMIT_AGENT_QUERY:-10/minute}
       RATE_LIMIT_KNOWLEDGE_QUERY: ${RATE_LIMIT_KNOWLEDGE_QUERY:-20/minute}
+      RATE_LIMIT_PUBLIC_KNOWLEDGE_QUERY: ${RATE_LIMIT_PUBLIC_KNOWLEDGE_QUERY:-5/minute}
+      PUBLIC_KNOWLEDGE_ENABLED: ${PUBLIC_KNOWLEDGE_ENABLED:-}
+      PUBLIC_KNOWLEDGE_CORPUS_PATH: /app/docs/public-knowledge-base
+      PUBLIC_DAILY_CAPS_ENABLED: ${PUBLIC_DAILY_CAPS_ENABLED:-}
       PYTHONPATH: /app/data
       QDRANT_URL: http://qdrant:6333
       REDIS_URL: ${REDIS_URL}
@@ -349,6 +356,7 @@ services:
       - ./data:/app/data
       - ./packages:/app/packages
       - ./docs/company-knowledge-base:/app/docs/company-knowledge-base:ro
+      - ./docs/public-knowledge-base:/app/docs/public-knowledge-base:ro
       - knowledge_venv:/app/services/knowledge/.venv
     depends_on:
       - qdrant
@@ -402,6 +410,13 @@ services:
       INCIDENTS_API_ORIGIN: http://incident-manager:8011
       REPORTING_API_ORIGIN: http://reporting:8014
       KNOWLEDGE_API_ORIGIN: http://knowledge:8015
+      PUBLIC_KNOWLEDGE_API_ORIGIN: http://knowledge:8015
+      WEBSITE_KNOWLEDGE_CLIENT_ID: ${WEBSITE_KNOWLEDGE_CLIENT_ID:-}
+      WEBSITE_KNOWLEDGE_CLIENT_SECRET: ${WEBSITE_KNOWLEDGE_CLIENT_SECRET:-}
+      NEXT_PUBLIC_PUBLIC_CHAT_ENABLED: ${NEXT_PUBLIC_PUBLIC_CHAT_ENABLED:-}
+      TURNSTILE_ENABLED: ${TURNSTILE_ENABLED:-}
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${NEXT_PUBLIC_TURNSTILE_SITE_KEY:-}
       RFP_API_ORIGIN: http://rfp:8017
       NEXT_PUBLIC_INVENTORY_API_URL: http://localhost:3003/api/inventory
       NEXT_PUBLIC_AUTH_API_URL: http://localhost:3003/api/auth

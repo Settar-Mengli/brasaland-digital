@@ -6,11 +6,18 @@ import os
 from collections.abc import Generator
 
 import pytest
+from brasaland_auth_verify.testing import generate_rsa_keypair
 
-# Avoid JWT env requirement during import of dependencies in some paths.
+_PRIVATE_PEM, _PUBLIC_PEM = generate_rsa_keypair()
+
 os.environ.setdefault("JWT_ALGORITHM", "RS256")
 
-import config  # noqa: E402, F401 — data/ on sys.path
+import config  # noqa: E402, F401 — data/ on sys.path; may load root .env
+
+os.environ["JWT_PUBLIC_KEY"] = _PUBLIC_PEM
+
+PRIVATE_PEM = _PRIVATE_PEM
+PUBLIC_PEM = _PUBLIC_PEM
 
 
 @pytest.fixture(autouse=True)

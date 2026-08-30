@@ -455,6 +455,31 @@ def test_service_token_issues_short_lived_access_for_all_locations(
     assert "type" not in claims
 
 
+def test_website_service_token_issues_svc_claim(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    locations = sorted_canonical_slugs()
+    service_user = register_user_service(
+        "website-knowledge@brasaland.com",
+        "password123",
+        authorized_locations=locations,
+    )
+    monkeypatch.setenv("WEBSITE_KNOWLEDGE_CLIENT_ID", "website-knowledge")
+    monkeypatch.setenv("WEBSITE_KNOWLEDGE_CLIENT_SECRET", "website-secret")
+    monkeypatch.setenv("WEBSITE_KNOWLEDGE_SERVICE_USER_EMAIL", service_user["email"])
+
+    response = client.post(
+        "/auth/service-token",
+        auth=("website-knowledge", "website-secret"),
+    )
+
+    assert response.status_code == 200
+    claims = decode_access_token(response.json()["access_token"])
+    assert claims["svc"] == "website-knowledge"
+    assert claims["is_admin"] is False
+
+
 @pytest.mark.parametrize(
     ("client_id", "client_secret"),
     [

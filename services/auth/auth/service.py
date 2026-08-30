@@ -49,6 +49,10 @@ REFRESH_TOKEN_TYPE = "refresh"
 MCP_SERVICE_CLIENT_ID_ENV = "MCP_SERVICE_CLIENT_ID"
 MCP_SERVICE_CLIENT_SECRET_ENV = "MCP_SERVICE_CLIENT_SECRET"
 MCP_SERVICE_USER_EMAIL_ENV = "MCP_SERVICE_USER_EMAIL"
+WEBSITE_KNOWLEDGE_CLIENT_ID_ENV = "WEBSITE_KNOWLEDGE_CLIENT_ID"
+WEBSITE_KNOWLEDGE_CLIENT_SECRET_ENV = "WEBSITE_KNOWLEDGE_CLIENT_SECRET"
+WEBSITE_KNOWLEDGE_SERVICE_USER_EMAIL_ENV = "WEBSITE_KNOWLEDGE_SERVICE_USER_EMAIL"
+WEBSITE_KNOWLEDGE_SVC_CLAIM = "website-knowledge"
 
 
 def _utc_now_iso() -> str:
@@ -298,14 +302,14 @@ def issue_token_pair(
     )
 
 
-def issue_service_access_token(
+def _client_credentials_match(
     client_id: str,
     client_secret: str,
-) -> tuple[str, int] | None:
-    """Issue a short-lived access token for the configured MCP service user."""
-    expected_client_id = os.environ.get(MCP_SERVICE_CLIENT_ID_ENV, "")
-    expected_client_secret = os.environ.get(MCP_SERVICE_CLIENT_SECRET_ENV, "")
-
+    expected_client_id: str,
+    expected_client_secret: str,
+) -> bool:
+    if not expected_client_id or not expected_client_secret:
+        return False
     client_id_matches = hmac.compare_digest(
         client_id.encode("utf-8"),
         expected_client_id.encode("utf-8"),
@@ -314,15 +318,14 @@ def issue_service_access_token(
         client_secret.encode("utf-8"),
         expected_client_secret.encode("utf-8"),
     )
-    if (
-        not expected_client_id
-        or not expected_client_secret
-        or not client_id_matches
-        or not client_secret_matches
-    ):
-        return None
+    return client_id_matches and client_secret_matches
 
-    service_user_email = os.environ.get(MCP_SERVICE_USER_EMAIL_ENV, "").strip()
+
+def _issue_token_for_service_user_email(
+    service_user_email: str,
+    *,
+    svc: str | None = None,
+) -> tuple[str, int] | None:
     if not service_user_email:
         return None
 
@@ -343,16 +346,46 @@ def issue_service_access_token(
         return None
 
     expire_minutes = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
-    token = create_access_token(
-        {
-            "sub": str(user["id"]),
-            "user_id": user["id"],
-            "is_admin": False,
-            "authorized_locations": canonical_locations,
-        },
-        expires_minutes=expire_minutes,
-    )
+    payload: dict[str, Any] = {
+        "sub": str(user["id"]),
+        "user_id": user["id"],
+        "is_admin": False,
+        "authorized_locations": canonical_locations,
+    }
+    if svc:
+        payload["svc"] = svc
+    token = create_access_token(payload, expires_minutes=expire_minutes)
     return token, expire_minutes * 60
+
+
+def issue_service_access_token(
+    client_id: str,
+    client_secret: str,
+) -> tuple[str, int] | None:
+    """Issue a short-lived access token for a configured service client."""
+    mcp_client_id = os.environ.get(MCP_SERVICE_CLIENT_ID_ENV, "")
+    mcp_client_secret = os.environ.get(MCP_SERVICE_CLIENT_SECRET_ENV, "")
+    if _client_credentials_match(
+        client_id, client_secret, mcp_client_id, mcp_client_secret
+    ):
+        return _issue_token_for_service_user_email(
+            os.environ.get(MCP_SERVICE_USER_EMAIL_ENV, "").strip()
+        )
+
+    website_client_id = os.environ.get(WEBSITE_KNOWLEDGE_CLIENT_ID_ENV, "")
+    website_client_secret = os.environ.get(WEBSITE_KNOWLEDGE_CLIENT_SECRET_ENV, "")
+    if _client_credentials_match(
+        client_id,
+        client_secret,
+        website_client_id,
+        website_client_secret,
+    ):
+        return _issue_token_for_service_user_email(
+            os.environ.get(WEBSITE_KNOWLEDGE_SERVICE_USER_EMAIL_ENV, "").strip(),
+            svc=WEBSITE_KNOWLEDGE_SVC_CLAIM,
+        )
+
+    return None
 
 
 def rotate_refresh_token(token: str) -> tuple[str, str]:
