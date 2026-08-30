@@ -4,7 +4,7 @@
 
 The digital platform for Brasaland, a 14-location grilled-food restaurant chain across Colombia and the United States.
 
-Brasaland Digital is an npm + Python monorepo: six npm workspaces under `apps/` and `uis/` (public marketing site, operations toolkit, talent pipeline tracker, Next.js website rebuild, operations backoffice, and incident-manager UI), plus Python packages under `packages/`, FastAPI services under `services/` (auth, inventory, incident-manager, supplier-directory, incident-analysis, telemetry, reporting, knowledge, rfp), and OAuth-protected MCP servers under `mcps/` (company-tools). Shared tooling and conventions without forcing shared runtime dependencies.
+Brasaland Digital is an npm + Python monorepo: six npm workspaces under `apps/` and `uis/` (public marketing site, operations toolkit, talent pipeline tracker, Next.js website rebuild, operations backoffice, and a deprecated standalone incident-manager UI), plus Python packages under `packages/`, FastAPI services under `services/` (auth, inventory, incident-manager, supplier-directory, incident-analysis, telemetry, reporting, knowledge, rfp), and OAuth-protected MCP servers under `mcps/` (company-tools). Shared tooling and conventions without forcing shared runtime dependencies.
 
 ## Live demos
 
@@ -23,7 +23,7 @@ Additional product surfaces are shown in each workspace README under `apps/` and
 | `@brasaland/talent-pipeline-tracker` | Internal HR app for managing candidate pipelines | Next.js (App Router), React, Tailwind CSS | Complete |
 | `@brasaland/website` | **Canonical** public marketing site (M4 Next.js rebuild) | Next.js 16, React 19, Tailwind v4, TypeScript | Live |
 | `@brasaland/backoffice` | Internal operations dashboard with M2 integration | Next.js 16, React 19, Tailwind v4, TypeScript | Live |
-| `@brasaland/incident-manager` | Centralized incident manager UI for Brasaland Operations | Next.js 16, React 19, Tailwind v4, TypeScript | Complete |
+| `@brasaland/incident-manager` | Deprecated standalone incident UI; unsupported because it has no Bearer JWT integration | Next.js 16, React 19, Tailwind v4, TypeScript | Deprecated |
 
 ## Repository structure
 
@@ -36,7 +36,7 @@ brasaland-digital/
 ├── uis/
 │   ├── website/                 # M4 — canonical public website (Compose :3002)
 │   ├── backoffice/              # M4 — Operations dashboard with M2 integration
-│   └── incident-manager/        # Incident manager UI
+│   └── incident-manager/        # Deprecated, unsupported standalone incident UI
 ├── packages/
 │   ├── shared/                  # Shared Python core (brasaland_shared — validation, lifecycle)
 │   └── auth-verify/             # Verify-only RS256 JWT package (brasaland_auth_verify)
@@ -73,7 +73,7 @@ brasaland-digital/
 - **Operations toolkit (M2):** Pure TypeScript, Vitest for testing
 - **Talent tracker (M3, live):** Next.js (App Router), React, Tailwind CSS
 - **Website rebuild + Backoffice (M4):** Next.js 16 (App Router), React 19, Tailwind v4 (CSS-first), TypeScript strict
-- **Incident manager UI:** Next.js 16 (App Router), React 19, Tailwind v4, TypeScript
+- **Incident manager UI (deprecated):** unsupported Next.js 16 client retained as legacy source; it has no Bearer JWT integration
 - **Python services:** FastAPI under `services/` — auth, supplier-directory, incident-analysis, incident-manager, inventory, telemetry, reporting (Celery + Redis worker), knowledge (RAG + Qdrant), rfp (PDF intake + Celery worker, port **8017**)
 - **MCP servers:** `mcps/company-tools` — Streamable HTTP + mcpauth on port **8016**
 - **Tooling:** npm workspaces, Prettier, EditorConfig
@@ -153,7 +153,7 @@ celery -A celery_app.celery_app worker --loglevel=INFO -Q rfp
 
 CI job `celery-routing` runs [scripts/test_celery_queue_isolation.py](scripts/test_celery_queue_isolation.py) against a disposable Redis (not the Compose broker). Set `REDIS_URL` in the root `.env` (see `.env.example`). Inside Compose use `redis://redis:6379/0`; on the host use `redis://localhost:6379/0`. Flower reads the same URL via `CELERY_BROKER_URL`.
 
-The backoffice and incident-manager UIs proxy API calls through Next.js rewrites to backend service names inside the `ui` container; `NEXT_PUBLIC_*` URLs still point at same-origin localhost UI ports.
+The backoffice proxies API calls through Next.js rewrites to backend service names inside the `ui` container. The deprecated incident-manager UI retains the same proxy wiring, but it is unsupported and its unauthenticated incident API calls receive HTTP 401. `NEXT_PUBLIC_*` URLs still point at same-origin localhost UI ports.
 
 **Build context note:** Both backend and UI images use the repo root as Docker build context. Only the root [`.dockerignore`](.dockerignore) is effective; per-folder ignore files under `services/` or `uis/` are not read by Docker.
 

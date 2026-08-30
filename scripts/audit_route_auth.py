@@ -31,6 +31,7 @@ from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+EXPECTED_IN_SCOPE_ROUTE_COUNT = 53
 
 # (service_name, directory relative to repo root)
 SERVICES: list[tuple[str, str]] = [
@@ -105,6 +106,12 @@ GET_SENSITIVE_MARKERS = (
     "/api/",
 )
 
+# Credential-issuing routes must declare their real OpenAPI guard. The service
+# token grant uses HTTP Basic client credentials and is never allowlisted open.
+REQUIRED_SECURITY_SCHEMES: dict[tuple[str, str, str], str] = {
+    ("auth", "POST", "/auth/service-token"): "HTTPBasic",
+}
+
 
 def _is_sensitive_get(path: str) -> bool:
     lower = path.lower()
@@ -134,6 +141,23 @@ def _has_security(operation: dict[str, Any], schema: dict[str, Any]) -> bool:
         if isinstance(requirement, dict) and requirement:
             return True
     return False
+
+
+def _has_security_scheme(
+    operation: dict[str, Any],
+    schema: dict[str, Any],
+    scheme: str,
+) -> bool:
+    """Return whether an operation explicitly requires the named scheme."""
+    security = operation.get("security")
+    if security is None:
+        security = schema.get("security")
+    if not isinstance(security, list):
+        return False
+    return any(
+        isinstance(requirement, dict) and scheme in requirement
+        for requirement in security
+    )
 
 
 def _prepare_env() -> dict[str, str]:
@@ -217,9 +241,18 @@ def audit_schema(service: str, schema: dict[str, Any]) -> tuple[list[dict[str, s
             guarded = _has_security(operation, schema)
             key = (service, upper, path)
             allowlisted = key in ALLOWLIST_OPEN
-            if guarded:
+            required_scheme = REQUIRED_SECURITY_SCHEMES.get(key)
+            has_required_scheme = (
+                required_scheme is None
+                or _has_security_scheme(operation, schema, required_scheme)
+            )
+            if guarded and has_required_scheme:
                 verdict = "PASS"
                 state = "guarded"
+            elif guarded:
+                verdict = "FAIL"
+                state = f"wrong-guard(expected:{required_scheme})"
+                fails += 1
             elif allowlisted:
                 verdict = "PASS"
                 state = "open(allowlisted)"
@@ -326,6 +359,12 @@ def run_orchestrator() -> int:
         print()
 
     print("=== SUMMARY ===")
+    if total_scope != EXPECTED_IN_SCOPE_ROUTE_COUNT:
+        print(
+            "FAIL: expected "
+            f"{EXPECTED_IN_SCOPE_ROUTE_COUNT} in-scope routes, found {total_scope}"
+        )
+        return 1
     if total_fails:
         print(f"FAIL — {total_fails} unallowlisted open route(s) across {total_scope} in-scope")
         return 1

@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import app as app_module
+from auth.locations import sorted_canonical_slugs
 from auth.security import create_access_token, decode_access_token
 from auth.service import (
     PASSWORD_RESET_TOKEN_TYPE,
@@ -417,6 +418,126 @@ def test_access_token_carries_is_admin_claim(client: TestClient) -> None:
     headers = _admin_headers(client, "claim-admin@brasaland.com")
     admin_token = headers["Authorization"].removeprefix("Bearer ")
     assert decode_access_token(admin_token)["is_admin"] is True
+
+
+def test_service_token_issues_short_lived_access_for_all_locations(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    locations = sorted_canonical_slugs()
+    service_user = register_user_service(
+        "company-tools@brasaland.com",
+        "password123",
+        authorized_locations=locations,
+    )
+    monkeypatch.setenv("MCP_SERVICE_CLIENT_ID", "company-tools")
+    monkeypatch.setenv("MCP_SERVICE_CLIENT_SECRET", "service-secret")
+    monkeypatch.setenv("MCP_SERVICE_USER_EMAIL", service_user["email"])
+    monkeypatch.setenv("ACCESS_TOKEN_EXPIRE_MINUTES", "2")
+
+    response = client.post(
+        "/auth/service-token",
+        auth=("company-tools", "service-secret"),
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert set(data) == {"access_token", "token_type", "expires_in"}
+    assert data["token_type"] == "bearer"
+    assert data["expires_in"] == 120
+    assert "refresh_token" not in data
+
+    claims = decode_access_token(data["access_token"])
+    assert claims["sub"] == str(service_user["id"])
+    assert claims["user_id"] == service_user["id"]
+    assert claims["is_admin"] is False
+    assert claims["authorized_locations"] == locations
+    assert "type" not in claims
+
+
+@pytest.mark.parametrize(
+    ("client_id", "client_secret"),
+    [
+        ("wrong-client", "service-secret"),
+        ("company-tools", "wrong-secret"),
+    ],
+)
+def test_service_token_rejects_bad_client_credentials(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    client_id: str,
+    client_secret: str,
+) -> None:
+    service_user = register_user_service(
+        "company-tools@brasaland.com",
+        "password123",
+        authorized_locations=sorted_canonical_slugs(),
+    )
+    monkeypatch.setenv("MCP_SERVICE_CLIENT_ID", "company-tools")
+    monkeypatch.setenv("MCP_SERVICE_CLIENT_SECRET", "service-secret")
+    monkeypatch.setenv("MCP_SERVICE_USER_EMAIL", service_user["email"])
+
+    response = client.post(
+        "/auth/service-token",
+        auth=(client_id, client_secret),
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == app_module.INVALID_SERVICE_CREDENTIALS
+    assert response.headers["www-authenticate"] == "Basic"
+
+
+@pytest.mark.parametrize(
+    ("email", "is_admin", "is_active", "authorized_locations"),
+    [
+        (
+            "service-admin@brasaland.com",
+            True,
+            True,
+            sorted_canonical_slugs(),
+        ),
+        (
+            "service-inactive@brasaland.com",
+            False,
+            False,
+            sorted_canonical_slugs(),
+        ),
+        (
+            "service-partial@brasaland.com",
+            False,
+            True,
+            sorted_canonical_slugs()[:-1],
+        ),
+    ],
+)
+def test_service_token_rejects_ineligible_service_user(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    email: str,
+    is_admin: bool,
+    is_active: bool,
+    authorized_locations: list[str],
+) -> None:
+    service_user = register_user_service(
+        email,
+        "password123",
+        is_admin=is_admin,
+        authorized_locations=authorized_locations,
+    )
+    if not is_active:
+        update_user(service_user["id"], {"is_active": False})
+
+    monkeypatch.setenv("MCP_SERVICE_CLIENT_ID", "company-tools")
+    monkeypatch.setenv("MCP_SERVICE_CLIENT_SECRET", "service-secret")
+    monkeypatch.setenv("MCP_SERVICE_USER_EMAIL", email)
+
+    response = client.post(
+        "/auth/service-token",
+        auth=("company-tools", "service-secret"),
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == app_module.INVALID_SERVICE_CREDENTIALS
 
 
 def test_static_pages_are_served(client: TestClient) -> None:

@@ -24,12 +24,19 @@ stdio is not used: MCP Playground validation requires a public Codespaces forwar
 
 ## Downstream service identity
 
-All MCP-to-incident and MCP-to-inventory HTTP requests send the dedicated
-`MCP_SERVICE_TOKEN` as a Bearer credential. Provision this as a non-admin service
-user with all 14 `authorized_locations`, keep it out of source control, and rotate
-it before expiry. The same credential is attached to incident reads, creates, and
-status updates; caller-facing ticket writes remain gated by `tickets:write` at the
-MCP resource server. Inventory write tools remain hard-denied.
+The MCP authenticates to `POST /auth/service-token` with HTTP Basic credentials
+from `MCP_SERVICE_CLIENT_ID` and `MCP_SERVICE_CLIENT_SECRET`. Auth resolves the
+configured non-admin service user, verifies that it has all 14
+`authorized_locations`, and returns a normal short-lived access JWT without a
+refresh token. The MCP caches that JWT, renews it before expiry, and retries a
+downstream request once with a newly acquired token after HTTP 401. Missing or
+rejected client credentials fail closed before any downstream service request.
+
+The same short-lived Bearer is attached to incident reads, creates, and status
+updates and to inventory reads. Caller-facing ticket writes remain gated by
+`tickets:write` at the MCP resource server. Inventory write tools remain
+hard-denied. Keep the long-lived client secret out of source control and rotate it
+through the runtime secret store.
 
 **Known limitation:** downstream services see the fixed MCP service identity, not
 the human caller. MCP inventory and incident reads can therefore cross locations
@@ -62,8 +69,10 @@ uv sync
 uv run company-tools-mcp
 ```
 
-Or via Compose (`company-tools-mcp` service). Set `MCP_SERVICE_TOKEN` in the
-untracked root `.env`; see root `.env.example` for the remaining variables.
+Or via Compose (`company-tools-mcp` service). Set matching
+`MCP_SERVICE_CLIENT_ID` and `MCP_SERVICE_CLIENT_SECRET` values in the untracked
+root `.env`. The auth runtime additionally uses `MCP_SERVICE_USER_EMAIL` to select
+the dedicated service user; see root `.env.example` for all three variables.
 
 ## Tests
 

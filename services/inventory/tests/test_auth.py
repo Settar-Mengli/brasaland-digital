@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
+from runpy import run_path
 
 from fastapi.testclient import TestClient
 from jose import jwt
 from sqlmodel import Session
 
 from conftest import PRIVATE_PEM, make_access_token
+from dependencies import LOCATION_ID_TO_SLUG
 from models import Ingredient
 
 PRODUCT_PAYLOAD = {
@@ -16,6 +19,39 @@ PRODUCT_PAYLOAD = {
     "category": "produce",
     "country": "CO",
 }
+
+EXPECTED_LOCATION_ID_TO_SLUG = {
+    1: "medellin_centro",
+    2: "medellin_poblado",
+    3: "medellin_laureles",
+    4: "bogota_zona_rosa",
+    5: "bogota_chapinero",
+    6: "bogota_usaquen",
+    7: "bogota_norte",
+    8: "cali_san_fernando",
+    9: "cali_granada",
+    10: "cali_ciudad_jardin",
+    11: "miami_brickell",
+    12: "miami_wynwood",
+    13: "miami_coral_gables",
+    14: "miami_kendall",
+}
+
+
+def test_inventory_location_id_map_matches_canonical_catalog() -> None:
+    assert LOCATION_ID_TO_SLUG == EXPECTED_LOCATION_ID_TO_SLUG
+
+    auth_locations = run_path(
+        str(
+            Path(__file__).resolve().parents[2]
+            / "auth"
+            / "auth"
+            / "locations.py"
+        )
+    )
+    canonical_locations = auth_locations["CANONICAL_LOCATION_SLUGS"]
+    assert isinstance(canonical_locations, frozenset)
+    assert set(LOCATION_ID_TO_SLUG.values()) == canonical_locations
 
 
 def test_post_product_without_token_returns_401(client: TestClient) -> None:

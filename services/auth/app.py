@@ -7,7 +7,12 @@ from typing import Annotated
 from brasaland_auth_verify.surface import fastapi_docs_kwargs
 from fastapi import Body, Depends, FastAPI, Form, HTTPException, Request, Response, status
 from fastapi.responses import FileResponse, JSONResponse
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import (
+    HTTPBasic,
+    HTTPBasicCredentials,
+    OAuth2PasswordBearer,
+    OAuth2PasswordRequestForm,
+)
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr, Field
 from slowapi import _rate_limit_exceeded_handler
@@ -26,6 +31,7 @@ from auth.service import (
     delete_user,
     ensure_bootstrap_admin,
     get_user,
+    issue_service_access_token,
     issue_token_pair,
     list_all_users,
     register_user,
@@ -94,6 +100,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+service_token_scheme = HTTPBasic()
 
 FORGOT_PASSWORD_MESSAGE = "If that email is registered, a reset link has been sent."
 EMAIL_ALREADY_REGISTERED = "Email already registered"
@@ -104,6 +111,7 @@ ADMIN_REQUIRED = "Admin privileges required"
 NO_LOCATION_ASSIGNED = "No location assigned to this user"
 LOCATION_NOT_AUTHORIZED = "Location not authorized for this user"
 INVALID_LOCATION_SLUG = "Unknown location slug"
+INVALID_SERVICE_CREDENTIALS = "Invalid service credentials"
 
 
 class UserRegister(BaseModel):
@@ -169,6 +177,12 @@ class AuthorizedLocationsResponse(BaseModel):
 
 class RefreshRequest(BaseModel):
     refresh_token: str
+
+
+class ServiceTokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
 
 
 class ForgotPasswordRequest(BaseModel):
@@ -291,6 +305,30 @@ def auth_login_authorized_locations(
     return AuthorizedLocationsResponse(
         is_admin=bool(user["is_admin"]),
         authorized_locations=locations,
+    )
+
+
+@app.post("/auth/service-token", response_model=ServiceTokenResponse)
+@limiter.limit(AUTH_RATE_LIMIT)
+def auth_service_token(
+    request: Request,
+    credentials: Annotated[HTTPBasicCredentials, Depends(service_token_scheme)],
+) -> ServiceTokenResponse:
+    issued = issue_service_access_token(
+        credentials.username,
+        credentials.password,
+    )
+    if issued is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=INVALID_SERVICE_CREDENTIALS,
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    access_token, expires_in = issued
+    return ServiceTokenResponse(
+        access_token=access_token,
+        token_type="bearer",
+        expires_in=expires_in,
     )
 
 

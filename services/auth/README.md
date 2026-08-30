@@ -59,6 +59,9 @@ Copy from [`.env.example`](.env.example) and set real values locally in `.env` (
 | `JWT_ALGORITHM` | JWT algorithm | `RS256` |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Access token TTL | `30` |
 | `REFRESH_TOKEN_EXPIRE_MINUTES` | Refresh token TTL | `10080` (7 days) |
+| `MCP_SERVICE_CLIENT_ID` | HTTP Basic username accepted by `POST /auth/service-token` | `company-tools` |
+| `MCP_SERVICE_CLIENT_SECRET` | HTTP Basic password accepted by `POST /auth/service-token` | replace with a long random secret |
+| `MCP_SERVICE_USER_EMAIL` | Existing auth user whose identity and location assignments are used for MCP tokens | `company-tools@brasaland.com` |
 | `RESET_TOKEN_EXPIRE_MINUTES` | Password-reset token TTL | `30` |
 | `RESEND_API_KEY` | [Resend](https://resend.com) API key for reset emails | `replace-with-your-resend-api-key` in example |
 | `RESET_EMAIL_FROM` | Sender address for reset emails | `onboarding@resend.dev` (Resend sandbox) |
@@ -138,6 +141,31 @@ Login and register return **two** RS256 JWTs:
 
 Refresh tokens carry `type: "refresh"` and cannot be used as Bearer access tokens. Password-reset tokens carry `type: "password_reset"` and are likewise rejected as Bearer tokens. Only access tokens (no `type` claim) authenticate protected routes. Access tokens cannot be exchanged at `/auth/refresh`. Each refresh **rotates** the refresh token (old one is revoked). **POST /auth/logout** revokes the presented refresh token (idempotent `204`).
 
+### MCP service-token grant
+
+`POST /auth/service-token` uses HTTP Basic client credentials to issue an ordinary
+short-lived access token for the company-tools MCP server. Send
+`MCP_SERVICE_CLIENT_ID` as the Basic username and `MCP_SERVICE_CLIENT_SECRET` as
+the Basic password. A successful response is:
+
+```json
+{
+  "access_token": "<RS256 JWT>",
+  "token_type": "bearer",
+  "expires_in": 1800
+}
+```
+
+The response deliberately has no refresh token. The MCP server renews by calling
+the grant again before `expires_in` elapses.
+
+The user named by `MCP_SERVICE_USER_EMAIL` must already exist in the auth store,
+be active, have `is_admin=false`, and be assigned exactly all 14 canonical
+locations. The grant fails closed with a generic **401** when the client
+credentials, configuration, user state, role, or assignments are invalid. The
+issued JWT has `is_admin=false` and all 14 `authorized_locations`; it uses the
+same `ACCESS_TOKEN_EXPIRE_MINUTES` policy as other access tokens.
+
 ## API endpoints
 
 | Method | Path | Auth | Success | Error responses | Description |
@@ -146,6 +174,7 @@ Refresh tokens carry `type: "refresh"` and cannot be used as Bearer access token
 | `POST` | `/auth/reset-password` | Public | `200` + message | `400` invalid/expired/used token, `422` validation | Set new password with token from email; **single-use** |
 | `POST` | `/auth/register` | Public when `AUTH_ALLOW_SELF_REGISTER=true` | `201` + access + refresh tokens | `403` when self-register disabled, `400` duplicate email, `422` validation | Sign up (`email` + `password` min 8; optional `name`/`phone`/`address`); returns token pair so the new user is logged in immediately |
 | `POST` | `/auth/login/authorized-locations` | Public (rate-limited) | `200` + `{ is_admin, authorized_locations }` | `401` invalid credentials, `403` no assignment | Preflight: list locations the user may select at login |
+| `POST` | `/auth/service-token` | HTTP Basic service credentials (rate-limited) | `200` + access token, token type, and expiry seconds | `401` invalid credentials or ineligible service user | Issue a renewable short-lived Bearer for the configured non-admin, all-locations MCP identity; no refresh token |
 | `POST` | `/auth/login` | Public (rate-limited) | `200` + access + refresh tokens + `location_slug` | `401` invalid credentials, `403` location not allowed, `400` unknown slug | Log in with email (`username`), password, and `location_slug` form field; access JWT includes `is_admin`, `authorized_locations`, and `location_slug` |
 | `POST` | `/auth/refresh` | Public (rate-limited) | `200` + new token pair | `401` invalid/expired/revoked refresh | Exchange refresh token for rotated access + refresh tokens |
 | `POST` | `/auth/logout` | Public | `204` empty body | `422` validation | Revoke refresh token (idempotent; unknown tokens still `204`) |
@@ -158,14 +187,14 @@ Refresh tokens carry `type: "refresh"` and cannot be used as Bearer access token
 | `PUT` | `/users/{id}` | Protected | `200` + user JSON | `400` duplicate email, `401`, `403` not owner/admin, `404` | Update email and/or password (only self or admin) |
 | `DELETE` | `/users/{id}` | Protected | `204` empty body | `401`, `403` not owner/admin, `404` | Delete user (only self or admin) |
 
-**Status code guide:** **401** — no token, invalid token, expired token, inactive user, or failed login. **403** — authenticated but not allowed to modify/delete another user. **400** — duplicate email, or invalid/expired/used reset token. **404** — user id not found.
+**Status code guide:** **401** — no token, invalid token, expired token, inactive user, failed login, or rejected service credentials/configuration. **403** — authenticated but not allowed to modify/delete another user. **400** — duplicate email, or invalid/expired/used reset token. **404** — user id not found.
 
 ## Privacy and security
 
 - **`hashed_password` never appears in any API response** — only safe fields via `UserResponse`.
 - **Email privacy:** when listing or viewing other users, email is omitted unless the requester is that user or an admin.
 - **`.env` is gitignored** — copy from `.env.example`; never commit real secrets.
-- **Protect by default:** public API routes are `/auth/login`, `/auth/login/authorized-locations`, `/auth/refresh`, `/auth/logout`, `/auth/forgot-password`, and `/auth/reset-password`; `/auth/register` is public only when `AUTH_ALLOW_SELF_REGISTER=true`. HTML pages at `/`, `/forgot-password`, and `/reset-password` are also public. `/auth/me` and `/auth/profiles/me` require a valid Bearer **access** token. `POST/GET /users` require **admin**; other `/users/{id}` routes stay owner-or-admin. Login/register/refresh are rate-limited (`RATE_LIMIT_AUTH`).
+- **Protect by default:** public API routes are `/auth/login`, `/auth/login/authorized-locations`, `/auth/refresh`, `/auth/logout`, `/auth/forgot-password`, and `/auth/reset-password`; `/auth/register` is public only when `AUTH_ALLOW_SELF_REGISTER=true`. `/auth/service-token` requires HTTP Basic service credentials. HTML pages at `/`, `/forgot-password`, and `/reset-password` are also public. `/auth/me` and `/auth/profiles/me` require a valid Bearer **access** token. `POST/GET /users` require **admin**; other `/users/{id}` routes stay owner-or-admin. Login/register/refresh/service-token are rate-limited (`RATE_LIMIT_AUTH`).
 
 ## Verification
 

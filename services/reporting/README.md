@@ -156,6 +156,8 @@ Expect **21** passed.
 | --- | --- |
 | `DATABASE_URL` | Supabase Postgres connection string (required at runtime) |
 | `REDIS_URL` | Celery broker + result backend (API enqueue, worker, Flower) |
+| `JWT_PUBLIC_KEY` | RS256 public key used to verify required admin access JWTs |
+| `JWT_ALGORITHM` | JWT verification algorithm; must be `RS256` |
 
 ## Lane-1 / Lane-2
 

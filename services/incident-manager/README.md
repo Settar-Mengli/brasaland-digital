@@ -1,6 +1,8 @@
 # Brasaland Centralized Incident Manager
 
-An internal Brasaland Operations service for registering operational incidents, tracking their lifecycle across 14 locations, and viewing summary metrics. It is part of the **brasaland-digital** monorepo and replaces the spreadsheet workflow with a PostgreSQL-backed store (SQLModel + Supabase), a FastAPI REST API, and a three-panel web UI.
+An internal Brasaland Operations service for registering operational incidents, tracking their lifecycle across 14 locations, and viewing summary metrics. It is part of the **brasaland-digital** monorepo and replaces the spreadsheet workflow with a PostgreSQL-backed store (SQLModel + Supabase) and an authenticated FastAPI REST API.
+
+> **Bundled SPA deprecated.** The static three-panel UI under `static/` is retained as legacy source only and is unsupported. It does not send Bearer credentials, while every incident API route requires a valid JWT, so its API requests receive **HTTP 401**. Use the authenticated API directly or through a supported client such as the MCP service instead.
 
 Field validation and lifecycle rules live once in **`packages/shared/brasaland_shared`** and are reused by the **seed script** and the **API** — never duplicated in the service layer. That shared package is unchanged by the persistence migration; it has no database code.
 
@@ -27,7 +29,7 @@ services/incident-manager/
 │   └── types.py                   # IncidentRecord, SeedReport, etc.
 ├── scripts/
 │   └── seed_incidents.py          # CLI: load historical CSV into PostgreSQL
-├── static/                        # Single-page web UI (HTML, CSS, JS)
+├── static/                        # Deprecated, unsupported SPA retained as legacy source
 │   ├── index.html
 │   ├── styles.css
 │   └── app.js
@@ -126,7 +128,7 @@ uv run python scripts/seed_incidents.py
 uv run uvicorn app:app --reload --port 8011
 ```
 
-Open **http://127.0.0.1:8011/**
+The API listens on **http://127.0.0.1:8011**. The root path still serves the deprecated static SPA, but that SPA cannot authenticate to the protected incident routes and is not a supported workflow.
 
 Requires **Python 3.11+**. Dependencies are declared in `pyproject.toml`, locked in `uv.lock`, and managed with [uv](https://docs.astral.sh/uv/).
 
@@ -182,9 +184,9 @@ Docs/OpenAPI are available only when `EXPOSE_DOCS=1`.
 - **500** — `{ "detail": "An unexpected error occurred." }` with no stack trace exposed to clients.
 - **Read endpoints** (`GET` list, summary, by id) never fail solely because the database is empty; list returns `[]`, summary returns zero counts.
 
-## Frontend
+## Deprecated bundled SPA
 
-Single-page UI at `/` with three panels:
+The legacy single-page UI remains mounted at `/` for source compatibility only. It is unsupported, has no JWT integration, and receives **HTTP 401** from incident API calls. The following panels describe its historical implementation:
 
 | Panel | Purpose |
 | --- | --- |
@@ -192,7 +194,7 @@ Single-page UI at `/` with three panels:
 | **List** | Filterable table; inline status dropdown with optimistic update and revert on API failure |
 | **Summary** | Metric cards by status, category, origin, and branch |
 
-Each panel supports three states: **loading**, **empty**, and **error** (banner + Retry where applicable).
+The source contains loading, empty, and error states, but the SPA is no longer maintained as an operational client.
 
 **Client-side pagination:** 25 incidents per page with Previous / Next and a “Showing X–Y of Z” label. Filters reset to page 1.
 
@@ -220,20 +222,22 @@ npm run test --workspace @brasaland/operations-toolkit
 
 Canonical toolkit tests: [../../apps/operations-toolkit/README.md](../../apps/operations-toolkit/README.md).
 
-## Screenshots
+## Historical screenshots
+
+These screenshots document the deprecated SPA and do not represent a currently supported workflow.
 
 ### Landing
 ![Incident manager landing page](../../docs/screenshots/incident-manager-ui-landing.png)
-*Entry point linking to the three views (Register, Incidents, Summary).*
+*Historical entry point linking to the three legacy views (Register, Incidents, Summary).*
 
 ### Register
 ![Register incident form](../../docs/screenshots/incident-manager-ui-register.png)
-*Registration form with category, origin, and branch selection; the branch field highlights when origin is "branch".*
+*Historical registration form with category, origin, and branch selection.*
 
 ### Incidents
 ![Incident list with filters](../../docs/screenshots/incident-manager-ui-incidents.png)
-*Incident list with status/origin/branch/category filters and inline status updates (valid transitions only).*
+*Historical incident list with filters and inline status updates.*
 
 ### Summary
 ![Summary metrics](../../docs/screenshots/incident-manager-ui-summary.png)
-*Chain-wide metrics: totals by status, category, origin, and branch.*
+*Historical chain-wide summary metrics.*
