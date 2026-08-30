@@ -123,6 +123,19 @@ def test_require_admin_rejects_non_admin(client: TestClient) -> None:
     assert response.json()["detail"] == "Admin privileges required"
 
 
+@pytest.mark.parametrize("truthy_value", [1, "true", ["admin"]])
+def test_require_admin_rejects_truthy_non_boolean_claims(
+    client: TestClient,
+    truthy_value: object,
+) -> None:
+    response = client.get(
+        "/admin",
+        headers=_bearer(user_id=7, extra_claims={"is_admin": truthy_value}),
+    )
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Admin privileges required"
+
+
 def test_require_admin_accepts_admin(client: TestClient) -> None:
     response = client.get("/admin", headers=_bearer(user_id=3, is_admin=True))
     assert response.status_code == 200

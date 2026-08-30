@@ -46,6 +46,10 @@ from auth.types import (
 PASSWORD_RESET_TOKEN_TYPE = "password_reset"
 REFRESH_TOKEN_TYPE = "refresh"
 
+MCP_SERVICE_CLIENT_ID_ENV = "MCP_SERVICE_CLIENT_ID"
+MCP_SERVICE_CLIENT_SECRET_ENV = "MCP_SERVICE_CLIENT_SECRET"
+MCP_SERVICE_USER_EMAIL_ENV = "MCP_SERVICE_USER_EMAIL"
+
 
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -292,6 +296,63 @@ def issue_token_pair(
     return issue_access_token(user, location_slug), issue_refresh_token(
         user, location_slug
     )
+
+
+def issue_service_access_token(
+    client_id: str,
+    client_secret: str,
+) -> tuple[str, int] | None:
+    """Issue a short-lived access token for the configured MCP service user."""
+    expected_client_id = os.environ.get(MCP_SERVICE_CLIENT_ID_ENV, "")
+    expected_client_secret = os.environ.get(MCP_SERVICE_CLIENT_SECRET_ENV, "")
+
+    client_id_matches = hmac.compare_digest(
+        client_id.encode("utf-8"),
+        expected_client_id.encode("utf-8"),
+    )
+    client_secret_matches = hmac.compare_digest(
+        client_secret.encode("utf-8"),
+        expected_client_secret.encode("utf-8"),
+    )
+    if (
+        not expected_client_id
+        or not expected_client_secret
+        or not client_id_matches
+        or not client_secret_matches
+    ):
+        return None
+
+    service_user_email = os.environ.get(MCP_SERVICE_USER_EMAIL_ENV, "").strip()
+    if not service_user_email:
+        return None
+
+    user = get_user_by_email(_normalize_email(service_user_email))
+    if (
+        user is None
+        or user["is_active"] is not True
+        or user["is_admin"] is not False
+    ):
+        return None
+
+    canonical_locations = sorted_canonical_slugs()
+    authorized_locations = user_authorized_locations(user)
+    if (
+        len(authorized_locations) != len(canonical_locations)
+        or set(authorized_locations) != set(canonical_locations)
+    ):
+        return None
+
+    expire_minutes = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+    token = create_access_token(
+        {
+            "sub": str(user["id"]),
+            "user_id": user["id"],
+            "is_admin": False,
+            "authorized_locations": canonical_locations,
+        },
+        expires_minutes=expire_minutes,
+    )
+    return token, expire_minutes * 60
 
 
 def rotate_refresh_token(token: str) -> tuple[str, str]:

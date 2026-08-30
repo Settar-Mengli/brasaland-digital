@@ -104,9 +104,7 @@ def _validation_http_exception(errors: list[dict[str, str]]) -> HTTPException:
     return HTTPException(
         status_code=400,
         detail={
-            "errors": [
-                {"field": error["field"], "message": error["message"]} for error in errors
-            ]
+            "errors": [{"field": error["field"], "message": error["message"]} for error in errors]
         },
     )
 
@@ -147,6 +145,7 @@ def create_incident_route(
 
 @app.get("/api/incidents", response_model=list[IncidentResponse])
 def list_incidents_route(
+    _user: Annotated[str, Depends(get_current_user_uuid)],
     status: str | None = Query(default=None),
     origin: str | None = Query(default=None),
     branch: str | None = Query(default=None),
@@ -171,13 +170,18 @@ def list_incidents_route(
 
 
 @app.get("/api/incidents/summary", response_model=IncidentSummaryResponse)
-def incident_summary_route() -> IncidentSummaryResponse:
+def incident_summary_route(
+    _user: Annotated[str, Depends(get_current_user_uuid)],
+) -> IncidentSummaryResponse:
     summary = build_summary()
     return IncidentSummaryResponse(**summary)
 
 
 @app.get("/api/incidents/{incident_id}", response_model=IncidentResponse)
-def get_incident_route(incident_id: int) -> IncidentResponse:
+def get_incident_route(
+    incident_id: int,
+    _user: Annotated[str, Depends(get_current_user_uuid)],
+) -> IncidentResponse:
     record = get_incident(incident_id)
     if record is None:
         raise HTTPException(status_code=404, detail="Incident not found")

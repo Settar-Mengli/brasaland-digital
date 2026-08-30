@@ -44,6 +44,25 @@ describe('inventory client', () => {
     );
   });
 
+  it('getOrders scopes the request to location_id with Bearer auth', async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ entries: [], exits: [] }), { status: 200 }),
+    );
+
+    const { getOrders } = await import('./inventory');
+    await getOrders(11);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${INVENTORY_BASE}/orders?location_id=11`,
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer test-access-token',
+        }),
+      }),
+    );
+  });
+
   it('clears the session and redirects on 401', async () => {
     const assignMock = vi.fn();
     vi.stubGlobal('window', {

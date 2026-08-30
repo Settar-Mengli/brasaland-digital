@@ -31,6 +31,7 @@ from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+EXPECTED_IN_SCOPE_ROUTE_COUNT = 53
 
 # (service_name, directory relative to repo root)
 SERVICES: list[tuple[str, str]] = [
@@ -38,6 +39,7 @@ SERVICES: list[tuple[str, str]] = [
     ("supplier-directory", "services/supplier-directory"),
     ("incident-manager", "services/incident-manager"),
     ("incident-analysis", "services/incident-analysis"),
+    ("inventory", "services/inventory"),
     ("telemetry", "services/telemetry"),
     ("reporting", "services/reporting"),
     ("rfp", "services/rfp"),
@@ -66,18 +68,13 @@ ALLOWLIST_OPEN: frozenset[tuple[str, str, str]] = frozenset(
         # --- auth public token endpoints ---
         ("auth", "POST", "/auth/register"),
         ("auth", "POST", "/auth/login"),
+        ("auth", "POST", "/auth/login/authorized-locations"),
         ("auth", "POST", "/auth/refresh"),
         ("auth", "POST", "/auth/logout"),
         ("auth", "POST", "/auth/forgot-password"),
         ("auth", "POST", "/auth/reset-password"),
         # --- telemetry ingest (token-optional by design; Phase 2) ---
         ("telemetry", "POST", "/telemetry/events"),
-        # --- Phase 2 intentional public GETs (reads still open) ---
-        ("incident-manager", "GET", "/api/incidents"),
-        ("incident-manager", "GET", "/api/incidents/summary"),
-        ("incident-manager", "GET", "/api/incidents/{incident_id}"),
-        ("reporting", "GET", "/reporting/weekly-location-performance"),
-        ("reporting", "GET", "/reporting/pipeline-runs/latest"),
     }
 )
 
@@ -91,6 +88,7 @@ GET_SENSITIVE_MARKERS = (
     "/users",
     "/suppliers",
     "/incidents",
+    "/inventory/",
     "/tickets",
     "/memory",
     "/trace",
@@ -107,6 +105,12 @@ GET_SENSITIVE_MARKERS = (
     "/auth/profiles",
     "/api/",
 )
+
+# Credential-issuing routes must declare their real OpenAPI guard. The service
+# token grant uses HTTP Basic client credentials and is never allowlisted open.
+REQUIRED_SECURITY_SCHEMES: dict[tuple[str, str, str], str] = {
+    ("auth", "POST", "/auth/service-token"): "HTTPBasic",
+}
 
 
 def _is_sensitive_get(path: str) -> bool:
@@ -137,6 +141,23 @@ def _has_security(operation: dict[str, Any], schema: dict[str, Any]) -> bool:
         if isinstance(requirement, dict) and requirement:
             return True
     return False
+
+
+def _has_security_scheme(
+    operation: dict[str, Any],
+    schema: dict[str, Any],
+    scheme: str,
+) -> bool:
+    """Return whether an operation explicitly requires the named scheme."""
+    security = operation.get("security")
+    if security is None:
+        security = schema.get("security")
+    if not isinstance(security, list):
+        return False
+    return any(
+        isinstance(requirement, dict) and scheme in requirement
+        for requirement in security
+    )
 
 
 def _prepare_env() -> dict[str, str]:
@@ -184,10 +205,14 @@ def emit_schema_for_current_service(service: str) -> dict[str, Any]:
                 serialization.PrivateFormat.PKCS8,
                 serialization.NoEncryption(),
             ).decode()
-            os.environ["JWT_PUBLIC_KEY"] = key.public_key().public_bytes(
-                serialization.Encoding.PEM,
-                serialization.PublicFormat.SubjectPublicKeyInfo,
-            ).decode()
+            os.environ["JWT_PUBLIC_KEY"] = (
+                key.public_key()
+                .public_bytes(
+                    serialization.Encoding.PEM,
+                    serialization.PublicFormat.SubjectPublicKeyInfo,
+                )
+                .decode()
+            )
 
     # Ensure service root is importable.
     cwd = Path.cwd()
@@ -199,9 +224,7 @@ def emit_schema_for_current_service(service: str) -> dict[str, Any]:
     return app.openapi()
 
 
-def audit_schema(
-    service: str, schema: dict[str, Any]
-) -> tuple[list[dict[str, str]], int, int]:
+def audit_schema(service: str, schema: dict[str, Any]) -> tuple[list[dict[str, str]], int, int]:
     """Return (rows, fail_count, in_scope_count)."""
     rows: list[dict[str, str]] = []
     fails = 0
@@ -218,9 +241,18 @@ def audit_schema(
             guarded = _has_security(operation, schema)
             key = (service, upper, path)
             allowlisted = key in ALLOWLIST_OPEN
-            if guarded:
+            required_scheme = REQUIRED_SECURITY_SCHEMES.get(key)
+            has_required_scheme = (
+                required_scheme is None
+                or _has_security_scheme(operation, schema, required_scheme)
+            )
+            if guarded and has_required_scheme:
                 verdict = "PASS"
                 state = "guarded"
+            elif guarded:
+                verdict = "FAIL"
+                state = f"wrong-guard(expected:{required_scheme})"
+                fails += 1
             elif allowlisted:
                 verdict = "PASS"
                 state = "open(allowlisted)"
@@ -254,12 +286,8 @@ def _format_table(rows: list[dict[str, str]]) -> str:
     col_m = max(len(r["method"]) for r in rows)
     col_p = max(len(r["path"]) for r in rows)
     col_s = max(len(r["state"]) for r in rows)
-    lines = [
-        f"{'METHOD'.ljust(col_m)}  {'PATH'.ljust(col_p)}  {'STATE'.ljust(col_s)}  VERDICT"
-    ]
-    lines.append(
-        f"{'-' * col_m}  {'-' * col_p}  {'-' * col_s}  -------"
-    )
+    lines = [f"{'METHOD'.ljust(col_m)}  {'PATH'.ljust(col_p)}  {'STATE'.ljust(col_s)}  VERDICT"]
+    lines.append(f"{'-' * col_m}  {'-' * col_p}  {'-' * col_s}  -------")
     for r in rows:
         lines.append(
             f"{r['method'].ljust(col_m)}  {r['path'].ljust(col_p)}  "
@@ -331,6 +359,12 @@ def run_orchestrator() -> int:
         print()
 
     print("=== SUMMARY ===")
+    if total_scope != EXPECTED_IN_SCOPE_ROUTE_COUNT:
+        print(
+            "FAIL: expected "
+            f"{EXPECTED_IN_SCOPE_ROUTE_COUNT} in-scope routes, found {total_scope}"
+        )
+        return 1
     if total_fails:
         print(f"FAIL — {total_fails} unallowlisted open route(s) across {total_scope} in-scope")
         return 1

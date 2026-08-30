@@ -23,6 +23,9 @@ services:
       AUTH_ALLOW_SELF_REGISTER: ${AUTH_ALLOW_SELF_REGISTER:-false}
       AUTH_BOOTSTRAP_ADMIN_EMAIL: ${AUTH_BOOTSTRAP_ADMIN_EMAIL:-}
       AUTH_BOOTSTRAP_ADMIN_PASSWORD: ${AUTH_BOOTSTRAP_ADMIN_PASSWORD:-}
+      MCP_SERVICE_CLIENT_ID: ${MCP_SERVICE_CLIENT_ID:-}
+      MCP_SERVICE_CLIENT_SECRET: ${MCP_SERVICE_CLIENT_SECRET:-}
+      MCP_SERVICE_USER_EMAIL: ${MCP_SERVICE_USER_EMAIL:-}
     volumes:
       - ./services/auth:/app/services/auth
       - ./packages:/app/packages
@@ -368,6 +371,8 @@ services:
       AUTH_ISSUER_URL: http://auth:8002
       MCP_RESOURCE_URL: http://localhost:8016/mcp
       MCP_TICKETS_WRITE_ALLOWLIST: ${MCP_TICKETS_WRITE_ALLOWLIST:-}
+      MCP_SERVICE_CLIENT_ID: ${MCP_SERVICE_CLIENT_ID:-}
+      MCP_SERVICE_CLIENT_SECRET: ${MCP_SERVICE_CLIENT_SECRET:-}
       INCIDENTS_API_ORIGIN: http://incident-manager:8011
       INVENTORY_API_ORIGIN: http://inventory:8012
     volumes:
@@ -375,6 +380,7 @@ services:
       - ./packages:/app/packages
       - company_tools_mcp_venv:/app/mcps/company-tools/.venv
     depends_on:
+      - auth
       - incident-manager
       - inventory
     restart: unless-stopped

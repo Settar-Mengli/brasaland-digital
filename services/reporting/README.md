@@ -1,8 +1,10 @@
 # Brasaland Reporting API
 
 Exposes the **Weekly Location Cost & Waste Report** produced by the Prefect ETL under
-`data/pipelines/`. All `/reporting/*` and `/tasks/{task_id}` routes require a Bearer
-access JWT (`brasaland-auth-verify`). Pipeline enqueue is rate-limited
+`data/pipelines/`. All `/reporting/*` and `/tasks/{task_id}` routes require an
+admin Bearer access JWT (`brasaland-auth-verify`, `is_admin=true`). A valid
+non-admin token receives **403** because the reports aggregate all locations.
+Pipeline enqueue is rate-limited
 (`RATE_LIMIT_REPORTING_ENQUEUE`, default `10/minute`). Docs/OpenAPI only when
 `EXPOSE_DOCS=1`.
 
@@ -45,20 +47,20 @@ inside this service’s venv.
 
 | Method | Path | Auth | Behavior |
 | --- | --- | --- | --- |
-| `GET` | `/reporting/weekly-location-performance` | Bearer JWT | Optional `week_start`; default = latest computed week; CONTEXT §6 JSON |
-| `GET` | `/reporting/pipeline-runs/latest` | Bearer JWT | Metadata of the most recent `pipeline_runs` row (structured null object when none exist — never a bare null body) |
-| `POST` | `/reporting/pipeline-runs` | Bearer JWT (rate-limited) | Enqueues Celery `run_pipeline_task`; returns **202** `{"task_id": "..."}` immediately |
-| `GET` | `/tasks/{task_id}` | Bearer JWT | Celery `AsyncResult` status: `pending` \| `started` \| `success` \| `failure` (+ `result` when terminal) |
+| `GET` | `/reporting/weekly-location-performance` | Admin Bearer JWT | Optional `week_start`; default = latest computed week; CONTEXT §6 JSON |
+| `GET` | `/reporting/pipeline-runs/latest` | Admin Bearer JWT | Metadata of the most recent `pipeline_runs` row (structured null object when none exists — never a bare null body) |
+| `POST` | `/reporting/pipeline-runs` | Admin Bearer JWT (rate-limited) | Enqueues Celery `run_pipeline_task`; returns **202** `{"task_id": "..."}` immediately |
+| `GET` | `/tasks/{task_id}` | Admin Bearer JWT | Celery `AsyncResult` status: `pending` \| `started` \| `success` \| `failure` (+ `result` when terminal) |
 
 ### Async POST + poll
 
 ```powershell
 # Enqueue
-curl -s -X POST http://127.0.0.1:8014/reporting/pipeline-runs -H "Content-Type: application/json" -d "{}"
+curl -s -X POST http://127.0.0.1:8014/reporting/pipeline-runs -H "Authorization: Bearer $ADMIN_ACCESS_TOKEN" -H "Content-Type: application/json" -d "{}"
 # → {"task_id":"<uuid>"}
 
 # Poll until success|failure
-curl -s http://127.0.0.1:8014/tasks/<uuid>
+curl -s http://127.0.0.1:8014/tasks/<uuid> -H "Authorization: Bearer $ADMIN_ACCESS_TOKEN"
 ```
 
 Optional body: `{"week_start": "YYYY-MM-DD"}` (ISO Monday preferred; same semantics as before).
@@ -146,7 +148,7 @@ cd services/reporting
 uv run --python 3.13 pytest
 ```
 
-Expect **16** passed.
+Expect **21** passed.
 
 ## Environment
 
@@ -154,6 +156,8 @@ Expect **16** passed.
 | --- | --- |
 | `DATABASE_URL` | Supabase Postgres connection string (required at runtime) |
 | `REDIS_URL` | Celery broker + result backend (API enqueue, worker, Flower) |
+| `JWT_PUBLIC_KEY` | RS256 public key used to verify required admin access JWTs |
+| `JWT_ALGORITHM` | JWT verification algorithm; must be `RS256` |
 
 ## Lane-1 / Lane-2
 

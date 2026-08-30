@@ -75,7 +75,7 @@ def require_admin(
     claims: Annotated[dict[str, Any], Depends(get_verified_claims)],
 ) -> str:
     """Require a valid access token whose ``is_admin`` claim is true."""
-    if not claims.get("is_admin"):
+    if claims.get("is_admin") is not True:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin privileges required",

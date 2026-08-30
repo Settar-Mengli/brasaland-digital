@@ -114,7 +114,12 @@ def jwt_settings(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.fixture
 def access_token() -> str:
-    return mint_access_token(_PRIVATE_PEM, user_id=1)
+    return mint_access_token(_PRIVATE_PEM, user_id=1, is_admin=True)
+
+
+@pytest.fixture
+def non_admin_token() -> str:
+    return mint_access_token(_PRIVATE_PEM, user_id=2, is_admin=False)
 
 
 @pytest.fixture

@@ -1,3 +1,4 @@
+import { getAccessToken } from './auth';
 import { parseApiError } from './api-error';
 import { handleUnauthorized } from './session';
 import type { PipelineRunResponse, WeeklyLocationPerformanceResponse } from './reporting-types';
@@ -14,7 +15,16 @@ function getReportingBaseUrl(): string {
 }
 
 async function reportingFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${getReportingBaseUrl()}${path}`, init);
+  const token = getAccessToken();
+  if (!token) {
+    throw new Error('Not authenticated');
+  }
+  const headers = new Headers(init?.headers);
+  headers.set('Authorization', `Bearer ${token}`);
+  const response = await fetch(`${getReportingBaseUrl()}${path}`, {
+    ...init,
+    headers,
+  });
   handleUnauthorized(response);
   if (!response.ok) {
     throw new Error(await parseApiError(response));

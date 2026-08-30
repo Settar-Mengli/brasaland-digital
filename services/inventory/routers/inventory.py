@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import Annotated
 
 from database import get_db
-from dependencies import get_current_user_uuid
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from dependencies import get_current_user_uuid, require_authorized_location_id
+from fastapi import APIRouter, Depends, HTTPException, status
 from models import Ingredient, IngredientEntry, IngredientExit
 from schemas import (
     IngredientCreate,
@@ -28,17 +28,13 @@ INSUFFICIENT_STOCK_MESSAGE = (
 )
 INGREDIENT_NOT_FOUND_MESSAGE = "Ingredient not found"
 VALID_EXIT_REASONS = frozenset({"consumption", "waste"})
-MIN_LOCATION_ID = 1
-MAX_LOCATION_ID = 14
 
 
 def _entry_totals_subquery(location_id: int) -> object:
     return (
         select(
             IngredientEntry.ingredient_id.label("ingredient_id"),
-            func.coalesce(func.sum(IngredientEntry.quantity), 0.0).label(
-                "entries_total"
-            ),
+            func.coalesce(func.sum(IngredientEntry.quantity), 0.0).label("entries_total"),
         )
         .where(IngredientEntry.location_id == location_id)
         .group_by(IngredientEntry.ingredient_id)
@@ -50,9 +46,7 @@ def _exit_totals_subquery(location_id: int) -> object:
     return (
         select(
             IngredientExit.ingredient_id.label("ingredient_id"),
-            func.coalesce(func.sum(IngredientExit.quantity), 0.0).label(
-                "exits_total"
-            ),
+            func.coalesce(func.sum(IngredientExit.quantity), 0.0).label("exits_total"),
         )
         .where(IngredientExit.location_id == location_id)
         .group_by(IngredientExit.ingredient_id)
@@ -60,9 +54,7 @@ def _exit_totals_subquery(location_id: int) -> object:
     )
 
 
-def _ingredients_with_stock_stmt(
-    location_id: int, ingredient_id: int | None = None
-) -> object:
+def _ingredients_with_stock_stmt(location_id: int, ingredient_id: int | None = None) -> object:
     entry_totals = _entry_totals_subquery(location_id)
     exit_totals = _exit_totals_subquery(location_id)
     current_stock = (
@@ -105,9 +97,7 @@ def _fetch_ingredients_with_stock(
 def _get_ingredient_with_stock_or_404(
     session: Session, ingredient_id: int, location_id: int
 ) -> tuple[Ingredient, float]:
-    rows = _fetch_ingredients_with_stock(
-        session, location_id, ingredient_id=ingredient_id
-    )
+    rows = _fetch_ingredients_with_stock(session, location_id, ingredient_id=ingredient_id)
     if not rows:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -126,9 +116,7 @@ def _get_ingredient_or_404(session: Session, ingredient_id: int) -> Ingredient:
     return ingredient
 
 
-def _acquire_location_stock_lock(
-    session: Session, ingredient_id: int, location_id: int
-) -> None:
+def _acquire_location_stock_lock(session: Session, ingredient_id: int, location_id: int) -> None:
     bind = session.get_bind()
     if bind.dialect.name == "postgresql":
         session.execute(
@@ -146,7 +134,7 @@ def _to_ingredient_info(ingredient: Ingredient) -> IngredientInfo:
 @router.get("/products", response_model=list[IngredientResponse])
 def list_products(
     session: Annotated[Session, Depends(get_db)],
-    location_id: Annotated[int, Query(ge=MIN_LOCATION_ID, le=MAX_LOCATION_ID)],
+    location_id: Annotated[int, Depends(require_authorized_location_id)],
 ) -> list[IngredientResponse]:
     return [
         _to_response(ingredient, stock)
@@ -158,11 +146,9 @@ def list_products(
 def get_product(
     ingredient_id: int,
     session: Annotated[Session, Depends(get_db)],
-    location_id: Annotated[int, Query(ge=MIN_LOCATION_ID, le=MAX_LOCATION_ID)],
+    location_id: Annotated[int, Depends(require_authorized_location_id)],
 ) -> IngredientResponse:
-    ingredient, stock = _get_ingredient_with_stock_or_404(
-        session, ingredient_id, location_id
-    )
+    ingredient, stock = _get_ingredient_with_stock_or_404(session, ingredient_id, location_id)
     return _to_response(ingredient, stock)
 
 
@@ -186,9 +172,7 @@ def create_inbound_order(
     user_uuid: Annotated[str, Depends(get_current_user_uuid)],
 ) -> IngredientEntryResponse:
     _get_ingredient_or_404(session, payload.ingredient_id)
-    entry = IngredientEntry.model_validate(
-        payload, update={"user_uuid": user_uuid}
-    )
+    entry = IngredientEntry.model_validate(payload, update={"user_uuid": user_uuid})
     session.add(entry)
     session.commit()
     session.refresh(entry)
@@ -207,9 +191,7 @@ def create_outbound_order(
             detail='reason must be "consumption" or "waste"',
         )
     _get_ingredient_or_404(session, payload.ingredient_id)
-    _acquire_location_stock_lock(
-        session, payload.ingredient_id, payload.location_id
-    )
+    _acquire_location_stock_lock(session, payload.ingredient_id, payload.location_id)
     ingredient, available = _get_ingredient_with_stock_or_404(
         session, payload.ingredient_id, payload.location_id
     )
@@ -222,9 +204,7 @@ def create_outbound_order(
                 requested=payload.quantity,
             ),
         )
-    exit_record = IngredientExit.model_validate(
-        payload, update={"user_uuid": user_uuid}
-    )
+    exit_record = IngredientExit.model_validate(payload, update={"user_uuid": user_uuid})
     session.add(exit_record)
     session.commit()
     session.refresh(exit_record)
@@ -234,16 +214,17 @@ def create_outbound_order(
 @router.get("/orders", response_model=OrdersListResponse)
 def list_orders(
     session: Annotated[Session, Depends(get_db)],
+    location_id: Annotated[int, Depends(require_authorized_location_id)],
 ) -> OrdersListResponse:
     entry_rows = session.exec(
-        select(IngredientEntry, Ingredient).join(
-            Ingredient, IngredientEntry.ingredient_id == Ingredient.id
-        )
+        select(IngredientEntry, Ingredient)
+        .join(Ingredient, IngredientEntry.ingredient_id == Ingredient.id)
+        .where(IngredientEntry.location_id == location_id)
     ).all()
     exit_rows = session.exec(
-        select(IngredientExit, Ingredient).join(
-            Ingredient, IngredientExit.ingredient_id == Ingredient.id
-        )
+        select(IngredientExit, Ingredient)
+        .join(Ingredient, IngredientExit.ingredient_id == Ingredient.id)
+        .where(IngredientExit.location_id == location_id)
     ).all()
     return OrdersListResponse(
         entries=[

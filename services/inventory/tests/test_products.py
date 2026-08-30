@@ -68,11 +68,17 @@ def _seed_stock_fixtures(session: Session) -> Ingredient:
 
 
 def test_get_products_returns_schemas_with_country_and_stock(
-    session: Session, client: TestClient
+    session: Session,
+    client: TestClient,
+    admin_headers: dict[str, str],
 ) -> None:
     _seed_stock_fixtures(session)
 
-    response = client.get("/inventory/products", params={"location_id": 1})
+    response = client.get(
+        "/inventory/products",
+        params={"location_id": 1},
+        headers=admin_headers,
+    )
     assert response.status_code == 200
     products = response.json()
     assert isinstance(products, list)
@@ -95,13 +101,17 @@ def test_get_products_returns_schemas_with_country_and_stock(
 
 
 def test_get_product_detail_returns_schema_with_stock(
-    session: Session, client: TestClient
+    session: Session,
+    client: TestClient,
+    admin_headers: dict[str, str],
 ) -> None:
     beef = _seed_stock_fixtures(session)
     assert beef.id is not None
 
     response = client.get(
-        f"/inventory/products/{beef.id}", params={"location_id": 1}
+        f"/inventory/products/{beef.id}",
+        params={"location_id": 1},
+        headers=admin_headers,
     )
     assert response.status_code == 200
     product = response.json()
@@ -109,8 +119,15 @@ def test_get_product_detail_returns_schema_with_stock(
     assert product["current_stock"] == 60.0
 
 
-def test_get_product_detail_returns_404_when_missing(client: TestClient) -> None:
-    response = client.get("/inventory/products/9999", params={"location_id": 1})
+def test_get_product_detail_returns_404_when_missing(
+    client: TestClient,
+    admin_headers: dict[str, str],
+) -> None:
+    response = client.get(
+        "/inventory/products/9999",
+        params={"location_id": 1},
+        headers=admin_headers,
+    )
     assert response.status_code == 404
 
 
