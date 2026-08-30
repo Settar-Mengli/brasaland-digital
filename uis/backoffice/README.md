@@ -46,8 +46,9 @@ Open **http://127.0.0.1:3003**
 | `/inventory/orders/inbound`  | Yes  | Log IngredientEntry (supplier delivery)                     |
 | `/inventory/orders/outbound` | Yes  | Log IngredientExit (consumption or waste)                   |
 | `/inventory/orders`          | Yes  | Read-only order history                                     |
+| `/reporting`                 | Admin | Chain-wide weekly cost and waste KPIs (`AdminAuthGuard`)     |
 
-**Auth session behavior:** inventory and reporting API clients attach `Authorization: Bearer` (including inventory GETs). On **401**, they clear `brasaland_access_token` and hard-navigate to `/login`. Login and register failures stay on-page errors (no redirect). Nav **Logout** clears the token and redirects to `/login`.
+**Auth session behavior:** inventory and reporting API clients attach `Authorization: Bearer` (including inventory GETs). The reporting page redirects unauthenticated visitors to `/login` and authenticated non-admins to `/`; the API remains the authoritative admin check. On **401**, clients clear `brasaland_access_token` and hard-navigate to `/login`. Login and register failures stay on-page errors (no redirect). Nav **Logout** clears the token and redirects to `/login`.
 
 ## Screenshots
 
@@ -110,9 +111,9 @@ From the monorepo root:
 npm run test --workspace @brasaland/backoffice
 ```
 
-Expect **62** passed.
+Expect **68** passed.
 
-Vitest unit tests cover `lib/api-error.ts`, `lib/auth.ts`, `lib/inventory.ts`, `lib/stock-level.ts`, `lib/telemetry.ts`, `lib/locations.ts`, `lib/login-failure-aggregation.ts`, and `InventoryAuthGuard`.
+Vitest unit tests cover `lib/api-error.ts`, `lib/auth.ts`, `lib/inventory.ts`, `lib/stock-level.ts`, `lib/telemetry.ts`, `lib/locations.ts`, `lib/login-failure-aggregation.ts`, `InventoryAuthGuard`, and `AdminAuthGuard`.
 
 `/` (dashboard) and `/locations` require JWT via `InventoryAuthGuard`, matching `/rfp` and `/account/profile`.
 

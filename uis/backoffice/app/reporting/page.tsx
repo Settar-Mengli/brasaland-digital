@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import AdminAuthGuard from '../_components/AdminAuthGuard';
 import { getWeeklyLocationPerformance } from '../../lib/reporting';
 import type {
   LocationPerformanceItem,
@@ -58,7 +59,7 @@ function locationLabel(slug: string): string {
     .join(' ');
 }
 
-export default function ReportingPage() {
+function ReportingContent() {
   const [view, setView] = useState<ViewState>({ status: 'loading' });
 
   useEffect(() => {
@@ -186,5 +187,13 @@ export default function ReportingPage() {
         </section>
       ) : null}
     </>
+  );
+}
+
+export default function ReportingPage() {
+  return (
+    <AdminAuthGuard>
+      <ReportingContent />
+    </AdminAuthGuard>
   );
 }

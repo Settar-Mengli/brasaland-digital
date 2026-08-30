@@ -4,6 +4,25 @@ import { setSessionLocationSlug } from './locations';
 
 const TOKEN_KEY = 'brasaland_access_token';
 
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function decodeAccessTokenPayload(token: string): Record<string, unknown> | null {
+  const payloadSegment = token.split('.')[1];
+  if (!payloadSegment) {
+    return null;
+  }
+  try {
+    const normalized = payloadSegment.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), '=');
+    const parsed: unknown = JSON.parse(atob(padded));
+    return isObjectRecord(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 export type RegisterProfile = {
   name?: string;
   phone?: string;
@@ -118,4 +137,9 @@ export function clearAccessToken(): void {
 
 export function isAuthenticated(): boolean {
   return getAccessToken() !== null;
+}
+
+/** Read the signed claim for client-side navigation only; APIs remain authoritative. */
+export function isAdminAccessToken(token: string): boolean {
+  return decodeAccessTokenPayload(token)?.is_admin === true;
 }

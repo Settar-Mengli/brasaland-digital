@@ -2,7 +2,11 @@
 
 PostgreSQL-backed inventory service for Brasaland Operations. It is the central ingredient stock layer for the Brasaland Digital platform: ingredients, supplier deliveries (entries), and consumption or waste exits (exits). Stock is always computed from order history — never stored on the ingredient row.
 
-Authentication for write endpoints uses JWT verification via **`brasaland-auth-verify`** (same RS256 public key as `services/auth`). User identity is not stored in Supabase; `user_uuid` on entries and exits is the stringified TinyDB user id from the token.
+All inventory endpoints use JWT verification via **`brasaland-auth-verify`**
+(same RS256 public key as `services/auth`). Read endpoints authorize the requested
+numeric `location_id` against the token's `authorized_locations`; an admin may read
+any of the 14 locations. User identity is not stored in Supabase; `user_uuid` on
+entries and exits is the stringified TinyDB user id from the token.
 
 For entity names, field definitions, and seed fixtures, see **`CONTEXT-brasaland.md`**.
 
@@ -92,14 +96,17 @@ All routes are under `/inventory`.
 
 | Method | Path | Auth | Description |
 | --- | --- | --- | --- |
-| `GET` | `/inventory/products` | No | List all ingredients with `current_stock` at `location_id` (required query, 1–14) |
+| `GET` | `/inventory/products` | Bearer + location | List all ingredients with `current_stock` at `location_id` (required query, 1–14) |
 | `POST` | `/inventory/products` | Bearer | Create a new ingredient (`current_stock` starts at 0) |
-| `GET` | `/inventory/products/{id}` | No | Get one ingredient with `current_stock` at `location_id` (required query, 1–14) |
+| `GET` | `/inventory/products/{id}` | Bearer + location | Get one ingredient with `current_stock` at `location_id` (required query, 1–14) |
 | `POST` | `/inventory/orders/inbound` | Bearer | Log a supplier delivery (`IngredientEntry`; optional `unit_cost`) |
 | `POST` | `/inventory/orders/outbound` | Bearer | Log consumption or waste (`IngredientExit`) |
-| `GET` | `/inventory/orders` | No | List all entries and exits with nested ingredient data |
+| `GET` | `/inventory/orders` | Bearer + location | List entries and exits at required `location_id` with nested ingredient data |
 
-Write endpoints require a valid **access** JWT (no `type` claim). Refresh and password-reset tokens are rejected with **401**.
+All endpoints require a valid **access** JWT (no `type` claim). Refresh and
+password-reset tokens are rejected with **401**. A scoped user requesting a
+location outside `authorized_locations` receives **403**; `is_admin` bypasses the
+location restriction.
 
 ## Testing
 
@@ -108,6 +115,6 @@ cd services/inventory
 uv run pytest
 ```
 
-Expect **37** passed (SQLite in-memory; no Supabase required for tests).
+Expect **41** passed (SQLite in-memory; no Supabase required for tests).
 
 CI runs this suite via the `uv-tests` matrix row `services/inventory` in `.github/workflows/ci.yml`.

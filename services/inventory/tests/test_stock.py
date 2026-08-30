@@ -24,9 +24,9 @@ def _auth_header(user_id: int) -> dict[str, str]:
 
 def test_advisory_lock_compiles_to_postgres_sql() -> None:
     """Outbound lock statement must emit pg_advisory_xact_lock on PostgreSQL."""
-    stmt = text(
-        "SELECT pg_advisory_xact_lock(:ingredient_id, :location_id)"
-    ).bindparams(ingredient_id=1, location_id=2)
+    stmt = text("SELECT pg_advisory_xact_lock(:ingredient_id, :location_id)").bindparams(
+        ingredient_id=1, location_id=2
+    )
     compiled = str(stmt.compile(dialect=postgresql.dialect()))
     assert "pg_advisory_xact_lock" in compiled.lower()
 
@@ -70,23 +70,33 @@ def _seed_beef_with_stock(session: Session) -> Ingredient:
 
 
 def test_current_stock_reflects_entries_minus_exits_at_location(
-    session: Session, client: TestClient
+    session: Session,
+    client: TestClient,
+    admin_headers: dict[str, str],
 ) -> None:
     _seed_beef_with_stock(session)
 
-    response = client.get("/inventory/products", params={"location_id": 1})
+    response = client.get(
+        "/inventory/products",
+        params={"location_id": 1},
+        headers=admin_headers,
+    )
     beef = next(item for item in response.json() if item["sku"] == "BRS-BEEF-001")
     assert beef["current_stock"] == 60.0
 
 
 def test_cross_location_stock_is_isolated(
-    session: Session, client: TestClient
+    session: Session,
+    client: TestClient,
+    admin_headers: dict[str, str],
 ) -> None:
     beef = _seed_beef_with_stock(session)
     assert beef.id is not None
 
     location_two = client.get(
-        "/inventory/products", params={"location_id": 2}
+        "/inventory/products",
+        params={"location_id": 2},
+        headers=admin_headers,
     ).json()
     beef_at_two = next(item for item in location_two if item["sku"] == "BRS-BEEF-001")
     assert beef_at_two["current_stock"] == 0.0
@@ -136,7 +146,9 @@ def test_outbound_exceeding_stock_returns_exact_400_message(
 
 
 def test_outbound_exactly_equal_to_available_succeeds_and_zeroes_stock(
-    session: Session, client: TestClient
+    session: Session,
+    client: TestClient,
+    admin_headers: dict[str, str],
 ) -> None:
     beef = _seed_beef_with_stock(session)
     assert beef.id is not None
@@ -153,11 +165,18 @@ def test_outbound_exactly_equal_to_available_succeeds_and_zeroes_stock(
     )
     assert response.status_code == 200
 
-    products = client.get("/inventory/products", params={"location_id": 1}).json()
+    products = client.get(
+        "/inventory/products",
+        params={"location_id": 1},
+        headers=admin_headers,
+    ).json()
     beef_product = next(item for item in products if item["sku"] == "BRS-BEEF-001")
     assert beef_product["current_stock"] == 0.0
 
 
-def test_products_requires_location_id_query_param(client: TestClient) -> None:
-    response = client.get("/inventory/products")
+def test_products_requires_location_id_query_param(
+    client: TestClient,
+    admin_headers: dict[str, str],
+) -> None:
+    response = client.get("/inventory/products", headers=admin_headers)
     assert response.status_code == 422

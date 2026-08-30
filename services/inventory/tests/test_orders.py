@@ -61,7 +61,9 @@ def test_inbound_creates_entry_with_user_uuid_from_token(
 
 
 def test_inbound_with_unit_cost_persists_and_lists_non_null_value(
-    session: Session, client: TestClient
+    session: Session,
+    client: TestClient,
+    admin_headers: dict[str, str],
 ) -> None:
     beef = _seed_beef(session)
     assert beef.id is not None
@@ -82,7 +84,11 @@ def test_inbound_with_unit_cost_persists_and_lists_non_null_value(
     assert body["unit_cost"] == unit_cost
     entry_id = body["id"]
 
-    orders = client.get("/inventory/orders")
+    orders = client.get(
+        "/inventory/orders",
+        params={"location_id": 1},
+        headers=admin_headers,
+    )
     assert orders.status_code == 200
     listed = next(entry for entry in orders.json()["entries"] if entry["id"] == entry_id)
     assert "unit_cost" in listed
@@ -91,7 +97,9 @@ def test_inbound_with_unit_cost_persists_and_lists_non_null_value(
 
 
 def test_inbound_without_unit_cost_lists_null(
-    session: Session, client: TestClient
+    session: Session,
+    client: TestClient,
+    admin_headers: dict[str, str],
 ) -> None:
     beef = _seed_beef(session)
     assert beef.id is not None
@@ -108,7 +116,11 @@ def test_inbound_without_unit_cost_lists_null(
     assert body["unit_cost"] is None
     entry_id = body["id"]
 
-    orders = client.get("/inventory/orders")
+    orders = client.get(
+        "/inventory/orders",
+        params={"location_id": 1},
+        headers=admin_headers,
+    )
     assert orders.status_code == 200
     listed = next(entry for entry in orders.json()["entries"] if entry["id"] == entry_id)
     assert "unit_cost" in listed
@@ -135,7 +147,9 @@ def test_inbound_requires_auth(session: Session, client: TestClient) -> None:
 
 
 def test_outbound_reduces_stock_and_persists_user_uuid(
-    session: Session, client: TestClient
+    session: Session,
+    client: TestClient,
+    admin_headers: dict[str, str],
 ) -> None:
     beef = _seed_beef(session)
     assert beef.id is not None
@@ -160,7 +174,11 @@ def test_outbound_reduces_stock_and_persists_user_uuid(
     assert body["user_uuid"] == "9"
     assert body["reason"] == "consumption"
 
-    products = client.get("/inventory/products", params={"location_id": 1}).json()
+    products = client.get(
+        "/inventory/products",
+        params={"location_id": 1},
+        headers=admin_headers,
+    ).json()
     beef_product = next(item for item in products if item["sku"] == "BRS-BEEF-001")
     assert beef_product["current_stock"] == 40.0
 
@@ -192,7 +210,9 @@ def test_outbound_rejects_invalid_reason(session: Session, client: TestClient) -
 
 
 def test_get_orders_returns_entries_and_exits_with_ingredient_data(
-    session: Session, client: TestClient
+    session: Session,
+    client: TestClient,
+    admin_headers: dict[str, str],
 ) -> None:
     beef = _seed_beef(session)
     assert beef.id is not None
@@ -216,7 +236,11 @@ def test_get_orders_returns_entries_and_exits_with_ingredient_data(
     )
     session.commit()
 
-    response = client.get("/inventory/orders")
+    response = client.get(
+        "/inventory/orders",
+        params={"location_id": 2},
+        headers=admin_headers,
+    )
     assert response.status_code == 200
     body = response.json()
     assert len(body["entries"]) == 1

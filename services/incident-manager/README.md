@@ -161,7 +161,10 @@ uv run python scripts/seed_incidents.py path\to\incidents.csv
 
 ## API endpoints
 
-All `/api/incidents*` routes require a Bearer access JWT (`brasaland-auth-verify`). Docs/OpenAPI only when `EXPOSE_DOCS=1`.
+All `/api/incidents*` routes require a Bearer access JWT (`brasaland-auth-verify`).
+Any valid access token may use any incident route; incident owner/location scoping
+is intentionally deferred because the current table has no authorization column.
+Docs/OpenAPI are available only when `EXPOSE_DOCS=1`.
 
 | Method | Path | Description | Success | Errors |
 | --- | --- | --- | --- | --- |
@@ -207,7 +210,7 @@ cd services/incident-manager
 uv run pytest
 ```
 
-Expect **24** passed (23 original + migration model smoke test).
+Expect **27** passed.
 
 From the monorepo root, M2 must stay green:
 

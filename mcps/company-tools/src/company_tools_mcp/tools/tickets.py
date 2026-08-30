@@ -129,9 +129,7 @@ def create_ticket_impl(
             f"Missing required fields: {', '.join(missing)}",
             fields=missing,
         )
-        log_invocation(
-            tool="create_ticket", client_user_id=user_id, result=result["code"]
-        )
+        log_invocation(tool="create_ticket", client_user_id=user_id, result=result["code"])
         return result
 
     if category not in VALID_CATEGORIES:
@@ -146,18 +144,14 @@ def create_ticket_impl(
         result = None
 
     if result is not None:
-        log_invocation(
-            tool="create_ticket", client_user_id=user_id, result=result["code"]
-        )
+        log_invocation(tool="create_ticket", client_user_id=user_id, result=result["code"])
         return result
 
     try:
         http_status, payload = incidents_client.create_incident(body)
     except Exception as exc:  # noqa: BLE001
         result = error_payload(UPSTREAM_ERROR, str(exc))
-        log_invocation(
-            tool="create_ticket", client_user_id=user_id, result=result["code"]
-        )
+        log_invocation(tool="create_ticket", client_user_id=user_id, result=result["code"])
         return result
 
     if http_status in (200, 201) and isinstance(payload, dict):
@@ -205,10 +199,9 @@ def update_ticket_status_impl(
         return result
 
     try:
-        # Soft gap A noted: upstream is unauthenticated; only PATCH .../status.
-        http_status, payload = incidents_client.patch_incident_status(
-            incident_id, status
-        )
+        # Downstream uses the dedicated MCP service identity; the inbound caller's
+        # tickets:write scope remains the authorization gate for this tool.
+        http_status, payload = incidents_client.patch_incident_status(incident_id, status)
     except Exception as exc:  # noqa: BLE001
         result = error_payload(UPSTREAM_ERROR, str(exc))
         log_invocation(

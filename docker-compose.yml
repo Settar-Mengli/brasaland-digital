@@ -368,6 +368,7 @@ services:
       AUTH_ISSUER_URL: http://auth:8002
       MCP_RESOURCE_URL: http://localhost:8016/mcp
       MCP_TICKETS_WRITE_ALLOWLIST: ${MCP_TICKETS_WRITE_ALLOWLIST:-}
+      MCP_SERVICE_TOKEN: ${MCP_SERVICE_TOKEN:-}
       INCIDENTS_API_ORIGIN: http://incident-manager:8011
       INVENTORY_API_ORIGIN: http://inventory:8012
     volumes:

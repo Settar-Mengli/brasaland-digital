@@ -78,6 +78,7 @@ export function createOutbound(body: IngredientExitCreate): Promise<IngredientEx
   return inventoryPost<IngredientExitResponse>('/orders/outbound', body);
 }
 
-export function getOrders(): Promise<OrdersListResponse> {
-  return inventoryGet<OrdersListResponse>('/orders');
+export function getOrders(locationId: number): Promise<OrdersListResponse> {
+  const params = new URLSearchParams({ location_id: String(locationId) });
+  return inventoryGet<OrdersListResponse>(`/orders?${params.toString()}`);
 }

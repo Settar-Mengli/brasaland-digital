@@ -38,6 +38,7 @@ SERVICES: list[tuple[str, str]] = [
     ("supplier-directory", "services/supplier-directory"),
     ("incident-manager", "services/incident-manager"),
     ("incident-analysis", "services/incident-analysis"),
+    ("inventory", "services/inventory"),
     ("telemetry", "services/telemetry"),
     ("reporting", "services/reporting"),
     ("rfp", "services/rfp"),
@@ -66,18 +67,13 @@ ALLOWLIST_OPEN: frozenset[tuple[str, str, str]] = frozenset(
         # --- auth public token endpoints ---
         ("auth", "POST", "/auth/register"),
         ("auth", "POST", "/auth/login"),
+        ("auth", "POST", "/auth/login/authorized-locations"),
         ("auth", "POST", "/auth/refresh"),
         ("auth", "POST", "/auth/logout"),
         ("auth", "POST", "/auth/forgot-password"),
         ("auth", "POST", "/auth/reset-password"),
         # --- telemetry ingest (token-optional by design; Phase 2) ---
         ("telemetry", "POST", "/telemetry/events"),
-        # --- Phase 2 intentional public GETs (reads still open) ---
-        ("incident-manager", "GET", "/api/incidents"),
-        ("incident-manager", "GET", "/api/incidents/summary"),
-        ("incident-manager", "GET", "/api/incidents/{incident_id}"),
-        ("reporting", "GET", "/reporting/weekly-location-performance"),
-        ("reporting", "GET", "/reporting/pipeline-runs/latest"),
     }
 )
 
@@ -91,6 +87,7 @@ GET_SENSITIVE_MARKERS = (
     "/users",
     "/suppliers",
     "/incidents",
+    "/inventory/",
     "/tickets",
     "/memory",
     "/trace",
@@ -184,10 +181,14 @@ def emit_schema_for_current_service(service: str) -> dict[str, Any]:
                 serialization.PrivateFormat.PKCS8,
                 serialization.NoEncryption(),
             ).decode()
-            os.environ["JWT_PUBLIC_KEY"] = key.public_key().public_bytes(
-                serialization.Encoding.PEM,
-                serialization.PublicFormat.SubjectPublicKeyInfo,
-            ).decode()
+            os.environ["JWT_PUBLIC_KEY"] = (
+                key.public_key()
+                .public_bytes(
+                    serialization.Encoding.PEM,
+                    serialization.PublicFormat.SubjectPublicKeyInfo,
+                )
+                .decode()
+            )
 
     # Ensure service root is importable.
     cwd = Path.cwd()
@@ -199,9 +200,7 @@ def emit_schema_for_current_service(service: str) -> dict[str, Any]:
     return app.openapi()
 
 
-def audit_schema(
-    service: str, schema: dict[str, Any]
-) -> tuple[list[dict[str, str]], int, int]:
+def audit_schema(service: str, schema: dict[str, Any]) -> tuple[list[dict[str, str]], int, int]:
     """Return (rows, fail_count, in_scope_count)."""
     rows: list[dict[str, str]] = []
     fails = 0
@@ -254,12 +253,8 @@ def _format_table(rows: list[dict[str, str]]) -> str:
     col_m = max(len(r["method"]) for r in rows)
     col_p = max(len(r["path"]) for r in rows)
     col_s = max(len(r["state"]) for r in rows)
-    lines = [
-        f"{'METHOD'.ljust(col_m)}  {'PATH'.ljust(col_p)}  {'STATE'.ljust(col_s)}  VERDICT"
-    ]
-    lines.append(
-        f"{'-' * col_m}  {'-' * col_p}  {'-' * col_s}  -------"
-    )
+    lines = [f"{'METHOD'.ljust(col_m)}  {'PATH'.ljust(col_p)}  {'STATE'.ljust(col_s)}  VERDICT"]
+    lines.append(f"{'-' * col_m}  {'-' * col_p}  {'-' * col_s}  -------")
     for r in rows:
         lines.append(
             f"{r['method'].ljust(col_m)}  {r['path'].ljust(col_p)}  "

@@ -5,6 +5,15 @@ const REPORTING_BASE = 'http://localhost:3003/api/reporting';
 describe('reporting client', () => {
   beforeEach(() => {
     vi.stubEnv('NEXT_PUBLIC_REPORTING_API_URL', REPORTING_BASE);
+    vi.stubGlobal('window', globalThis);
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn(() => 'reporting-admin-token'),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+      clear: vi.fn(),
+      key: vi.fn(),
+      length: 0,
+    });
     vi.stubGlobal('fetch', vi.fn());
   });
 
@@ -29,10 +38,9 @@ describe('reporting client', () => {
     const { getWeeklyLocationPerformance } = await import('./reporting');
     await getWeeklyLocationPerformance('2026-07-06');
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      `${REPORTING_BASE}/weekly-location-performance?week_start=2026-07-06`,
-      undefined,
-    );
+    const [url, init] = fetchMock.mock.calls[0] ?? [];
+    expect(url).toBe(`${REPORTING_BASE}/weekly-location-performance?week_start=2026-07-06`);
+    expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer reporting-admin-token');
   });
 
   it('getWeeklyLocationPerformance surfaces parseApiError on failure', async () => {

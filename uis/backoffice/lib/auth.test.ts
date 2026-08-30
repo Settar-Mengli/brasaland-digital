@@ -2,6 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const AUTH_BASE = 'http://localhost:3003/api/auth';
 
+function makeJwt(payload: Record<string, unknown>): string {
+  const header = btoa(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+  const body = btoa(JSON.stringify(payload));
+  return `${header}.${body}.signature`;
+}
+
 function createStorage() {
   const store = new Map<string, string>();
   return {
@@ -159,5 +165,13 @@ describe('auth client', () => {
         }),
       }),
     );
+  });
+
+  it('reads the admin claim for client-side route guarding', async () => {
+    const { isAdminAccessToken } = await import('./auth');
+
+    expect(isAdminAccessToken(makeJwt({ is_admin: true }))).toBe(true);
+    expect(isAdminAccessToken(makeJwt({ is_admin: false }))).toBe(false);
+    expect(isAdminAccessToken('not-a-jwt')).toBe(false);
   });
 });

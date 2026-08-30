@@ -26,10 +26,14 @@ PRIVATE_PEM = _key.private_bytes(
     serialization.PrivateFormat.PKCS8,
     serialization.NoEncryption(),
 ).decode()
-PUBLIC_PEM = _key.public_key().public_bytes(
-    serialization.Encoding.PEM,
-    serialization.PublicFormat.SubjectPublicKeyInfo,
-).decode()
+PUBLIC_PEM = (
+    _key.public_key()
+    .public_bytes(
+        serialization.Encoding.PEM,
+        serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    .decode()
+)
 
 os.environ.setdefault("JWT_PUBLIC_KEY", PUBLIC_PEM)
 
@@ -50,13 +54,24 @@ def _set_sqlite_pragma(dbapi_connection: Any, connection_record: Any) -> None:
 database.engine = _test_engine
 
 
-def make_access_token(user_id: int) -> str:
+def make_access_token(
+    user_id: int,
+    *,
+    is_admin: bool = False,
+    authorized_locations: list[str] | None = None,
+    location_slug: str | None = None,
+) -> str:
     expire_at = datetime.now(UTC) + timedelta(minutes=30)
     payload = {
         "sub": str(user_id),
         "user_id": user_id,
+        "is_admin": is_admin,
         "exp": int(expire_at.timestamp()),
     }
+    if authorized_locations is not None:
+        payload["authorized_locations"] = authorized_locations
+    if location_slug is not None:
+        payload["location_slug"] = location_slug
     return jwt.encode(payload, PRIVATE_PEM, algorithm="RS256")
 
 
@@ -91,3 +106,9 @@ def client() -> Generator[TestClient, None, None]:
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def admin_headers() -> dict[str, str]:
+    token = make_access_token(1, is_admin=True)
+    return {"Authorization": f"Bearer {token}"}

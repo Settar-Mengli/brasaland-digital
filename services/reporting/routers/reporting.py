@@ -3,7 +3,7 @@
 from datetime import date
 from typing import Annotated
 
-from brasaland_auth_verify.deps import get_current_user_uuid
+from brasaland_auth_verify.deps import require_admin
 from fastapi import APIRouter, Body, Depends, Query, Request
 from fastapi.responses import JSONResponse
 
@@ -28,6 +28,7 @@ router = APIRouter(prefix="/reporting")
     response_model=WeeklyLocationPerformanceResponse,
 )
 def get_weekly_location_performance(
+    _admin: Annotated[str, Depends(require_admin)],
     week_start: date | None = Query(default=None),
 ) -> WeeklyLocationPerformanceResponse:
     payload = query_weekly_location_performance(week_start=week_start)
@@ -35,7 +36,9 @@ def get_weekly_location_performance(
 
 
 @router.get("/pipeline-runs/latest", response_model=PipelineRunResponse)
-def get_latest_pipeline_run() -> PipelineRunResponse:
+def get_latest_pipeline_run(
+    _admin: Annotated[str, Depends(require_admin)],
+) -> PipelineRunResponse:
     payload = query_latest_pipeline_run()
     return PipelineRunResponse.model_validate(payload)
 
@@ -48,7 +51,7 @@ def get_latest_pipeline_run() -> PipelineRunResponse:
 @limiter.limit(ENQUEUE_RATE_LIMIT)
 def post_pipeline_run(
     request: Request,
-    _user: Annotated[str, Depends(get_current_user_uuid)],
+    _admin: Annotated[str, Depends(require_admin)],
     body: Annotated[TriggerPipelineRunBody | None, Body()] = None,
 ) -> JSONResponse:
     week_start = body.week_start if body is not None else None

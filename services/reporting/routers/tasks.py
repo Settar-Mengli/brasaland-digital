@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Annotated, Any
 
-from brasaland_auth_verify.deps import get_current_user_uuid
+from brasaland_auth_verify.deps import require_admin
 from celery.result import AsyncResult
 from fastapi import APIRouter, Depends
 
@@ -35,7 +35,7 @@ def _map_status(celery_state: str) -> str:
 @router.get("/tasks/{task_id}", response_model=TaskStatusResponse)
 def get_task_status(
     task_id: str,
-    _user: Annotated[str, Depends(get_current_user_uuid)],
+    _admin: Annotated[str, Depends(require_admin)],
 ) -> TaskStatusResponse:
     async_result = AsyncResult(task_id, app=celery_app)
     state = async_result.state or "PENDING"

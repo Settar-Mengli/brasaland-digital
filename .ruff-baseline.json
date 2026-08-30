@@ -19,7 +19,7 @@
     "scripts/test_celery_queue_isolation.py",
     "scripts/check_ruff_baseline.py"
   ],
-  "total": 225,
+  "total": 223,
   "violations": [
     {
       "path": "data/alembic/versions/c563e07756e0_baseline_m5_schema.py",
@@ -659,13 +659,6 @@
       "count": 1
     },
     {
-      "path": "services/inventory/routers/inventory.py",
-      "code": "I001",
-      "message": "Import block is un-sorted or un-formatted",
-      "source": "from __future__ import annotations",
-      "count": 1
-    },
-    {
       "path": "services/inventory/seed.py",
       "code": "I001",
       "message": "Import block is un-sorted or un-formatted",
@@ -852,13 +845,6 @@
       "code": "E402",
       "message": "Module level import not at top of file",
       "source": "import pipelines.pipeline as pipeline_module",
-      "count": 1
-    },
-    {
-      "path": "services/reporting/tests/test_auth.py",
-      "code": "I001",
-      "message": "Import block is un-sorted or un-formatted",
-      "source": "    from app import app",
       "count": 1
     },
     {

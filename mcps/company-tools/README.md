@@ -22,6 +22,22 @@ stdio is not used: MCP Playground validation requires a public Codespaces forwar
 
 **Limitation:** scopes live on the MCP resource server, not in the JWT.
 
+## Downstream service identity
+
+All MCP-to-incident and MCP-to-inventory HTTP requests send the dedicated
+`MCP_SERVICE_TOKEN` as a Bearer credential. Provision this as a non-admin service
+user with all 14 `authorized_locations`, keep it out of source control, and rotate
+it before expiry. The same credential is attached to incident reads, creates, and
+status updates; caller-facing ticket writes remain gated by `tickets:write` at the
+MCP resource server. Inventory write tools remain hard-denied.
+
+**Known limitation:** downstream services see the fixed MCP service identity, not
+the human caller. MCP inventory and incident reads can therefore cross locations
+regardless of the caller's location assignment. This is accepted for the internal
+read-only tools. The current incident API accepts any valid access JWT on writes,
+so the credential is operationally restricted rather than cryptographically
+read-only for direct incident calls; keep it confined to the MCP runtime.
+
 Distinct error codes: `AUTH_REQUIRED`, `AUTH_INVALID`, `AUTHZ_SCOPE_DENIED`, `VALIDATION_ERROR`, `NOT_FOUND`, `UPSTREAM_ERROR`, `INVENTORY_WRITE_FORBIDDEN`.
 
 Protected Resource Metadata: `GET /.well-known/oauth-protected-resource`.
@@ -46,7 +62,8 @@ uv sync
 uv run company-tools-mcp
 ```
 
-Or via Compose (`company-tools-mcp` service). Env: see `.env.example` and root `.env.example`.
+Or via Compose (`company-tools-mcp` service). Set `MCP_SERVICE_TOKEN` in the
+untracked root `.env`; see root `.env.example` for the remaining variables.
 
 ## Tests
 
