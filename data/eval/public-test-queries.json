@@ -1,0 +1,57 @@
+[
+  {
+    "id": "public-miami-hours",
+    "question": "What are the regular hours for Brasaland Miami?",
+    "expected_source_document": "locations.json"
+  },
+  {
+    "id": "public-medellin-address",
+    "question": "What is the address for Medellín Centro?",
+    "expected_source_document": "locations.json"
+  },
+  {
+    "id": "public-menu-sirloin-cop",
+    "question": "How much does Grilled Sirloin cost in COP?",
+    "expected_source_document": "menu.json"
+  },
+  {
+    "id": "public-menu-salad-usd",
+    "question": "What is the USD price for Tropical Salad?",
+    "expected_source_document": "menu.json"
+  },
+  {
+    "id": "public-loyalty-earn",
+    "question": "How much do I need to spend to earn one Brasa Point in Colombia?",
+    "expected_source_document": "loyalty.md"
+  },
+  {
+    "id": "public-loyalty-gold",
+    "question": "How many points do I need for Gold tier Brasa Points?",
+    "expected_source_document": "loyalty.md"
+  },
+  {
+    "id": "public-allergens-sirloin",
+    "question": "What allergens are in Grilled Sirloin?",
+    "expected_source_document": "allergens.md"
+  },
+  {
+    "id": "public-reservations",
+    "question": "Do Brasaland locations accept reservations?",
+    "expected_source_document": "reservations.md"
+  },
+  {
+    "id": "public-ordering-delivery",
+    "question": "How can guests order delivery from Brasaland?",
+    "expected_source_document": "ordering.md"
+  },
+  {
+    "id": "public-contact",
+    "question": "How can guests contact Brasaland customer support?",
+    "expected_source_document": "contact.md"
+  },
+  {
+    "id": "public-holidays",
+    "question": "Are Brasaland hours different on holidays?",
+    "expected_source_document": "hours-holidays.md"
+  }
+]

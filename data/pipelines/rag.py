@@ -15,23 +15,29 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
-COLLECTION_NAME = "brasaland_knowledge"
-VECTOR_SIZE = 384
-DEFAULT_MIN_SCORE = 0.55
-DEFAULT_TOP_K = 5
-COMPANY = "brasaland"
-SOURCE_DOCUMENTS = (
-    "loyalty-program",
-    "waste-protocol",
-    "menu-allergens",
-    "supplier-ordering",
+from pipelines.rag_profiles import (
+    STAFF_PROFILE,
+    STAFF_SOURCE_STEMS,
+    RagProfile,
+    resolve_profile,
 )
+
+COLLECTION_NAME = STAFF_PROFILE.collection_name
+VECTOR_SIZE = STAFF_PROFILE.vector_size
+DEFAULT_MIN_SCORE = STAFF_PROFILE.min_score
+DEFAULT_TOP_K = STAFF_PROFILE.top_k
+COMPANY = "brasaland"
+SOURCE_DOCUMENTS = STAFF_SOURCE_STEMS
 DEFAULT_EMBED_MODEL = "BAAI/bge-small-en-v1.5"
 GENERATION_TIMEOUT_SECONDS = float(os.getenv("GENERATION_TIMEOUT_SECONDS", "30"))
 QDRANT_TIMEOUT_SECONDS = float(os.getenv("QDRANT_TIMEOUT_SECONDS", "30"))
 
 _embedder: Any | None = None
 logger = logging.getLogger(__name__)
+
+
+class PublicKnowledgeNotIndexedError(RuntimeError):
+    """Public Qdrant collection missing — never fall back to staff collection."""
 
 SYSTEM_PROMPT = """You are Brasaland's training and operations assistant for kitchen and floor staff and location managers.
 Your domain is Brasaland only: standardized recipes and preparation techniques, kitchen procedures and presentation standards, food handling and kitchen safety, training onboarding, plus the official company manuals (loyalty / Brasa Points, waste-control, menu allergens, supplier-ordering) and live ticket/stock tools when available.
@@ -72,13 +78,22 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
-def resolve_corpus_path() -> Path:
+def resolve_corpus_path(
+    profile: RagProfile | str | None = None,
+) -> Path:
     """Return corpus directory from env or repo-relative default."""
-    configured = os.environ.get("KNOWLEDGE_CORPUS_PATH", "").strip()
+    prof = resolve_profile(profile)
+    if prof.name == "staff":
+        configured = os.environ.get("KNOWLEDGE_CORPUS_PATH", "").strip()
+        if configured:
+            path = Path(configured).expanduser()
+            return (path if path.is_absolute() else _repo_root() / path).resolve()
+        return (_repo_root() / prof.corpus_relpath).resolve()
+    configured = os.environ.get("PUBLIC_KNOWLEDGE_CORPUS_PATH", "").strip()
     if configured:
         path = Path(configured).expanduser()
         return (path if path.is_absolute() else _repo_root() / path).resolve()
-    return (_repo_root() / "docs" / "company-knowledge-base").resolve()
+    return (_repo_root() / prof.corpus_relpath).resolve()
 
 
 def _get_embedder() -> Any:
@@ -209,46 +224,75 @@ def chunk_markdown(text: str, *, source_document: str) -> list[dict[str, Any]]:
     ]
 
 
-def setup(*, corpus_path: Path | None = None) -> dict[str, Any]:
-    """Clear-and-reload Qdrant collection from corpus markdown files.
-
-    Idempotent: recreates the collection so re-indexing drops stale chunks.
-    """
-    from qdrant_client.models import Distance, PointStruct, VectorParams
-
-    root = corpus_path if corpus_path is not None else resolve_corpus_path()
-    if not root.is_dir():
-        raise FileNotFoundError(f"Knowledge corpus not found: {root}")
-
-    client = get_qdrant_client()
-    if client.collection_exists(COLLECTION_NAME):
-        client.delete_collection(COLLECTION_NAME)
-    client.create_collection(
-        collection_name=COLLECTION_NAME,
-        vectors_config=VectorParams(size=VECTOR_SIZE, distance=Distance.COSINE),
-    )
-
-    points: list[Any] = []
+def _load_staff_chunks(root: Path) -> tuple[list[dict[str, Any]], dict[str, int]]:
+    chunks: list[dict[str, Any]] = []
     per_doc: dict[str, int] = {}
     for stem in SOURCE_DOCUMENTS:
         path = root / f"{stem}.md"
         if not path.is_file():
             raise FileNotFoundError(f"Missing source document: {path}")
-        chunks = chunk_markdown(path.read_text(encoding="utf-8"), source_document=stem)
-        per_doc[stem] = len(chunks)
-        for chunk in chunks:
-            vector = embed(chunk["text"])
-            points.append(
-                PointStruct(
-                    id=str(uuid.uuid4()),
-                    vector=vector,
-                    payload=chunk,
-                )
-            )
+        doc_chunks = chunk_markdown(
+            path.read_text(encoding="utf-8"), source_document=stem
+        )
+        per_doc[stem] = len(doc_chunks)
+        chunks.extend(doc_chunks)
+    return chunks, per_doc
 
-    client.upsert(collection_name=COLLECTION_NAME, points=points)
+
+def setup(
+    *,
+    corpus_path: Path | None = None,
+    profile: RagProfile | str | None = None,
+    validate_only: bool = False,
+) -> dict[str, Any]:
+    """Clear-and-reload Qdrant collection from corpus sources.
+
+    Preflight: validate sources, build chunks, and embed before delete/create.
+    Idempotent on success: recreates the collection so re-indexing drops stale chunks.
+    """
+    from qdrant_client.models import Distance, PointStruct, VectorParams
+
+    prof = resolve_profile(profile)
+    root = corpus_path if corpus_path is not None else resolve_corpus_path(profile=prof)
+    if not root.is_dir():
+        raise FileNotFoundError(f"Knowledge corpus not found: {root}")
+
+    if prof.name == "public":
+        from pipelines.public_loaders import build_public_chunks
+
+        chunks, per_doc = build_public_chunks(root)
+    else:
+        chunks, per_doc = _load_staff_chunks(root)
+
+    if validate_only:
+        return {
+            "validated": True,
+            "collection": prof.collection_name,
+            "points": len(chunks),
+            "per_document": per_doc,
+        }
+
+    points: list[Any] = []
+    for chunk in chunks:
+        vector = embed(chunk["text"])
+        points.append(
+            PointStruct(
+                id=str(uuid.uuid4()),
+                vector=vector,
+                payload=chunk,
+            )
+        )
+
+    client = get_qdrant_client()
+    if client.collection_exists(prof.collection_name):
+        client.delete_collection(prof.collection_name)
+    client.create_collection(
+        collection_name=prof.collection_name,
+        vectors_config=VectorParams(size=VECTOR_SIZE, distance=Distance.COSINE),
+    )
+    client.upsert(collection_name=prof.collection_name, points=points)
     return {
-        "collection": COLLECTION_NAME,
+        "collection": prof.collection_name,
         "points": len(points),
         "per_document": per_doc,
     }
@@ -258,24 +302,48 @@ def retrieve(
     question: str,
     *,
     k: int = DEFAULT_TOP_K,
-    min_score: float = DEFAULT_MIN_SCORE,
+    min_score: float | None = None,
+    profile: RagProfile | str | None = None,
 ) -> list[dict[str, Any]]:
     """Embed the question with BGE query prefix; return payload dicts above min_score."""
+    prof = resolve_profile(profile)
+    effective_min = min_score if min_score is not None else prof.min_score
     query_vector = embed(f"query: {question}")
     client = get_qdrant_client()
-    response = client.query_points(
-        collection_name=COLLECTION_NAME,
-        query=query_vector,
-        limit=k,
-        with_payload=True,
-    )
+
+    if prof.name == "public" and not client.collection_exists(prof.collection_name):
+        raise PublicKnowledgeNotIndexedError(
+            f"Public knowledge collection not indexed: {prof.collection_name}"
+        )
+
+    query_kwargs: dict[str, Any] = {
+        "collection_name": prof.collection_name,
+        "query": query_vector,
+        "limit": k,
+        "with_payload": True,
+    }
+    if prof.audience:
+        from qdrant_client.models import FieldCondition, Filter, MatchValue
+
+        query_kwargs["query_filter"] = Filter(
+            must=[
+                FieldCondition(
+                    key="audience",
+                    match=MatchValue(value=prof.audience),
+                )
+            ]
+        )
+
+    response = client.query_points(**query_kwargs)
     hits = getattr(response, "points", response)
     results: list[dict[str, Any]] = []
     for hit in hits:
         score = float(getattr(hit, "score", 0.0) or 0.0)
-        if score < min_score:
+        if score < effective_min:
             continue
         payload = dict(getattr(hit, "payload", None) or {})
+        if prof.audience and payload.get("audience") != prof.audience:
+            continue
         payload["_score"] = score
         results.append(payload)
     return results
@@ -551,12 +619,13 @@ def _generation_tiers() -> list[tuple[int, str, str, str]]:
     return tiers
 
 
-def _generate(
-    question: str,
-    chunks: list[dict[str, Any]],
+def _bounded_chat_completion(
+    system: str,
+    user_content: str,
     *,
-    memory_entries: list[dict[str, Any]] | None = None,
-    structured: bool = False,
+    temperature: float = 0.2,
+    max_tokens: int | None = None,
+    max_tier_attempts: int | None = None,
 ) -> str:
     from openai import OpenAI
 
@@ -566,15 +635,12 @@ def _generate(
             "no generation provider configured: set at least one GEN_i_API_KEY"
         )
 
-    system = SYSTEM_PROMPT
-    if structured:
-        system = f"{SYSTEM_PROMPT}\n\n{STRUCTURED_OUTPUT_INSTRUCTION}"
-    user_content = _build_user_prompt(
-        question, chunks, memory_entries=memory_entries
-    )
-
     last_error: Exception | None = None
+    attempts = 0
     for index, base_url, api_key, model in tiers:
+        if max_tier_attempts is not None and attempts >= max_tier_attempts:
+            break
+        attempts += 1
         label = _provider_label(base_url)
         try:
             client = OpenAI(
@@ -583,14 +649,17 @@ def _generate(
                 timeout=GENERATION_TIMEOUT_SECONDS,
                 max_retries=0,
             )
-            completion = client.chat.completions.create(
-                model=model,
-                messages=[
+            create_kwargs: dict[str, Any] = {
+                "model": model,
+                "messages": [
                     {"role": "system", "content": system},
                     {"role": "user", "content": user_content},
                 ],
-                temperature=0.2,
-            )
+                "temperature": temperature,
+            }
+            if max_tokens is not None:
+                create_kwargs["max_tokens"] = max_tokens
+            completion = client.chat.completions.create(**create_kwargs)
             message = completion.choices[0].message.content
             if not message:
                 raise RuntimeError("generation returned empty content")
@@ -605,6 +674,28 @@ def _generate(
             )
 
     raise RuntimeError("all generation providers failed") from last_error
+
+
+def _generate(
+    question: str,
+    chunks: list[dict[str, Any]],
+    *,
+    memory_entries: list[dict[str, Any]] | None = None,
+    structured: bool = False,
+) -> str:
+    system = SYSTEM_PROMPT
+    if structured:
+        system = f"{SYSTEM_PROMPT}\n\n{STRUCTURED_OUTPUT_INSTRUCTION}"
+    user_content = _build_user_prompt(
+        question, chunks, memory_entries=memory_entries
+    )
+    return _bounded_chat_completion(
+        system=system,
+        user_content=user_content,
+        temperature=STAFF_PROFILE.generation_temperature,
+        max_tokens=STAFF_PROFILE.generation_max_tokens,
+        max_tier_attempts=None,
+    )
 
 
 def generate_answer(question: str, chunks: list[dict[str, Any]]) -> str:
