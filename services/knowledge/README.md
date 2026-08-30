@@ -23,6 +23,7 @@ JWT-guarded RAG Q&A over company manuals (loyalty, waste, allergens, supplier or
 | --- | --- | --- | --- |
 | `GET` | `/` | no | `{"service":"knowledge"}` |
 | `POST` | `/knowledge/query` | Bearer JWT (rate-limited) | `{"question":"..."}` → `{"answer":"..."}` only (`RATE_LIMIT_KNOWLEDGE_QUERY`, default `20/minute`) |
+| `POST` | `/public/knowledge/query` | Bearer JWT with `svc: website-knowledge` (rate-limited) | `{"question":"..."}` → `{"answer":"..."}` only; gated by `PUBLIC_KNOWLEDGE_ENABLED` (`RATE_LIMIT_PUBLIC_KNOWLEDGE_QUERY`, default `5/minute`) |
 | `POST` | `/agent/query` | Bearer JWT (rate-limited) | `{"question":"...","session_id"?}` → `{"run_id","answer","memory_proposal"?}`; errors → `{"detail"}`. Optional `session_id` is the guardrail + pending-memory key (via configurable only, never checkpointed). If omitted, an ephemeral per-call UUID is used — not the JWT user id. User id for memory/trace ownership comes from JWT via `configurable` only (never AgentState). (`RATE_LIMIT_AGENT_QUERY`, default `10/minute`) |
 | `GET` | `/agent/trace/{run_id}` | Bearer JWT (owner or admin) | structured trace for runs owned by the caller; cross-user → **403**; `404` if unknown |
 | `GET` | `/agent/guardrails/summary` | Bearer JWT | optional `?session_id=`; with `session_id` returns that session's counters; **omitting `session_id` yields process-wide counters** across all sessions in the worker |
@@ -56,6 +57,12 @@ Copy the repo-root `.env.example` → `.env` (never commit secrets). Required fo
 - `JWT_PUBLIC_KEY`, `JWT_ALGORITHM`
 - `EXPOSE_DOCS` — when `1`/`true`, serves `/docs` and OpenAPI; default off
 - `RATE_LIMIT_AGENT_QUERY` / `RATE_LIMIT_KNOWLEDGE_QUERY` — SlowAPI overrides (defaults `10/minute` / `20/minute`)
+- `RATE_LIMIT_PUBLIC_KNOWLEDGE_QUERY` — public guest route (default `5/minute`)
+- `PUBLIC_KNOWLEDGE_ENABLED` — when `1`/`true`, enables `POST /public/knowledge/query`; otherwise **503**
+- `PUBLIC_KNOWLEDGE_CORPUS_PATH` — optional; default repo `docs/public-knowledge-base` for public indexing
+- `WEBSITE_KNOWLEDGE_SVC_CLAIM` — expected `svc` claim on website service tokens (default `website-knowledge`)
+- `PUBLIC_DAILY_CAPS_ENABLED` — deferred Redis daily caps (`public_usage.py` stub when off)
+- Optional `GEN_PUBLIC_1_*` … tiers for isolated public generation (falls back to `GEN_*` when unset)
 - `REDIS_URL` — approved agent memory + audit (Compose redis:6379; in-memory fallback when unset for offline tests); keys are user-prefixed
 - `MCP_SERVER_URL` — company-tools MCP Streamable HTTP URL (native `http://localhost:8016/mcp`; Compose `http://company-tools-mcp:8016/mcp`). The inbound user Bearer from `/agent/query` is forwarded to MCP; no service-login secret.
 
@@ -66,6 +73,23 @@ uv run --directory data --python 3.13 python ../scripts/index_knowledge_base.py
 ```
 
 Compose mounts manuals read-only at `/app/docs/company-knowledge-base` and sets `KNOWLEDGE_CORPUS_PATH` accordingly.
+
+Public guest corpus (website chat):
+
+```powershell
+uv run --directory data --python 3.13 python ../scripts/index_knowledge_base.py --profile public
+```
+
+Compose mounts `docs/public-knowledge-base` at `/app/docs/public-knowledge-base` when using the public route.
+
+### Local guest-chat demo
+
+1. Provision auth user for `WEBSITE_KNOWLEDGE_SERVICE_USER_EMAIL` (non-admin, all 14 locations).
+2. Set `WEBSITE_KNOWLEDGE_CLIENT_ID/SECRET` in auth and website server env.
+3. Index public corpus (`--profile public`).
+4. Set `PUBLIC_KNOWLEDGE_ENABLED=true` and `NEXT_PUBLIC_PUBLIC_CHAT_ENABLED=true`.
+5. Open website on port 3002; widget calls same-origin `POST /api/chat` (BFF acquires service token).
+6. Leave `TURNSTILE_ENABLED=false` for local demo.
 
 ## Local run
 

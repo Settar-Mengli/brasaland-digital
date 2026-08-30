@@ -62,6 +62,9 @@ Copy from [`.env.example`](.env.example) and set real values locally in `.env` (
 | `MCP_SERVICE_CLIENT_ID` | HTTP Basic username accepted by `POST /auth/service-token` | `company-tools` |
 | `MCP_SERVICE_CLIENT_SECRET` | HTTP Basic password accepted by `POST /auth/service-token` | replace with a long random secret |
 | `MCP_SERVICE_USER_EMAIL` | Existing auth user whose identity and location assignments are used for MCP tokens | `company-tools@brasaland.com` |
+| `WEBSITE_KNOWLEDGE_CLIENT_ID` | HTTP Basic username for website guest-chat BFF `POST /auth/service-token` | `website-knowledge` |
+| `WEBSITE_KNOWLEDGE_CLIENT_SECRET` | HTTP Basic password for website guest-chat BFF | replace with a long random secret |
+| `WEBSITE_KNOWLEDGE_SERVICE_USER_EMAIL` | Non-admin service user for website knowledge tokens (`svc: website-knowledge`) | `website-knowledge@brasaland.com` |
 | `RESET_TOKEN_EXPIRE_MINUTES` | Password-reset token TTL | `30` |
 | `RESEND_API_KEY` | [Resend](https://resend.com) API key for reset emails | `replace-with-your-resend-api-key` in example |
 | `RESET_EMAIL_FROM` | Sender address for reset emails | `onboarding@resend.dev` (Resend sandbox) |
@@ -165,6 +168,11 @@ locations. The grant fails closed with a generic **401** when the client
 credentials, configuration, user state, role, or assignments are invalid. The
 issued JWT has `is_admin=false` and all 14 `authorized_locations`; it uses the
 same `ACCESS_TOKEN_EXPIRE_MINUTES` policy as other access tokens.
+
+The same endpoint accepts `WEBSITE_KNOWLEDGE_CLIENT_ID` / `WEBSITE_KNOWLEDGE_CLIENT_SECRET`
+for the public website BFF. The resolved user (`WEBSITE_KNOWLEDGE_SERVICE_USER_EMAIL`)
+must meet the same eligibility rules. The issued JWT includes `svc: website-knowledge`
+so knowledge can reject human or MCP tokens on `POST /public/knowledge/query`.
 
 ## API endpoints
 

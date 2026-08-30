@@ -619,6 +619,40 @@ def _generation_tiers() -> list[tuple[int, str, str, str]]:
     return tiers
 
 
+def _public_generation_tiers() -> list[tuple[int, str, str, str]]:
+    """Discover ``GEN_PUBLIC_N_*`` tiers (isolated public generation budget)."""
+    tiers: list[tuple[int, str, str, str]] = []
+    i = 1
+    while True:
+        raw_key = os.environ.get(f"GEN_PUBLIC_{i}_API_KEY")
+        if raw_key is None:
+            break
+        api_key = raw_key.strip()
+        if not api_key:
+            i += 1
+            continue
+        base_url = (os.environ.get(f"GEN_PUBLIC_{i}_BASE_URL") or "").strip()
+        model = (os.environ.get(f"GEN_PUBLIC_{i}_MODEL") or "").strip()
+        if not base_url or not model:
+            logger.warning(
+                "public generation tier %s skipped: API key set but missing base_url or model",
+                i,
+            )
+            i += 1
+            continue
+        tiers.append((i, base_url, api_key, model))
+        i += 1
+    return tiers
+
+
+def resolve_public_generation_tiers() -> list[tuple[int, str, str, str]]:
+    """Public tiers when configured; otherwise shared staff ``GEN_*`` tiers."""
+    public_tiers = _public_generation_tiers()
+    if public_tiers:
+        return public_tiers
+    return _generation_tiers()
+
+
 def _bounded_chat_completion(
     system: str,
     user_content: str,
@@ -626,18 +660,19 @@ def _bounded_chat_completion(
     temperature: float = 0.2,
     max_tokens: int | None = None,
     max_tier_attempts: int | None = None,
+    tiers: list[tuple[int, str, str, str]] | None = None,
 ) -> str:
     from openai import OpenAI
 
-    tiers = _generation_tiers()
-    if not tiers:
+    tier_list = tiers if tiers is not None else _generation_tiers()
+    if not tier_list:
         raise RuntimeError(
             "no generation provider configured: set at least one GEN_i_API_KEY"
         )
 
     last_error: Exception | None = None
     attempts = 0
-    for index, base_url, api_key, model in tiers:
+    for index, base_url, api_key, model in tier_list:
         if max_tier_attempts is not None and attempts >= max_tier_attempts:
             break
         attempts += 1
