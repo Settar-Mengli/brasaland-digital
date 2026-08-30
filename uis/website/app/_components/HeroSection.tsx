@@ -22,7 +22,7 @@ export default function HeroSection() {
           href="/brasa-points"
           className="mt-10 inline-block bg-brasaland-ember text-brasaland-ivory font-sans font-semibold text-base sm:text-lg px-8 py-3 rounded-md hover:bg-brasaland-ember/90 focus:outline-none focus:ring-2 focus:ring-brasaland-ember focus:ring-offset-2 focus:ring-offset-brasaland-cream transition-colors"
         >
-          Join Brasa Points
+          Learn about Brasa Points
         </Link>
       </div>
     </section>

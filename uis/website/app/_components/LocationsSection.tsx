@@ -1,4 +1,9 @@
+import { summarizeLocationsByCountry } from '@/lib/public-content';
+
 export default function LocationsSection() {
+  const colombia = summarizeLocationsByCountry('CO');
+  const unitedStates = summarizeLocationsByCountry('US');
+
   return (
     <section
       id="locations"
@@ -13,7 +18,8 @@ export default function LocationsSection() {
           Our Locations
         </h2>
         <p className="mt-4 text-lg text-brasaland-charcoal/70 text-center max-w-2xl mx-auto">
-          14 restaurants across two countries, one consistent experience.
+          {colombia.count + unitedStates.count} restaurants across two countries, one consistent
+          experience.
         </p>
         <div className="mt-12 grid gap-8 md:grid-cols-2">
           <article className="bg-brasaland-cream rounded-lg p-8">
@@ -27,13 +33,11 @@ export default function LocationsSection() {
               <dt className="font-sans text-sm font-semibold uppercase tracking-wide text-brasaland-ember mt-4">
                 Restaurants
               </dt>
-              <dd className="mt-1 text-brasaland-charcoal/80">
-                10 locations across Medellín, Bogotá, and Cali
-              </dd>
+              <dd className="mt-1 text-brasaland-charcoal/80">{colombia.summaryLine}</dd>
               <dt className="font-sans text-sm font-semibold uppercase tracking-wide text-brasaland-ember mt-4">
                 Hours
               </dt>
-              <dd className="mt-1 text-brasaland-charcoal/80">Mon–Sun, 11:00 AM – 10:00 PM</dd>
+              <dd className="mt-1 text-brasaland-charcoal/80">{colombia.hoursLine}</dd>
             </dl>
           </article>
           <article className="bg-brasaland-cream rounded-lg p-8">
@@ -47,13 +51,11 @@ export default function LocationsSection() {
               <dt className="font-sans text-sm font-semibold uppercase tracking-wide text-brasaland-ember mt-4">
                 Restaurants
               </dt>
-              <dd className="mt-1 text-brasaland-charcoal/80">
-                4 locations across Miami and Orlando, Florida
-              </dd>
+              <dd className="mt-1 text-brasaland-charcoal/80">{unitedStates.summaryLine}</dd>
               <dt className="font-sans text-sm font-semibold uppercase tracking-wide text-brasaland-ember mt-4">
                 Hours
               </dt>
-              <dd className="mt-1 text-brasaland-charcoal/80">Mon–Sun, 11:00 AM – 10:00 PM</dd>
+              <dd className="mt-1 text-brasaland-charcoal/80">{unitedStates.hoursLine}</dd>
             </dl>
           </article>
         </div>
