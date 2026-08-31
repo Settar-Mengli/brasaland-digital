@@ -1,17 +1,11 @@
 import { getAccessToken } from './auth';
 import { parseApiError } from './api-error';
 import { handleUnauthorized } from './session';
+import { resolveStaffApiBase } from './staff-paths';
 import type { KnowledgeQueryResponse } from './rag-types';
 
-/**
- * Same-origin knowledge API base (rewritten to KNOWLEDGE_API_ORIGIN).
- */
 function getKnowledgeBaseUrl(): string {
-  const url = process.env.NEXT_PUBLIC_KNOWLEDGE_API_URL;
-  if (!url) {
-    throw new Error('NEXT_PUBLIC_KNOWLEDGE_API_URL is not set');
-  }
-  return url.replace(/\/$/, '');
+  return resolveStaffApiBase('knowledge', 'NEXT_PUBLIC_KNOWLEDGE_API_URL');
 }
 
 function requireAccessToken(): string {

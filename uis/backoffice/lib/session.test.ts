@@ -30,7 +30,7 @@ describe('handleUnauthorized', () => {
 
     expect(() => handleUnauthorized(new Response(null, { status: 401 }))).toThrow('Unauthorized');
     expect(localStorage.removeItem).toHaveBeenCalledWith('brasaland_access_token');
-    expect(assignMock).toHaveBeenCalledWith('/login');
+    expect(assignMock).toHaveBeenCalledWith('/staff/login');
   });
 
   it('does nothing for non-401 responses', async () => {

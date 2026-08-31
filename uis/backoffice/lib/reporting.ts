@@ -1,17 +1,11 @@
 import { getAccessToken } from './auth';
 import { parseApiError } from './api-error';
 import { handleUnauthorized } from './session';
+import { resolveStaffApiBase } from './staff-paths';
 import type { PipelineRunResponse, WeeklyLocationPerformanceResponse } from './reporting-types';
 
-/**
- * Same-origin reporting API base (rewritten to REPORTING_API_ORIGIN).
- */
 function getReportingBaseUrl(): string {
-  const url = process.env.NEXT_PUBLIC_REPORTING_API_URL;
-  if (!url) {
-    throw new Error('NEXT_PUBLIC_REPORTING_API_URL is not set');
-  }
-  return url.replace(/\/$/, '');
+  return resolveStaffApiBase('reporting', 'NEXT_PUBLIC_REPORTING_API_URL');
 }
 
 async function reportingFetch<T>(path: string, init?: RequestInit): Promise<T> {

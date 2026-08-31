@@ -1,10 +1,13 @@
 import type { NextConfig } from 'next';
 
+import { STAFF_BASE_PATH } from './lib/staff-paths';
+
 function rewriteOrigin(envVar: string, fallback: string): string {
   return (process.env[envVar] ?? fallback).replace(/\/$/, '');
 }
 
 const nextConfig: NextConfig = {
+  basePath: STAFF_BASE_PATH,
   async rewrites() {
     const inventoryOrigin = rewriteOrigin('INVENTORY_API_ORIGIN', 'http://localhost:8012');
     const authOrigin = rewriteOrigin('AUTH_API_ORIGIN', 'http://localhost:8002');

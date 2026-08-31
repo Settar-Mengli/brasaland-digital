@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const INVENTORY_BASE = 'http://localhost:3003/api/inventory';
+const INVENTORY_BASE = 'http://localhost/staff/api/inventory';
 
 describe('inventory client', () => {
   beforeEach(() => {
@@ -79,7 +79,7 @@ describe('inventory client', () => {
     const { getProducts } = await import('./inventory');
     await expect(getProducts(1)).rejects.toThrow('Unauthorized');
     expect(localStorage.removeItem).toHaveBeenCalledWith('brasaland_access_token');
-    expect(assignMock).toHaveBeenCalledWith('/login');
+    expect(assignMock).toHaveBeenCalledWith('/staff/login');
   });
 
   it('createInbound sends Bearer token on POST', async () => {

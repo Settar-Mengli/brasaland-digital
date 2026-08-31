@@ -5,6 +5,7 @@ import {
   readLocationSlugFromAccessToken,
   setSessionLocationSlug,
 } from './locations';
+import { resolveStaffApiBase, staffLoginPath } from './staff-paths';
 
 const TOKEN_KEY = 'brasaland_access_token';
 
@@ -33,16 +34,8 @@ export type RegisterProfile = {
   address?: string;
 };
 
-/**
- * Same-origin auth API base (rewritten to AUTH_API_ORIGIN).
- * Defaults to `/api/auth` so production images need no baked hostname.
- */
 export function getAuthBaseUrl(): string {
-  const url = process.env.NEXT_PUBLIC_AUTH_API_URL;
-  if (url === undefined || url === '') {
-    return '/api/auth';
-  }
-  return url.replace(/\/$/, '');
+  return resolveStaffApiBase('auth', 'NEXT_PUBLIC_AUTH_API_URL');
 }
 
 export async function fetchAuthorizedLocations(
@@ -125,7 +118,7 @@ export async function register(
 export function logout(): void {
   clearAccessToken();
   clearSessionLocationSlug();
-  window.location.assign('/login');
+  window.location.assign(staffLoginPath());
 }
 
 export function getAccessToken(): string | null {

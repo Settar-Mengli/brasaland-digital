@@ -153,7 +153,7 @@ celery -A celery_app.celery_app worker --loglevel=INFO -Q rfp
 
 CI job `celery-routing` runs [scripts/test_celery_queue_isolation.py](scripts/test_celery_queue_isolation.py) against a disposable Redis (not the Compose broker). Set `REDIS_URL` in the root `.env` (see `.env.example`). Inside Compose use `redis://redis:6379/0`; on the host use `redis://localhost:6379/0`. Flower reads the same URL via `CELERY_BROKER_URL`.
 
-The backoffice proxies API calls through Next.js rewrites to backend service names inside the `ui` container. The deprecated incident-manager UI retains the same proxy wiring, but it is unsupported and its unauthenticated incident API calls receive HTTP 401. `NEXT_PUBLIC_*` URLs still point at same-origin localhost UI ports.
+The backoffice proxies API calls through Next.js rewrites to backend service names inside the `ui` container. Caddy on **:80** (`deploy/Caddyfile.dev`) routes `/` → website (:3002) and `/staff*` → backoffice (:3003). `NEXT_PUBLIC_*` URLs point at `http://localhost/staff/api/*` for same-origin browser calls through Caddy. Direct ports 3002/3003 remain published for debugging.
 
 **Build context note:** Both backend and UI images use the repo root as Docker build context. Only the root [`.dockerignore`](.dockerignore) is effective; per-folder ignore files under `services/` or `uis/` are not read by Docker.
 

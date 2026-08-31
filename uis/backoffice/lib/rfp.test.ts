@@ -31,7 +31,7 @@ describe('uploadRfp', () => {
   });
 
   it('posts FormData to /tickets with Bearer and no Content-Type', async () => {
-    vi.stubEnv('NEXT_PUBLIC_RFP_API_URL', 'http://localhost:3003/api/rfp');
+    vi.stubEnv('NEXT_PUBLIC_RFP_API_URL', 'http://localhost/staff/api/rfp');
     vi.mocked(getAccessToken).mockReturnValue('tok');
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -53,7 +53,7 @@ describe('uploadRfp', () => {
       status: 'analyzing',
     });
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:3003/api/rfp/tickets',
+      'http://localhost/staff/api/rfp/tickets',
       expect.objectContaining({
         method: 'POST',
         headers: { Authorization: 'Bearer tok' },
@@ -66,14 +66,14 @@ describe('uploadRfp', () => {
   });
 
   it('throws when not authenticated', async () => {
-    vi.stubEnv('NEXT_PUBLIC_RFP_API_URL', 'http://localhost:3003/api/rfp');
+    vi.stubEnv('NEXT_PUBLIC_RFP_API_URL', 'http://localhost/staff/api/rfp');
     vi.mocked(getAccessToken).mockReturnValue(null);
     const file = new File(['%PDF-1.4'], 'seed.pdf', { type: 'application/pdf' });
     await expect(uploadRfp(file)).rejects.toThrow('Not authenticated');
   });
 
   it('calls handleUnauthorized and throws parseApiError on !ok', async () => {
-    vi.stubEnv('NEXT_PUBLIC_RFP_API_URL', 'http://localhost:3003/api/rfp');
+    vi.stubEnv('NEXT_PUBLIC_RFP_API_URL', 'http://localhost/staff/api/rfp');
     vi.mocked(getAccessToken).mockReturnValue('tok');
     const fetchMock = vi.fn().mockResolvedValue({
       ok: false,
@@ -96,7 +96,7 @@ describe('getRfpTicket', () => {
   });
 
   it('GETs /tickets/{id} with Bearer and returns the ticket', async () => {
-    vi.stubEnv('NEXT_PUBLIC_RFP_API_URL', 'http://localhost:3003/api/rfp');
+    vi.stubEnv('NEXT_PUBLIC_RFP_API_URL', 'http://localhost/staff/api/rfp');
     vi.mocked(getAccessToken).mockReturnValue('tok');
     const ticket = {
       ticket_id: 't1',
@@ -116,7 +116,7 @@ describe('getRfpTicket', () => {
 
     expect(result).toEqual(ticket);
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:3003/api/rfp/tickets/t1',
+      'http://localhost/staff/api/rfp/tickets/t1',
       expect.objectContaining({
         method: 'GET',
         headers: expect.objectContaining({
@@ -128,7 +128,7 @@ describe('getRfpTicket', () => {
   });
 
   it('calls handleUnauthorized and throws parseApiError on !ok', async () => {
-    vi.stubEnv('NEXT_PUBLIC_RFP_API_URL', 'http://localhost:3003/api/rfp');
+    vi.stubEnv('NEXT_PUBLIC_RFP_API_URL', 'http://localhost/staff/api/rfp');
     vi.mocked(getAccessToken).mockReturnValue('tok');
     const fetchMock = vi.fn().mockResolvedValue({
       ok: false,
@@ -150,7 +150,7 @@ describe('triggerRfpResponse', () => {
   });
 
   it('POSTs /tickets/{id}/response with Bearer and no body Content-Type', async () => {
-    vi.stubEnv('NEXT_PUBLIC_RFP_API_URL', 'http://localhost:3003/api/rfp');
+    vi.stubEnv('NEXT_PUBLIC_RFP_API_URL', 'http://localhost/staff/api/rfp');
     vi.mocked(getAccessToken).mockReturnValue('tok');
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -171,7 +171,7 @@ describe('triggerRfpResponse', () => {
       status: 'intake_complete',
     });
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:3003/api/rfp/tickets/t1/response',
+      'http://localhost/staff/api/rfp/tickets/t1/response',
       expect.objectContaining({
         method: 'POST',
         headers: { Authorization: 'Bearer tok' },
@@ -191,7 +191,7 @@ describe('startRfpApproval', () => {
   });
 
   it('POSTs /tickets/{id}/approval with Bearer and no body Content-Type', async () => {
-    vi.stubEnv('NEXT_PUBLIC_RFP_API_URL', 'http://localhost:3003/api/rfp');
+    vi.stubEnv('NEXT_PUBLIC_RFP_API_URL', 'http://localhost/staff/api/rfp');
     vi.mocked(getAccessToken).mockReturnValue('tok');
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -212,7 +212,7 @@ describe('startRfpApproval', () => {
       status: 'under_evaluation',
     });
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:3003/api/rfp/tickets/t1/approval',
+      'http://localhost/staff/api/rfp/tickets/t1/approval',
       expect.objectContaining({
         method: 'POST',
         headers: { Authorization: 'Bearer tok' },
@@ -225,7 +225,7 @@ describe('startRfpApproval', () => {
   });
 
   it('throws when not authenticated', async () => {
-    vi.stubEnv('NEXT_PUBLIC_RFP_API_URL', 'http://localhost:3003/api/rfp');
+    vi.stubEnv('NEXT_PUBLIC_RFP_API_URL', 'http://localhost/staff/api/rfp');
     vi.mocked(getAccessToken).mockReturnValue(null);
     await expect(startRfpApproval('t1')).rejects.toThrow('Not authenticated');
   });
@@ -238,7 +238,7 @@ describe('decideRfpSection', () => {
   });
 
   it('POSTs decision with feedback when provided', async () => {
-    vi.stubEnv('NEXT_PUBLIC_RFP_API_URL', 'http://localhost:3003/api/rfp');
+    vi.stubEnv('NEXT_PUBLIC_RFP_API_URL', 'http://localhost/staff/api/rfp');
     vi.mocked(getAccessToken).mockReturnValue('tok');
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -255,7 +255,7 @@ describe('decideRfpSection', () => {
     await decideRfpSection('t1', 'marketing', 'reject', 'fix pricing');
 
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:3003/api/rfp/tickets/t1/sections/marketing/decision',
+      'http://localhost/staff/api/rfp/tickets/t1/sections/marketing/decision',
       expect.objectContaining({
         method: 'POST',
         headers: {
@@ -269,7 +269,7 @@ describe('decideRfpSection', () => {
   });
 
   it('omits feedback key when feedback is empty', async () => {
-    vi.stubEnv('NEXT_PUBLIC_RFP_API_URL', 'http://localhost:3003/api/rfp');
+    vi.stubEnv('NEXT_PUBLIC_RFP_API_URL', 'http://localhost/staff/api/rfp');
     vi.mocked(getAccessToken).mockReturnValue('tok');
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -291,7 +291,7 @@ describe('decideRfpSection', () => {
   });
 
   it('throws when not authenticated', async () => {
-    vi.stubEnv('NEXT_PUBLIC_RFP_API_URL', 'http://localhost:3003/api/rfp');
+    vi.stubEnv('NEXT_PUBLIC_RFP_API_URL', 'http://localhost/staff/api/rfp');
     vi.mocked(getAccessToken).mockReturnValue(null);
     await expect(decideRfpSection('t1', 'marketing', 'approve')).rejects.toThrow(
       'Not authenticated',
@@ -306,7 +306,7 @@ describe('decideRfpCeo', () => {
   });
 
   it('POSTs /tickets/{id}/ceo/decision with JSON action', async () => {
-    vi.stubEnv('NEXT_PUBLIC_RFP_API_URL', 'http://localhost:3003/api/rfp');
+    vi.stubEnv('NEXT_PUBLIC_RFP_API_URL', 'http://localhost/staff/api/rfp');
     vi.mocked(getAccessToken).mockReturnValue('tok');
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -327,7 +327,7 @@ describe('decideRfpCeo', () => {
       status: 'done',
     });
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:3003/api/rfp/tickets/t1/ceo/decision',
+      'http://localhost/staff/api/rfp/tickets/t1/ceo/decision',
       expect.objectContaining({
         method: 'POST',
         headers: {
@@ -348,7 +348,7 @@ describe('RFP API base default', () => {
     vi.clearAllMocks();
   });
 
-  it('defaults to /api/rfp when NEXT_PUBLIC_RFP_API_URL is unset', async () => {
+  it('defaults to /staff/api/rfp when NEXT_PUBLIC_RFP_API_URL is unset', async () => {
     vi.unstubAllEnvs();
     vi.resetModules();
     vi.mocked(getAccessToken).mockReturnValue('tok');
@@ -363,7 +363,7 @@ describe('RFP API base default', () => {
     await getRfpTicket('t1');
 
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/rfp/tickets/t1',
+      '/staff/api/rfp/tickets/t1',
       expect.objectContaining({
         method: 'GET',
         headers: { Authorization: 'Bearer tok' },
