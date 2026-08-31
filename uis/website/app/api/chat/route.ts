@@ -1,37 +1,22 @@
 import { NextResponse } from 'next/server';
 
-import { websiteServiceAccessToken } from '@/lib/service-token';
 import type { GuestChatRequest } from '@/lib/chat-types';
-
-function envFlagEnabled(name: string): boolean {
-  const raw = process.env[name]?.trim().toLowerCase();
-  return raw === '1' || raw === 'true' || raw === 'yes' || raw === 'on';
-}
-
-async function verifyTurnstileToken(token: string): Promise<boolean> {
-  const secret = process.env.TURNSTILE_SECRET_KEY?.trim();
-  if (!secret) {
-    return false;
-  }
-  const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-    method: 'POST',
-    body: new URLSearchParams({ secret, response: token }),
-  });
-  if (!response.ok) {
-    return false;
-  }
-  const payload = (await response.json()) as { success?: boolean };
-  return payload.success === true;
-}
+import { websiteServiceAccessToken } from '@/lib/service-token';
+import {
+  envFlagEnabled,
+  isTurnstileVerificationEnabled,
+  resolveClientIpFromRequest,
+  verifyTurnstileToken,
+} from '@/lib/turnstile-verify';
 
 export async function POST(request: Request): Promise<NextResponse> {
   if (!envFlagEnabled('NEXT_PUBLIC_PUBLIC_CHAT_ENABLED')) {
     return NextResponse.json({ detail: 'Not found' }, { status: 404 });
   }
 
-  let body: GuestChatRequest & { turnstileToken?: string };
+  let body: GuestChatRequest;
   try {
-    body = (await request.json()) as GuestChatRequest & { turnstileToken?: string };
+    body = (await request.json()) as GuestChatRequest;
   } catch {
     return NextResponse.json({ detail: 'Invalid JSON body' }, { status: 422 });
   }
@@ -41,10 +26,11 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ detail: 'Invalid question' }, { status: 422 });
   }
 
-  if (envFlagEnabled('TURNSTILE_ENABLED')) {
+  if (isTurnstileVerificationEnabled()) {
     const turnstileToken =
       typeof body.turnstileToken === 'string' ? body.turnstileToken.trim() : '';
-    if (!turnstileToken || !(await verifyTurnstileToken(turnstileToken))) {
+    const remoteIp = resolveClientIpFromRequest(request);
+    if (!turnstileToken || !(await verifyTurnstileToken(turnstileToken, remoteIp))) {
       return NextResponse.json(
         { detail: 'Turnstile verification failed' },
         {

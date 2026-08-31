@@ -1,10 +1,15 @@
 import type { GuestChatErrorBody, GuestChatResponse } from './chat-types';
 
-export async function askGuestChat(question: string): Promise<string> {
+export async function askGuestChat(question: string, turnstileToken?: string): Promise<string> {
+  const body: { question: string; turnstileToken?: string } = { question };
+  if (turnstileToken) {
+    body.turnstileToken = turnstileToken;
+  }
+
   const response = await fetch('/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ question }),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {

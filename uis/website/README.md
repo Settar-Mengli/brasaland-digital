@@ -22,4 +22,17 @@ When `NEXT_PUBLIC_PUBLIC_CHAT_ENABLED=true`, the homepage mounts an accessible g
 
 Copy `uis/website/.env.example` and set server-only `AUTH_API_ORIGIN`, `PUBLIC_KNOWLEDGE_API_ORIGIN`, and website client credentials. Turnstile verification is optional (`TURNSTILE_ENABLED`); leave off for local demo.
 
+### Turnstile (optional bot protection)
+
+When `TURNSTILE_ENABLED=true`, set `NEXT_PUBLIC_TURNSTILE_ENABLED=true` (compose mirrors this), `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, and server-only `TURNSTILE_SECRET_KEY`. The guest chat widget renders a Cloudflare challenge and the BFF verifies the token before calling knowledge.
+
+**Local verification** with Cloudflare dummy keys (no production keys required):
+
+| Mode | Site key | Secret key |
+| --- | --- | --- |
+| Always pass | `1x00000000000000000000AA` | `1x0000000000000000000000000000000AA` |
+| Always fail | `2x00000000000000000000AB` | `2x0000000000000000000000000000000AA` |
+
+Replace with real Turnstile keys at deploy. With Turnstile disabled, guest chat behaves as before (no challenge).
+
 See `services/knowledge/README.md` for indexing the public corpus and enabling `PUBLIC_KNOWLEDGE_ENABLED`.
