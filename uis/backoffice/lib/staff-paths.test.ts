@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { getStaffBasePath, resolveStaffApiBase, staffLoginPath, staffPath } from './staff-paths';
+import { resolveStaffApiBase, staffLoginPath, staffPath } from './staff-paths';
 
 describe('staff-paths', () => {
   afterEach(() => {
@@ -30,8 +30,15 @@ describe('staff-paths', () => {
     );
   });
 
-  it('getStaffBasePath honors NEXT_PUBLIC_STAFF_BASE_PATH', () => {
-    vi.stubEnv('NEXT_PUBLIC_STAFF_BASE_PATH', '/staff');
-    expect(getStaffBasePath()).toBe('/staff');
+  it('resolveStaffApiBase normalizes legacy /api paths without staff mount', () => {
+    vi.stubEnv('NEXT_PUBLIC_INVENTORY_API_URL', 'http://localhost:3003/api/inventory');
+    expect(resolveStaffApiBase('inventory', 'NEXT_PUBLIC_INVENTORY_API_URL')).toBe(
+      'http://localhost:3003/staff/api/inventory',
+    );
+  });
+
+  it('resolveStaffApiBase normalizes path-only legacy /api paths', () => {
+    vi.stubEnv('NEXT_PUBLIC_AUTH_API_URL', '/api/auth');
+    expect(resolveStaffApiBase('auth', 'NEXT_PUBLIC_AUTH_API_URL')).toBe('/staff/api/auth');
   });
 });

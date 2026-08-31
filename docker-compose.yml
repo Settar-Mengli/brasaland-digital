@@ -420,12 +420,12 @@ services:
       RFP_API_ORIGIN: http://rfp:8017
       TELEMETRY_API_ORIGIN: http://telemetry:8013
       NEXT_PUBLIC_STAFF_BASE_PATH: /staff
-      NEXT_PUBLIC_INVENTORY_API_URL: http://localhost/staff/api/inventory
-      NEXT_PUBLIC_AUTH_API_URL: http://localhost/staff/api/auth
-      NEXT_PUBLIC_TELEMETRY_ENDPOINT: http://localhost/staff/api/telemetry/events
-      NEXT_PUBLIC_REPORTING_API_URL: http://localhost/staff/api/reporting
-      NEXT_PUBLIC_KNOWLEDGE_API_URL: http://localhost/staff/api/knowledge
-      NEXT_PUBLIC_RFP_API_URL: http://localhost/staff/api/rfp
+      NEXT_PUBLIC_INVENTORY_API_URL: /staff/api/inventory
+      NEXT_PUBLIC_AUTH_API_URL: /staff/api/auth
+      NEXT_PUBLIC_TELEMETRY_ENDPOINT: /staff/api/telemetry/events
+      NEXT_PUBLIC_REPORTING_API_URL: /staff/api/reporting
+      NEXT_PUBLIC_KNOWLEDGE_API_URL: /staff/api/knowledge
+      NEXT_PUBLIC_RFP_API_URL: /staff/api/rfp
     volumes:
       - ./uis:/app/uis
       - ./apps/operations-toolkit:/app/apps/operations-toolkit

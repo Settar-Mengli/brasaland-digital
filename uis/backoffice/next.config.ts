@@ -16,7 +16,8 @@ const nextConfig: NextConfig = {
     const knowledgeOrigin = rewriteOrigin('KNOWLEDGE_API_ORIGIN', 'http://localhost:8015');
     const rfpOrigin = rewriteOrigin('RFP_API_ORIGIN', 'http://localhost:8017');
 
-    return [
+    // Sources omit /staff — Next prepends basePath so /staff/api/* matches at runtime.
+    const beforeFiles = [
       {
         source: '/api/inventory/:path*',
         destination: `${inventoryOrigin}/inventory/:path*`,
@@ -42,6 +43,8 @@ const nextConfig: NextConfig = {
         destination: `${rfpOrigin}/rfp/:path*`,
       },
     ];
+
+    return { beforeFiles };
   },
 };
 
