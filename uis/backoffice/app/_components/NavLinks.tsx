@@ -49,10 +49,8 @@ function hasValidSession(pathname: string): boolean {
 export default function NavLinks() {
   const pathname = usePathname();
   const [ready, setReady] = useState(false);
-  const [showNav, setShowNav] = useState(false);
 
   useEffect(() => {
-    setShowNav(hasValidSession(pathname));
     let cancelled = false;
     queueMicrotask(() => {
       if (!cancelled) {
@@ -64,7 +62,7 @@ export default function NavLinks() {
     };
   }, [pathname]);
 
-  if (!ready || !showNav) {
+  if (!ready || !hasValidSession(pathname)) {
     return null;
   }
 
