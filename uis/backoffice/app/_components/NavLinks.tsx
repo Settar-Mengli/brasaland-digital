@@ -2,8 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
-import { logout } from '@/lib/auth';
+import { getAccessToken, logout } from '@/lib/auth';
+import { isAccessTokenExpired } from '@/lib/telemetry';
 
 const LINKS = [
   { href: '/', label: 'Dashboard' },
@@ -17,6 +19,7 @@ const LINKS = [
 ] as const;
 
 const SLICE_HREFS = new Set(['/', '/locations', '/rfp', '/account/profile']);
+const AUTH_ROUTES = new Set(['/login', '/register']);
 
 function visibleLinks(): readonly (typeof LINKS)[number][] {
   if (process.env.NEXT_PUBLIC_SLICE_NAV === '1') {
@@ -32,8 +35,39 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+function hasValidSession(pathname: string): boolean {
+  if (AUTH_ROUTES.has(pathname)) {
+    return false;
+  }
+  const token = getAccessToken();
+  if (token === null) {
+    return false;
+  }
+  return !isAccessTokenExpired(token);
+}
+
 export default function NavLinks() {
   const pathname = usePathname();
+  const [ready, setReady] = useState(false);
+  const [showNav, setShowNav] = useState(false);
+
+  useEffect(() => {
+    setShowNav(hasValidSession(pathname));
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) {
+        setReady(true);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
+
+  if (!ready || !showNav) {
+    return null;
+  }
+
   return (
     <nav aria-label="Backoffice navigation" className="flex items-center gap-6">
       {visibleLinks().map((link) => {
