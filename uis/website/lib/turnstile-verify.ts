@@ -25,10 +25,7 @@ export function resolveClientIpFromRequest(request: Request): string | undefined
   return realIp || undefined;
 }
 
-export async function verifyTurnstileToken(
-  token: string,
-  remoteIp?: string,
-): Promise<boolean> {
+export async function verifyTurnstileToken(token: string, remoteIp?: string): Promise<boolean> {
   const secret = process.env.TURNSTILE_SECRET_KEY?.trim();
   if (!secret) {
     return false;
