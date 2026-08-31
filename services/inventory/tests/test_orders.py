@@ -30,7 +30,12 @@ OUTBOUND_PAYLOAD = {
 
 
 def _auth_header(user_id: int) -> dict[str, str]:
-    return {"Authorization": f"Bearer {make_access_token(user_id)}"}
+    token = make_access_token(
+        user_id,
+        authorized_locations=["medellin_centro"],
+        location_slug="medellin_centro",
+    )
+    return {"Authorization": f"Bearer {token}"}
 
 
 def _seed_beef(session: Session) -> Ingredient:

@@ -134,10 +134,11 @@ def test_get_product_detail_returns_404_when_missing(
 def test_post_product_creates_ingredient_with_zero_stock(
     client: TestClient,
 ) -> None:
+    token = make_access_token(3, is_admin=True)
     response = client.post(
         "/inventory/products",
         json=BEEF_PAYLOAD,
-        headers=_auth_header(3),
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 200
     created = response.json()

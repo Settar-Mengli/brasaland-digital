@@ -59,6 +59,7 @@ describe('auth client', () => {
           access_token: 'new-access-token',
           refresh_token: 'new-refresh-token',
           token_type: 'bearer',
+          location_slug: 'medellin_centro',
         }),
         { status: 201 },
       ),
@@ -86,6 +87,10 @@ describe('auth client', () => {
       }),
     );
     expect(localStorage.setItem).toHaveBeenCalledWith('brasaland_access_token', 'new-access-token');
+    expect(sessionStorage.setItem).toHaveBeenCalledWith(
+      'brasaland_location_slug',
+      'medellin_centro',
+    );
   });
 
   it('logout clears the token and assigns /login', async () => {
@@ -95,7 +100,30 @@ describe('auth client', () => {
     logout();
 
     expect(localStorage.removeItem).toHaveBeenCalledWith('brasaland_access_token');
+    expect(sessionStorage.removeItem).toHaveBeenCalledWith('brasaland_location_slug');
     expect(assignMock).toHaveBeenCalledWith('/login');
+  });
+
+  it('register rejects when no location is assigned', async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          access_token: 'new-access-token',
+          refresh_token: 'new-refresh-token',
+          token_type: 'bearer',
+        }),
+        { status: 201 },
+      ),
+    );
+
+    const { register } = await import('./auth');
+
+    await expect(register('ops@brasaland.com', 'password123', { name: 'Settar' })).rejects.toThrow(
+      'Registration succeeded but no location was assigned',
+    );
+
+    expect(localStorage.getItem('brasaland_access_token')).toBeNull();
   });
 
   it('defaults auth base to /api/auth when NEXT_PUBLIC_AUTH_API_URL is unset', async () => {

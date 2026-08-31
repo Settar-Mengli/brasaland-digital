@@ -65,6 +65,7 @@ function formatCreatedAt(isoDate: string): string {
 
 function OrdersContent() {
   const [rows, setRows] = useState<OrderRow[]>([]);
+  const [locationId, setLocationId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,8 +74,10 @@ function OrdersContent() {
 
     async function loadOrders() {
       try {
-        const data = await getOrders(getSessionLocationId());
+        const resolvedLocationId = getSessionLocationId();
+        const data = await getOrders(resolvedLocationId);
         if (!cancelled) {
+          setLocationId(resolvedLocationId);
           const merged = [...data.entries.map(toInboundRow), ...data.exits.map(toOutboundRow)].sort(
             (left, right) => right.sortTime - left.sortTime,
           );
@@ -178,7 +181,7 @@ function OrdersContent() {
           </table>
         </div>
         <p className="text-xs text-brasaland-charcoal/40 mt-2">
-          Powered by getOrders() · GET /inventory/orders?location_id=
+          Powered by getOrders() · GET /inventory/orders?location_id={locationId ?? '—'}
         </p>
       </section>
 

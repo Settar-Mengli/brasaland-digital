@@ -97,10 +97,10 @@ All routes are under `/inventory`.
 | Method | Path | Auth | Description |
 | --- | --- | --- | --- |
 | `GET` | `/inventory/products` | Bearer + location | List all ingredients with `current_stock` at `location_id` (required query, 1–14) |
-| `POST` | `/inventory/products` | Bearer | Create a new ingredient (`current_stock` starts at 0) |
+| `POST` | `/inventory/products` | Admin Bearer | Create a new ingredient (`current_stock` starts at 0) |
 | `GET` | `/inventory/products/{id}` | Bearer + location | Get one ingredient with `current_stock` at `location_id` (required query, 1–14) |
-| `POST` | `/inventory/orders/inbound` | Bearer | Log a supplier delivery (`IngredientEntry`; optional `unit_cost`) |
-| `POST` | `/inventory/orders/outbound` | Bearer | Log consumption or waste (`IngredientExit`) |
+| `POST` | `/inventory/orders/inbound` | Bearer + location | Log a supplier delivery (`IngredientEntry`; optional `unit_cost`; body `location_id` scoped like reads) |
+| `POST` | `/inventory/orders/outbound` | Bearer + location | Log consumption or waste (`IngredientExit`; body `location_id` scoped like reads) |
 | `GET` | `/inventory/orders` | Bearer + location | List entries and exits at required `location_id` with nested ingredient data |
 
 All endpoints require a valid **access** JWT (no `type` claim). Refresh and
@@ -115,6 +115,6 @@ cd services/inventory
 uv run pytest
 ```
 
-Expect **41** passed (SQLite in-memory; no Supabase required for tests).
+Expect **48** passed (SQLite in-memory; no Supabase required for tests).
 
 CI runs this suite via the `uv-tests` matrix row `services/inventory` in `.github/workflows/ci.yml`.

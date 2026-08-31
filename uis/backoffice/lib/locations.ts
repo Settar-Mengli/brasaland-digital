@@ -1,3 +1,5 @@
+const ACCESS_TOKEN_KEY = 'brasaland_access_token';
+
 export const LOCATION_SLUG_KEY = 'brasaland_location_slug';
 
 export const LOCATION_MAP: Record<number, string> = {
@@ -60,12 +62,54 @@ export function locationIdFromSlug(slug: string): number {
   return Number(match[0]);
 }
 
-export function getSessionLocationId(): number {
-  const slug = getSessionLocationSlug();
-  if (!slug) {
-    return 1;
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  const payloadSegment = token.split('.')[1];
+  if (!payloadSegment) {
+    return null;
   }
-  return locationIdFromSlug(slug);
+  try {
+    const normalized = payloadSegment.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), '=');
+    const parsed: unknown = JSON.parse(atob(padded));
+    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/** Read location_slug from the stored access JWT when session slug is missing. */
+export function readLocationSlugFromAccessToken(): string | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  const token = localStorage.getItem(ACCESS_TOKEN_KEY);
+  if (!token) {
+    return null;
+  }
+  const payload = decodeJwtPayload(token);
+  const slug = payload?.location_slug;
+  if (typeof slug !== 'string' || !slug.trim()) {
+    return null;
+  }
+  return slug.trim();
+}
+
+export function getSessionLocationId(): number {
+  const sessionSlug = getSessionLocationSlug();
+  if (sessionSlug) {
+    return locationIdFromSlug(sessionSlug);
+  }
+
+  const tokenSlug = readLocationSlugFromAccessToken();
+  if (tokenSlug) {
+    setSessionLocationSlug(tokenSlug);
+    return locationIdFromSlug(tokenSlug);
+  }
+
+  throw new Error('Session location is not set. Sign in again and choose a location.');
 }
 
 export function getSessionLocationSlug(): string {
@@ -80,4 +124,11 @@ export function setSessionLocationSlug(slug: string): void {
     return;
   }
   sessionStorage.setItem(LOCATION_SLUG_KEY, slug);
+}
+
+export function clearSessionLocationSlug(): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  sessionStorage.removeItem(LOCATION_SLUG_KEY);
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { type FormEvent, useEffect, useState } from 'react';
 
 import InventoryAuthGuard from '@/app/_components/InventoryAuthGuard';
@@ -28,14 +28,26 @@ function parsePreselectedIngredientId(value: string | null): number | '' {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : '';
 }
 
+function readLocationIdForForm(): string {
+  if (typeof window === 'undefined') {
+    return '';
+  }
+  try {
+    return String(getSessionLocationId());
+  } catch {
+    return '';
+  }
+}
+
 function OutboundForm() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [ingredientId, setIngredientId] = useState<number | ''>(() =>
     parsePreselectedIngredientId(searchParams.get('ingredientId')),
   );
   const [quantity, setQuantity] = useState('');
   const [reason, setReason] = useState<'consumption' | 'waste'>('consumption');
-  const [locationId, setLocationId] = useState(() => String(getSessionLocationId()));
+  const [locationId, setLocationId] = useState(readLocationIdForForm);
   const [currentStock, setCurrentStock] = useState<number | null>(null);
   const [stockLoading, setStockLoading] = useState(ingredientId !== '');
   const [stockError, setStockError] = useState<string | null>(null);
@@ -51,6 +63,12 @@ function OutboundForm() {
     ingredientId,
     submitted,
   });
+
+  useEffect(() => {
+    if (!locationId) {
+      router.replace('/login');
+    }
+  }, [locationId, router]);
 
   useEffect(() => {
     if (ingredientId === '') {
@@ -100,7 +118,12 @@ function OutboundForm() {
     setIngredientId('');
     setQuantity('');
     setReason('consumption');
-    setLocationId(String(getSessionLocationId()));
+    const resolvedLocationId = readLocationIdForForm();
+    if (!resolvedLocationId) {
+      router.replace('/login');
+      return;
+    }
+    setLocationId(resolvedLocationId);
     setCurrentStock(null);
     setStockLoading(false);
     setStockError(null);

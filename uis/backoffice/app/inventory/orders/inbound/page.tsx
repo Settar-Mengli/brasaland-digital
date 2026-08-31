@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { type FormEvent, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { type FormEvent, useEffect, useState } from 'react';
 
 import InventoryAuthGuard from '@/app/_components/InventoryAuthGuard';
 import ProductSelect from '@/app/_components/ProductSelect';
@@ -23,7 +23,19 @@ function parsePreselectedIngredientId(value: string | null): number | '' {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : '';
 }
 
+function readLocationIdForForm(): string {
+  if (typeof window === 'undefined') {
+    return '';
+  }
+  try {
+    return String(getSessionLocationId());
+  } catch {
+    return '';
+  }
+}
+
 function InboundForm() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [ingredientId, setIngredientId] = useState<number | ''>(() =>
     parsePreselectedIngredientId(searchParams.get('ingredientId')),
@@ -31,11 +43,17 @@ function InboundForm() {
   const [quantity, setQuantity] = useState('');
   const [unitCost, setUnitCost] = useState('');
   const [supplierName, setSupplierName] = useState('');
-  const [locationId, setLocationId] = useState(() => String(getSessionLocationId()));
+  const [locationId, setLocationId] = useState(readLocationIdForForm);
   const [formError, setFormError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  useEffect(() => {
+    if (!locationId) {
+      router.replace('/login');
+    }
+  }, [locationId, router]);
 
   const { onFieldChange } = useOrderFormAbandonment({
     orderType: 'supply',
@@ -49,7 +67,12 @@ function InboundForm() {
     setQuantity('');
     setUnitCost('');
     setSupplierName('');
-    setLocationId(String(getSessionLocationId()));
+    const resolvedLocationId = readLocationIdForForm();
+    if (!resolvedLocationId) {
+      router.replace('/login');
+      return;
+    }
+    setLocationId(resolvedLocationId);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {

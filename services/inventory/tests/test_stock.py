@@ -19,7 +19,12 @@ BEEF_PAYLOAD = {
 
 
 def _auth_header(user_id: int) -> dict[str, str]:
-    return {"Authorization": f"Bearer {make_access_token(user_id)}"}
+    token = make_access_token(
+        user_id,
+        authorized_locations=["medellin_centro"],
+        location_slug="medellin_centro",
+    )
+    return {"Authorization": f"Bearer {token}"}
 
 
 def test_advisory_lock_compiles_to_postgres_sql() -> None:
@@ -109,7 +114,7 @@ def test_cross_location_stock_is_isolated(
             "reason": "consumption",
             "location_id": 2,
         },
-        headers=_auth_header(1),
+        headers=admin_headers,
     )
     assert response.status_code == 400
     expected = INSUFFICIENT_STOCK_MESSAGE.format(

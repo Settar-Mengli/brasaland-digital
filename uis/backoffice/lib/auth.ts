@@ -1,6 +1,10 @@
 import { parseApiError } from './api-error';
 import type { AuthorizedLocationsResponse, TokenResponse } from './inventory-types';
-import { setSessionLocationSlug } from './locations';
+import {
+  clearSessionLocationSlug,
+  readLocationSlugFromAccessToken,
+  setSessionLocationSlug,
+} from './locations';
 
 const TOKEN_KEY = 'brasaland_access_token';
 
@@ -107,10 +111,20 @@ export async function register(
 
   const data = (await response.json()) as TokenResponse;
   setAccessToken(data.access_token);
+  const slug = data.location_slug ?? readLocationSlugFromAccessToken();
+  if (slug) {
+    setSessionLocationSlug(slug);
+  } else {
+    clearAccessToken();
+    throw new Error(
+      'Registration succeeded but no location was assigned. Contact an administrator.',
+    );
+  }
 }
 
 export function logout(): void {
   clearAccessToken();
+  clearSessionLocationSlug();
   window.location.assign('/login');
 }
 
