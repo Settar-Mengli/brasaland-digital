@@ -1,26 +1,45 @@
--- Operator apply script: telemetry_events table on brasaland-m5.
+-- Operator apply script: telemetry_events table + RLS on brasaland-m5.
 --
 -- DO NOT run from CI or agent automation against live m5.
 -- Run manually on a DIRECT Postgres session (Supabase :5432 or SQL editor), not the
 -- transaction pooler, unless operator confirms DDL works on pooler.
 --
 -- Purpose: create public.telemetry_events when m5 was stamped at Alembic baseline
--- without the table existing (ingest 500 / reporting pipeline extract failure).
+-- without the table existing (ingest 500 / reporting pipeline extract failure), and
+-- apply the same per-service-role grants + FORCE RLS policies as disposable CI.
 --
 -- Prerequisites:
 --   1. Current Alembic head is f9a2b3c4d5e6 (revision telemetry_events_m5_apply).
 --   2. MIGRATION_DATABASE_URL points at the m5 owner/direct URL (not runtime role).
+--   3. Runtime roles exist (from scripts/m5_apply_db_roles_rls.sql or prior apply).
 --
--- === Preferred path: Alembic upgrade (idempotent migration) ===
+-- === Preferred path: Alembic upgrade + canonical roles/RLS apply ===
 --
 --   cd data
 --   $env:MIGRATION_DATABASE_URL = "<m5-direct-owner-url>"
 --   uv run alembic upgrade head
 --
+--   $env:BRASALAND_RUNTIME_ROLE_PASSWORD = "<runtime-role-password>"
+--   uv run --directory data --python 3.13 python ../scripts/apply_db_roles_rls.py
+--
+-- apply_db_roles_rls.py runs scripts/sql/db_roles_grants.sql then
+-- scripts/sql/db_rls_policies.sql (telemetry_events grants + policies at lines 49,
+-- 65, 72 and 24–32 respectively). Idempotent on existing m5.
+--
 -- === Post-apply verification ===
 --
 --   SELECT to_regclass('public.telemetry_events');  -- expect telemetry_events
 --   SELECT version_num FROM public.alembic_version;  -- expect f9a2b3c4d5e6
+--
+--   SELECT c.relrowsecurity, c.relforcerowsecurity
+--   FROM pg_class AS c
+--   JOIN pg_namespace AS n ON n.oid = c.relnamespace
+--   WHERE n.nspname = 'public' AND c.relname = 'telemetry_events';
+--   -- expect both true
+--
+--   SELECT policyname FROM pg_policies
+--   WHERE schemaname = 'public' AND tablename = 'telemetry_events';
+--   -- expect telemetry_events_all, reporting_telemetry_events_read
 --
 --   docker compose restart telemetry reporting-worker
 --   docker compose ps reporting-worker   -- expect Up, not Restarting
@@ -33,7 +52,9 @@
 --
 -- === Optional SQL-editor apply (only if Alembic cannot run) ===
 -- Matches data/alembic/versions/f9a2b3c4d5e6_telemetry_events_m5_apply.py when table
--- is missing. Skip if to_regclass('public.telemetry_events') is not null.
+-- is missing. Skip CREATE if to_regclass('public.telemetry_events') is not null.
+-- Grants + RLS below are byte-consistent with scripts/sql/db_roles_grants.sql and
+-- scripts/sql/db_rls_policies.sql (telemetry section only).
 --
 -- CREATE TABLE IF NOT EXISTS public.telemetry_events (
 --     id INTEGER NOT NULL,
@@ -54,6 +75,20 @@
 --     ON public.telemetry_events USING gin (tags);
 -- CREATE INDEX IF NOT EXISTS ix_telemetry_events_timestamp
 --     ON public.telemetry_events (timestamp);
+--
+-- GRANT SELECT, INSERT ON public.telemetry_events TO brasaland_telemetry;
+-- GRANT SELECT ON public.telemetry_events TO brasaland_reporting;
+-- REVOKE ALL ON public.telemetry_events FROM PUBLIC;
+--
+-- ALTER TABLE public.telemetry_events ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE public.telemetry_events FORCE ROW LEVEL SECURITY;
+-- DROP POLICY IF EXISTS telemetry_events_all ON public.telemetry_events;
+-- CREATE POLICY telemetry_events_all ON public.telemetry_events
+--   FOR ALL TO brasaland_telemetry USING (true) WITH CHECK (true);
+--
+-- DROP POLICY IF EXISTS reporting_telemetry_events_read ON public.telemetry_events;
+-- CREATE POLICY reporting_telemetry_events_read ON public.telemetry_events
+--   FOR SELECT TO brasaland_reporting USING (true);
 --
 -- After SQL-only apply, stamp Alembic if needed (operator confirms revision):
 --   uv run alembic stamp f9a2b3c4d5e6

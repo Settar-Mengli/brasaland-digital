@@ -4,7 +4,7 @@ The `Alembic migration check` workflow runs against the pinned `postgres:16.4`
 service. The verifier makes a real authenticated PostgreSQL connection, creates
 a uniquely named database from `template0`, and confirms that no application
 tables exist before Alembic runs. It then executes `upgrade head`, asserts head
-revision `e4f8a1b2c3d4`, and checks the public tables, the `reporting` schema and
+revision `f9a2b3c4d5e6`, and checks the public tables, the `reporting` schema and
 tables, and the two RFP unique constraints:
 
 - `uq_department_section_ticket_department`
