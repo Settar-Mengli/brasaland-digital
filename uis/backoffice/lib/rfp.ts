@@ -1,6 +1,7 @@
 import { getAccessToken } from './auth';
 import { parseApiError } from './api-error';
 import { handleUnauthorized } from './session';
+import { resolveStaffApiBase } from './staff-paths';
 import type {
   RfpCeoDecisionResponse,
   RfpSectionDecisionResponse,
@@ -8,16 +9,8 @@ import type {
   RfpUploadResponse,
 } from './rfp-types';
 
-/**
- * Same-origin RFP API base (rewritten to RFP_API_ORIGIN).
- * Defaults to `/api/rfp` so production images need no baked hostname.
- */
 function getRfpBaseUrl(): string {
-  const url = process.env.NEXT_PUBLIC_RFP_API_URL;
-  if (url === undefined || url === '') {
-    return '/api/rfp';
-  }
-  return url.replace(/\/$/, '');
+  return resolveStaffApiBase('rfp', 'NEXT_PUBLIC_RFP_API_URL');
 }
 
 function requireAccessToken(): string {

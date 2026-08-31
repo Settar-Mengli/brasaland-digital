@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { shouldEmitSessionExpired } from './telemetry';
 
-const TELEMETRY_ENDPOINT = 'http://localhost:3003/api/telemetry/events';
+const TELEMETRY_ENDPOINT = 'http://localhost/staff/api/telemetry/events';
 const TOKEN_KEY = 'brasaland_access_token';
 
 function makeJwt(payload: Record<string, unknown>): string {

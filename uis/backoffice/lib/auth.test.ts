@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const AUTH_BASE = 'http://localhost:3003/api/auth';
+const AUTH_BASE = 'http://localhost/staff/api/auth';
 
 function makeJwt(payload: Record<string, unknown>): string {
   const header = btoa(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
@@ -93,7 +93,7 @@ describe('auth client', () => {
     );
   });
 
-  it('logout clears the token and assigns /login', async () => {
+  it('logout clears the token and assigns /staff/login', async () => {
     localStorage.setItem('brasaland_access_token', 'to-clear');
 
     const { logout } = await import('./auth');
@@ -101,7 +101,7 @@ describe('auth client', () => {
 
     expect(localStorage.removeItem).toHaveBeenCalledWith('brasaland_access_token');
     expect(sessionStorage.removeItem).toHaveBeenCalledWith('brasaland_location_slug');
-    expect(assignMock).toHaveBeenCalledWith('/login');
+    expect(assignMock).toHaveBeenCalledWith('/staff/login');
   });
 
   it('register rejects when no location is assigned', async () => {
@@ -126,7 +126,7 @@ describe('auth client', () => {
     expect(localStorage.getItem('brasaland_access_token')).toBeNull();
   });
 
-  it('defaults auth base to /api/auth when NEXT_PUBLIC_AUTH_API_URL is unset', async () => {
+  it('defaults auth base to /staff/api/auth when NEXT_PUBLIC_AUTH_API_URL is unset', async () => {
     vi.unstubAllEnvs();
     vi.resetModules();
     const storage = createStorage();
@@ -156,7 +156,7 @@ describe('auth client', () => {
     await login('ops@brasaland.com', 'password123', 'medellin_centro');
 
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/auth/login',
+      '/staff/api/auth/login',
       expect.objectContaining({
         method: 'POST',
         body: 'username=ops%40brasaland.com&password=password123&location_slug=medellin_centro',
@@ -183,7 +183,7 @@ describe('auth client', () => {
 
     expect(result.authorized_locations).toEqual(['medellin_centro']);
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/auth/login/authorized-locations',
+      '/staff/api/auth/login/authorized-locations',
       expect.objectContaining({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

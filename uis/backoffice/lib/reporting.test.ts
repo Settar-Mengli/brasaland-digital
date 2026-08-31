@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const REPORTING_BASE = 'http://localhost:3003/api/reporting';
+const REPORTING_BASE = 'http://localhost/staff/api/reporting';
 
 describe('reporting client', () => {
   beforeEach(() => {

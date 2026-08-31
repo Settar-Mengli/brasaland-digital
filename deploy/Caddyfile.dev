@@ -1,0 +1,17 @@
+:80 {
+	encode gzip
+
+	handle /staff* {
+		reverse_proxy ui:3003 {
+			header_up X-Forwarded-Host {host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+
+	handle {
+		reverse_proxy ui:3002 {
+			header_up X-Forwarded-Host {host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+}

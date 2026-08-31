@@ -1,6 +1,7 @@
 import { getAccessToken } from './auth';
 import { parseApiError } from './api-error';
 import { handleUnauthorized } from './session';
+import { resolveStaffApiBase } from './staff-paths';
 import type {
   Ingredient,
   IngredientEntryCreate,
@@ -11,11 +12,7 @@ import type {
 } from './inventory-types';
 
 function getInventoryBaseUrl(): string {
-  const url = process.env.NEXT_PUBLIC_INVENTORY_API_URL;
-  if (!url) {
-    throw new Error('NEXT_PUBLIC_INVENTORY_API_URL is not set');
-  }
-  return url.replace(/\/$/, '');
+  return resolveStaffApiBase('inventory', 'NEXT_PUBLIC_INVENTORY_API_URL');
 }
 
 function requireAccessToken(): string {

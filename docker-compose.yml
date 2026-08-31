@@ -418,15 +418,18 @@ services:
       TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
       NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${NEXT_PUBLIC_TURNSTILE_SITE_KEY:-}
       RFP_API_ORIGIN: http://rfp:8017
-      NEXT_PUBLIC_INVENTORY_API_URL: http://localhost:3003/api/inventory
-      NEXT_PUBLIC_AUTH_API_URL: http://localhost:3003/api/auth
-      NEXT_PUBLIC_INCIDENTS_API_URL: http://localhost:3004/api/incidents
-      NEXT_PUBLIC_REPORTING_API_URL: http://localhost:3003/api/reporting
-      NEXT_PUBLIC_KNOWLEDGE_API_URL: http://localhost:3003/api/knowledge
-      NEXT_PUBLIC_RFP_API_URL: http://localhost:3003/api/rfp
+      TELEMETRY_API_ORIGIN: http://telemetry:8013
+      NEXT_PUBLIC_STAFF_BASE_PATH: /staff
+      NEXT_PUBLIC_INVENTORY_API_URL: /staff/api/inventory
+      NEXT_PUBLIC_AUTH_API_URL: /staff/api/auth
+      NEXT_PUBLIC_TELEMETRY_ENDPOINT: /staff/api/telemetry/events
+      NEXT_PUBLIC_REPORTING_API_URL: /staff/api/reporting
+      NEXT_PUBLIC_KNOWLEDGE_API_URL: /staff/api/knowledge
+      NEXT_PUBLIC_RFP_API_URL: /staff/api/rfp
     volumes:
       - ./uis:/app/uis
       - ./apps/operations-toolkit:/app/apps/operations-toolkit
+      - ./docs/public-knowledge-base:/app/docs/public-knowledge-base:ro
       - ui_node_modules:/app/node_modules
       - ui_uis_node_modules:/app/uis/node_modules
     depends_on:
@@ -435,6 +438,18 @@ services:
       - incident-manager
       - reporting
       - knowledge
+    restart: unless-stopped
+    networks:
+      - brasaland-dev
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - '80:80'
+    volumes:
+      - ./deploy/Caddyfile.dev:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - ui
     restart: unless-stopped
     networks:
       - brasaland-dev

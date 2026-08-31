@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const AUTH_BASE = 'http://localhost:3003/api/auth';
+const AUTH_BASE = 'http://localhost/staff/api/auth';
 
 describe('profile client', () => {
   const assignMock = vi.fn();

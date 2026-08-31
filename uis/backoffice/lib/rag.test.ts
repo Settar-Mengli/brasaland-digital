@@ -22,7 +22,7 @@ describe('askKnowledge', () => {
   });
 
   it('posts the question with a Bearer token and returns the answer', async () => {
-    vi.stubEnv('NEXT_PUBLIC_KNOWLEDGE_API_URL', 'http://localhost:3003/api/knowledge');
+    vi.stubEnv('NEXT_PUBLIC_KNOWLEDGE_API_URL', 'http://localhost/staff/api/knowledge');
     vi.mocked(getAccessToken).mockReturnValue('tok');
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -35,7 +35,7 @@ describe('askKnowledge', () => {
 
     expect(answer).toBe('Gold needs 50+ points.');
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:3003/api/knowledge/query',
+      'http://localhost/staff/api/knowledge/query',
       expect.objectContaining({
         method: 'POST',
         headers: expect.objectContaining({
@@ -46,7 +46,7 @@ describe('askKnowledge', () => {
   });
 
   it('throws when not authenticated', async () => {
-    vi.stubEnv('NEXT_PUBLIC_KNOWLEDGE_API_URL', 'http://localhost:3003/api/knowledge');
+    vi.stubEnv('NEXT_PUBLIC_KNOWLEDGE_API_URL', 'http://localhost/staff/api/knowledge');
     vi.mocked(getAccessToken).mockReturnValue(null);
     await expect(askKnowledge('x')).rejects.toThrow('Not authenticated');
   });

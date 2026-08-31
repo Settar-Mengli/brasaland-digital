@@ -18,12 +18,12 @@ cd uis/backoffice
 copy .env.example .env.local
 ```
 
-| Variable                        | Purpose                                                        |
-| ------------------------------- | -------------------------------------------------------------- |
-| `NEXT_PUBLIC_INVENTORY_API_URL` | Same-origin proxy base → `http://localhost:3003/api/inventory` |
-| `NEXT_PUBLIC_AUTH_API_URL`      | Same-origin proxy base → `http://localhost:3003/api/auth`      |
+| Variable                        | Purpose                                                                 |
+| ------------------------------- | ----------------------------------------------------------------------- |
+| `NEXT_PUBLIC_INVENTORY_API_URL` | Same-origin proxy base → `http://localhost/staff/api/inventory` (Caddy) |
+| `NEXT_PUBLIC_AUTH_API_URL`      | Same-origin proxy base → `http://localhost/staff/api/auth`              |
 
-Rewrites in `next.config.ts` forward `/api/inventory/*` to `services/inventory` and `/api/auth/*` to `services/auth`. Canonical ports: [../../docs/standards/project-context.md](../../docs/standards/project-context.md#port-assignments).
+The app uses `basePath: '/staff'`. With Docker Compose, Caddy on **:80** routes `/` → website and `/staff*` → backoffice; open **http://localhost/staff**. Rewrites in `next.config.ts` forward `/staff/api/*` to backend services. Canonical ports: [../../docs/standards/project-context.md](../../docs/standards/project-context.md#port-assignments).
 
 ### Dev server
 
@@ -31,7 +31,7 @@ Rewrites in `next.config.ts` forward `/api/inventory/*` to `services/inventory` 
 npm run dev
 ```
 
-Open **http://127.0.0.1:3003**
+Open **http://127.0.0.1:3003/staff** (direct) or **http://localhost/staff** via Compose + Caddy.
 
 ## Routes
 
@@ -111,9 +111,9 @@ From the monorepo root:
 npm run test --workspace @brasaland/backoffice
 ```
 
-Expect **74** passed.
+Expect **83** passed.
 
-Vitest unit tests cover `lib/api-error.ts`, `lib/auth.ts`, `lib/inventory.ts`, `lib/stock-level.ts`, `lib/telemetry.ts`, `lib/locations.ts`, `lib/login-failure-aggregation.ts`, `InventoryAuthGuard`, and `AdminAuthGuard`.
+Vitest unit tests cover `lib/api-error.ts`, `lib/auth.ts`, `lib/inventory.ts`, `lib/staff-paths.ts`, `lib/stock-level.ts`, `lib/telemetry.ts`, `lib/locations.ts`, `lib/login-failure-aggregation.ts`, `NavLinks`, `InventoryAuthGuard`, and `AdminAuthGuard`.
 
 `/` (dashboard) and `/locations` require JWT via `InventoryAuthGuard`, matching `/rfp` and `/account/profile`.
 
@@ -123,7 +123,7 @@ npm run build
 
 ## Architecture note
 
-Browser requests hit the Next.js dev server on port 3003, which rewrites to the Python services. This avoids adding CORS middleware to `services/inventory` or `services/auth`.
+Browser requests hit the Next.js dev server (backoffice on port 3003 under `/staff`), which rewrites to the Python services. With Compose, Caddy on **:80** is the browser entry (`http://localhost` → website, `http://localhost/staff` → backoffice).
 
 ## Production slice
 

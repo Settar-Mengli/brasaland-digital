@@ -1,4 +1,5 @@
 import { clearAccessToken } from './auth';
+import { staffLoginPath } from './staff-paths';
 
 /**
  * Shared 401 handler for authenticated API clients.
@@ -10,6 +11,6 @@ export function handleUnauthorized(response: Response): void {
     return;
   }
   clearAccessToken();
-  window.location.assign('/login');
+  window.location.assign(staffLoginPath());
   throw new Error('Unauthorized');
 }

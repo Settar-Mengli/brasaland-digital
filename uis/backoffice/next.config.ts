@@ -1,10 +1,13 @@
 import type { NextConfig } from 'next';
 
+import { STAFF_BASE_PATH } from './lib/staff-paths';
+
 function rewriteOrigin(envVar: string, fallback: string): string {
   return (process.env[envVar] ?? fallback).replace(/\/$/, '');
 }
 
 const nextConfig: NextConfig = {
+  basePath: STAFF_BASE_PATH,
   async rewrites() {
     const inventoryOrigin = rewriteOrigin('INVENTORY_API_ORIGIN', 'http://localhost:8012');
     const authOrigin = rewriteOrigin('AUTH_API_ORIGIN', 'http://localhost:8002');
@@ -13,7 +16,8 @@ const nextConfig: NextConfig = {
     const knowledgeOrigin = rewriteOrigin('KNOWLEDGE_API_ORIGIN', 'http://localhost:8015');
     const rfpOrigin = rewriteOrigin('RFP_API_ORIGIN', 'http://localhost:8017');
 
-    return [
+    // Sources omit /staff — Next prepends basePath so /staff/api/* matches at runtime.
+    const beforeFiles = [
       {
         source: '/api/inventory/:path*',
         destination: `${inventoryOrigin}/inventory/:path*`,
@@ -39,6 +43,8 @@ const nextConfig: NextConfig = {
         destination: `${rfpOrigin}/rfp/:path*`,
       },
     ];
+
+    return { beforeFiles };
   },
 };
 
