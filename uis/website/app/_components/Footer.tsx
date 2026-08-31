@@ -34,7 +34,14 @@ export default function Footer() {
         </ul>
       </div>
       <div className="border-t border-brasaland-ivory/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-sm text-brasaland-ivory/60">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col items-center gap-2 text-center text-sm text-brasaland-ivory/60 sm:flex-row sm:justify-center sm:gap-6">
+          <a
+            href="/staff"
+            rel="nofollow"
+            className="text-brasaland-ivory/50 hover:text-brasaland-ivory/80 transition-colors focus:outline-none focus:ring-2 focus:ring-brasaland-ember focus:ring-offset-2 focus:ring-offset-brasaland-charcoal rounded-sm"
+          >
+            Staff Login
+          </a>
           <p>© 2026 Brasaland. All rights reserved.</p>
         </div>
       </div>
