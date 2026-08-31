@@ -81,7 +81,7 @@ def test_post_product_with_refresh_token_returns_401(client: TestClient) -> None
 
 
 def test_post_product_with_valid_access_token_succeeds(client: TestClient) -> None:
-    token = make_access_token(42)
+    token = make_access_token(42, is_admin=True)
     response = client.post(
         "/inventory/products",
         json=PRODUCT_PAYLOAD,
@@ -160,3 +160,135 @@ def test_admin_can_read_any_location(
     assert products.status_code == 200
     assert detail.status_code == 200
     assert orders.status_code == 200
+
+
+BEEF_PAYLOAD = {
+    "name": "Beef brisket",
+    "sku": "BRS-BEEF-001",
+    "unit": "kg",
+    "category": "meat",
+    "country": "CO",
+}
+
+INBOUND_PAYLOAD = {
+    "ingredient_id": 0,
+    "quantity": 25.0,
+    "supplier_name": "Carnes del Valle S.A.",
+    "location_id": 1,
+}
+
+OUTBOUND_PAYLOAD = {
+    "ingredient_id": 0,
+    "quantity": 10.0,
+    "reason": "consumption",
+    "location_id": 1,
+}
+
+
+def _seed_beef(session: Session) -> Ingredient:
+    beef = Ingredient.model_validate(BEEF_PAYLOAD)
+    session.add(beef)
+    session.commit()
+    session.refresh(beef)
+    return beef
+
+
+def _scoped_medellin_token() -> str:
+    return make_access_token(
+        42,
+        authorized_locations=["medellin_centro"],
+        location_slug="medellin_centro",
+    )
+
+
+def test_scoped_user_post_product_forbidden(client: TestClient) -> None:
+    response = client.post(
+        "/inventory/products",
+        json=PRODUCT_PAYLOAD,
+        headers=_headers(_scoped_medellin_token()),
+    )
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Admin privileges required"
+
+
+def test_scoped_user_post_inbound_unauthorized_location(
+    session: Session, client: TestClient
+) -> None:
+    beef = _seed_beef(session)
+    assert beef.id is not None
+    payload = {**INBOUND_PAYLOAD, "ingredient_id": beef.id, "location_id": 11}
+    response = client.post(
+        "/inventory/orders/inbound",
+        json=payload,
+        headers=_headers(_scoped_medellin_token()),
+    )
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Location access denied"
+
+
+def test_scoped_user_post_outbound_unauthorized_location(
+    session: Session, client: TestClient
+) -> None:
+    beef = _seed_beef(session)
+    assert beef.id is not None
+    payload = {**OUTBOUND_PAYLOAD, "ingredient_id": beef.id, "location_id": 11}
+    response = client.post(
+        "/inventory/orders/outbound",
+        json=payload,
+        headers=_headers(_scoped_medellin_token()),
+    )
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Location access denied"
+
+
+def test_scoped_user_post_inbound_authorized_location(
+    session: Session, client: TestClient
+) -> None:
+    beef = _seed_beef(session)
+    assert beef.id is not None
+    payload = {**INBOUND_PAYLOAD, "ingredient_id": beef.id, "location_id": 1}
+    response = client.post(
+        "/inventory/orders/inbound",
+        json=payload,
+        headers=_headers(_scoped_medellin_token()),
+    )
+    assert response.status_code == 200
+    assert response.json()["location_id"] == 1
+
+
+def test_scoped_user_post_outbound_authorized_location(
+    session: Session, client: TestClient
+) -> None:
+    beef = _seed_beef(session)
+    assert beef.id is not None
+    inbound = client.post(
+        "/inventory/orders/inbound",
+        json={**INBOUND_PAYLOAD, "ingredient_id": beef.id, "location_id": 1},
+        headers=_headers(_scoped_medellin_token()),
+    )
+    assert inbound.status_code == 200
+    outbound = client.post(
+        "/inventory/orders/outbound",
+        json={**OUTBOUND_PAYLOAD, "ingredient_id": beef.id, "location_id": 1},
+        headers=_headers(_scoped_medellin_token()),
+    )
+    assert outbound.status_code == 200
+    assert outbound.json()["location_id"] == 1
+
+
+def test_admin_post_inbound_any_location(session: Session, client: TestClient) -> None:
+    beef = _seed_beef(session)
+    assert beef.id is not None
+    payload = {
+        **INBOUND_PAYLOAD,
+        "ingredient_id": beef.id,
+        "location_id": 14,
+        "supplier_name": "Miami Supplier",
+    }
+    response = client.post(
+        "/inventory/orders/inbound",
+        json=payload,
+        headers=_headers(make_access_token(1, is_admin=True)),
+    )
+    assert response.status_code == 200
+    assert response.json()["location_id"] == 14

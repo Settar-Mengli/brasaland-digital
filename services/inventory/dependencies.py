@@ -30,13 +30,7 @@ LOCATION_ID_TO_SLUG: dict[int, str] = {
 }
 
 
-def require_authorized_location_id(
-    location_id: Annotated[
-        int,
-        Query(ge=MIN_LOCATION_ID, le=MAX_LOCATION_ID),
-    ],
-    claims: Annotated[dict[str, Any], Depends(get_verified_claims)],
-) -> int:
+def assert_authorized_location_id(claims: dict[str, Any], location_id: int) -> int:
     """Require access to the requested numeric inventory location."""
     authorized_slugs = get_authorized_location_slugs(claims)
     requested_slug = LOCATION_ID_TO_SLUG[location_id]
@@ -48,4 +42,19 @@ def require_authorized_location_id(
     return location_id
 
 
-__all__ = ["get_current_user_uuid", "require_authorized_location_id"]
+def require_authorized_location_id(
+    location_id: Annotated[
+        int,
+        Query(ge=MIN_LOCATION_ID, le=MAX_LOCATION_ID),
+    ],
+    claims: Annotated[dict[str, Any], Depends(get_verified_claims)],
+) -> int:
+    """Require access to the requested numeric inventory location (query param)."""
+    return assert_authorized_location_id(claims, location_id)
+
+
+__all__ = [
+    "assert_authorized_location_id",
+    "get_current_user_uuid",
+    "require_authorized_location_id",
+]

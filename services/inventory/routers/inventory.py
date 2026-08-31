@@ -1,9 +1,14 @@
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any
 
+from brasaland_auth_verify.deps import get_verified_claims, require_admin
 from database import get_db
-from dependencies import get_current_user_uuid, require_authorized_location_id
+from dependencies import (
+    assert_authorized_location_id,
+    get_current_user_uuid,
+    require_authorized_location_id,
+)
 from fastapi import APIRouter, Depends, HTTPException, status
 from models import Ingredient, IngredientEntry, IngredientExit
 from schemas import (
@@ -156,7 +161,7 @@ def get_product(
 def create_product(
     payload: IngredientCreate,
     session: Annotated[Session, Depends(get_db)],
-    _user_uuid: Annotated[str, Depends(get_current_user_uuid)],
+    _admin_uuid: Annotated[str, Depends(require_admin)],
 ) -> IngredientResponse:
     ingredient = Ingredient.model_validate(payload)
     session.add(ingredient)
@@ -170,7 +175,9 @@ def create_inbound_order(
     payload: IngredientEntryCreate,
     session: Annotated[Session, Depends(get_db)],
     user_uuid: Annotated[str, Depends(get_current_user_uuid)],
+    claims: Annotated[dict[str, Any], Depends(get_verified_claims)],
 ) -> IngredientEntryResponse:
+    assert_authorized_location_id(claims, payload.location_id)
     _get_ingredient_or_404(session, payload.ingredient_id)
     entry = IngredientEntry.model_validate(payload, update={"user_uuid": user_uuid})
     session.add(entry)
@@ -184,7 +191,9 @@ def create_outbound_order(
     payload: IngredientExitCreate,
     session: Annotated[Session, Depends(get_db)],
     user_uuid: Annotated[str, Depends(get_current_user_uuid)],
+    claims: Annotated[dict[str, Any], Depends(get_verified_claims)],
 ) -> IngredientExitResponse:
+    assert_authorized_location_id(claims, payload.location_id)
     if payload.reason not in VALID_EXIT_REASONS:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

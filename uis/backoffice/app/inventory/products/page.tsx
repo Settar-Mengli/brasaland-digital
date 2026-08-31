@@ -29,6 +29,7 @@ function StockIndicator({ currentStock }: { currentStock: number }) {
 
 function ProductsContent() {
   const [products, setProducts] = useState<Ingredient[]>([]);
+  const [locationId, setLocationId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,9 +38,10 @@ function ProductsContent() {
 
     async function loadProducts() {
       try {
-        const locationId = getSessionLocationId();
-        const data = await getProducts(locationId);
+        const resolvedLocationId = getSessionLocationId();
+        const data = await getProducts(resolvedLocationId);
         if (!cancelled) {
+          setLocationId(resolvedLocationId);
           setProducts(data);
           const locationSlug = getSessionLocationSlug();
           if (locationSlug) {
@@ -154,7 +156,7 @@ function ProductsContent() {
           </table>
         </div>
         <p className="text-xs text-brasaland-charcoal/40 mt-2">
-          Powered by getProducts() · GET /inventory/products?location_id=
+          Powered by getProducts() · GET /inventory/products?location_id={locationId ?? '—'}
         </p>
       </section>
 
