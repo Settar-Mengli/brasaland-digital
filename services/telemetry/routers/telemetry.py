@@ -7,6 +7,7 @@ from typing import Annotated
 from brasaland_auth_verify.deps import get_current_user_uuid, get_optional_user_uuid
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from pydantic import ValidationError
+from sqlalchemy.exc import SQLAlchemyError
 
 from allowlists import validate_event_properties
 from models import EventsIngestBody, IngestResponse, TelemetryEvent
@@ -78,7 +79,15 @@ def ingest_events(
 
         pending_rows.append(build_event_row(event))
 
-    stored = bulk_insert_events(pending_rows)
+    try:
+        stored = bulk_insert_events(pending_rows)
+    except SQLAlchemyError as error:
+        logger.error("Telemetry ingest storage failed: %s", error)
+        raise HTTPException(
+            status_code=503,
+            detail="telemetry storage unavailable",
+        ) from error
+
     rejected = received - stored
 
     logger.info(

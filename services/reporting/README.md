@@ -112,6 +112,16 @@ docker compose stop reporting-worker
 
 Compose passes `DATABASE_URL` and `REDIS_URL`, mounts `./services/reporting`, `./data`, and `./packages`. The worker command is `-Q reporting`; the default Celery queue `celery` is not used. Routing is `task_default_queue` + `task_routes` in `celery_app.py`.
 
+**Worker crash-loop contingency:** if `reporting-worker` stays `Restarting` with `Permission denied` on `/app/services/reporting/.venv` after telemetry schema apply, remove the named volume and recreate (operator runtime, not a code change):
+
+```powershell
+docker compose stop reporting-worker
+docker volume rm brasaland-digital_reporting_worker_venv
+docker compose up -d reporting-worker
+```
+
+The reporting pipeline extract reads `public.telemetry_events`; apply [../../scripts/m5_apply_telemetry_schema.sql](../../scripts/m5_apply_telemetry_schema.sql) on m5 when that table is missing.
+
 CI job `celery-routing` runs [../../scripts/test_celery_queue_isolation.py](../../scripts/test_celery_queue_isolation.py) against a disposable Redis (FLUSHDB; never the Compose broker).
 
 ### Optional Windows host worker

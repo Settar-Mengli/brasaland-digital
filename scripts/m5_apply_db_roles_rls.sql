@@ -5,7 +5,7 @@
 -- transaction pooler, unless operator confirms CREATE ROLE works on pooler.
 --
 -- Prerequisites:
---   1. Alembic head applied (e4f8a1b2c3d4).
+--   1. Alembic head applied (f9a2b3c4d5e6).
 --   2. Set strong passwords for each runtime role OUT OF BAND (Vault / Supabase).
 --   3. Replace {{ROLE_PASSWORD}} below OR run scripts/apply_db_roles_rls.py locally
 --      against disposable Postgres first, then adapt passwords for m5.
