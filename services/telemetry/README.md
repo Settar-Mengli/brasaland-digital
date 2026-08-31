@@ -61,6 +61,21 @@ uv sync
 
 Requires **Python 3.11+**. Copy `.env.example` to `.env` and set `DATABASE_URL` (same brasaland-m5 project as `services/inventory`).
 
+### Postgres schema (Alembic)
+
+On Postgres, `ensure_schema()` does **not** create tables — DDL is owned by Alembic under `data/alembic/`. The `telemetry_events` table is created by revision `f9a2b3c4d5e6` (idempotent when the table already exists from baseline).
+
+**Local disposable Postgres:**
+
+```powershell
+cd data
+uv run alembic upgrade head
+```
+
+**brasaland-m5 (operator only):** follow [../../scripts/m5_apply_telemetry_schema.sql](../../scripts/m5_apply_telemetry_schema.sql). Agents and CI must not apply DDL to live m5.
+
+Transient storage failures return **503** `telemetry storage unavailable` (not **500**).
+
 ### Docker Compose
 
 `inventory` and `telemetry` receive `DATABASE_URL` from the compose `environment` block (`DATABASE_URL: ${DATABASE_URL}`), not from a mounted `.env` inside the container. Export `DATABASE_URL` in your shell or root `.env` before `docker compose up`.
@@ -124,7 +139,7 @@ Response shape:
 
 ## Database indexes (production)
 
-After the table exists (first service start runs `ensure_schema()`):
+GIN and btree indexes on `telemetry_events` are declared on the SQLModel and created by Alembic (`f9a2b3c4d5e6` or baseline `c563e07756e0`). Legacy bootstrap only if indexes are missing after migration:
 
 ```bash
 cd services/telemetry
@@ -143,6 +158,6 @@ cd services/telemetry
 uv run pytest
 ```
 
-Expect **33** passed.
+Expect **40** passed.
 
 SQLite in-memory tests cover ingest, allowlists, level derivation, analysis metrics, and report caching. GIN index creation is not tested on SQLite.

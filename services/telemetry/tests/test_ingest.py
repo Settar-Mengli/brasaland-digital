@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import select
 
 from db_models import TelemetryEventRow
@@ -105,3 +106,17 @@ def test_events_not_a_list_returns_422(client) -> None:
     response = client.post("/telemetry/events", json={"events": "not-a-list"})
 
     assert response.status_code == 422
+
+
+def test_db_failure_returns_503_not_500(client) -> None:
+    with patch(
+        "routers.telemetry.bulk_insert_events",
+        side_effect=SQLAlchemyError("relation telemetry_events does not exist"),
+    ):
+        response = client.post(
+            "/telemetry/events",
+            json={"events": [sample_event()]},
+        )
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": "telemetry storage unavailable"}
