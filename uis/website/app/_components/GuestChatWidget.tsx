@@ -2,12 +2,9 @@
 
 import { FormEvent, useState } from 'react';
 
+import TurnstileChallenge from '@/app/_components/TurnstileChallenge';
 import { askGuestChat } from '@/lib/chat-client';
-
-function publicChatEnabled(): boolean {
-  const raw = process.env.NEXT_PUBLIC_PUBLIC_CHAT_ENABLED?.trim().toLowerCase();
-  return raw === '1' || raw === 'true' || raw === 'yes' || raw === 'on';
-}
+import { publicChatEnabled, turnstileWidgetEnabled } from '@/lib/turnstile-widget';
 
 export default function GuestChatWidget() {
   const [open, setOpen] = useState(false);
@@ -15,6 +12,10 @@ export default function GuestChatWidget() {
   const [answer, setAnswer] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileResetSignal, setTurnstileResetSignal] = useState(0);
+
+  const turnstileEnabled = turnstileWidgetEnabled();
 
   if (!publicChatEnabled()) {
     return null;
@@ -26,11 +27,18 @@ export default function GuestChatWidget() {
     if (!trimmed || loading) {
       return;
     }
+    if (turnstileEnabled && !turnstileToken) {
+      setError('Complete the security check before asking.');
+      return;
+    }
     setLoading(true);
     setError('');
     setAnswer('');
     try {
-      const response = await askGuestChat(trimmed);
+      const response = await askGuestChat(
+        trimmed,
+        turnstileEnabled ? (turnstileToken ?? undefined) : undefined,
+      );
       setAnswer(response);
       setQuestion('');
     } catch (submitError) {
@@ -39,8 +47,14 @@ export default function GuestChatWidget() {
       setError(message);
     } finally {
       setLoading(false);
+      if (turnstileEnabled) {
+        setTurnstileResetSignal((value) => value + 1);
+      }
     }
   }
+
+  const submitDisabled =
+    loading || !question.trim() || (turnstileEnabled && turnstileToken === null);
 
   return (
     <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-2">
@@ -82,9 +96,15 @@ export default function GuestChatWidget() {
                 disabled={loading}
                 aria-describedby="guest-chat-status"
               />
+              {turnstileEnabled ? (
+                <TurnstileChallenge
+                  onTokenChange={setTurnstileToken}
+                  resetSignal={turnstileResetSignal}
+                />
+              ) : null}
               <button
                 type="submit"
-                disabled={loading || !question.trim()}
+                disabled={submitDisabled}
                 className="rounded bg-brasaland-ember px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brasaland-ember"
               >
                 {loading ? 'Sending…' : 'Ask'}
